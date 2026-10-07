@@ -23,7 +23,7 @@ It is on by default. **Project Settings > Build Forge > Build Manifest > Write B
 | `ProductVersion` | `productVersion` | `PlayerSettings.bundleVersion` as built, including a `-forgeVersion` override or a plugin's change. |
 | `BuildNumber` | `buildNumber` | The [Build Number](plugins/build-number.md) plugin's number when it is enabled for the profile, on every platform; otherwise the Android version code or iOS build number as built; empty when there is neither. |
 | `UnityVersion` | `unityVersion` | The editor version that built the player. |
-| `BuildForgeVersion` | `buildForgeVersion` | The version in Build Forge's `package.json`, or `unknown` when it cannot be read. <!-- unverified: whether the version is found for a package installed from git --> |
+| `BuildForgeVersion` | `buildForgeVersion` | The version in Build Forge's `package.json`, or `unknown` when it cannot be read. |
 | `DevelopmentBuild` | `developmentBuild` | Whether the player is a development build, after the variant's rule. |
 | `ManagedCodeVariant` | `managedCodeVariant` | Unity 6.6 and later: the Managed Code Variant player setting (`Debug`, `Checked`, `Instrumented` or `Release`). Empty on earlier editors. |
 | `PluginSections` | `pluginSections` | One section per contributing plugin, each with a `name` and `entries` of `key` and `value`. |
