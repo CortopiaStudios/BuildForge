@@ -1,0 +1,30 @@
+{
+  "name": "BuildForge.Editor.Addressables",
+  "rootNamespace": "BuildForge.Editor.Addressables",
+  "references": [
+    "BuildForge.Runtime",
+    "BuildForge.Editor",
+    "Unity.Addressables",
+    "Unity.Addressables.Editor",
+    "Unity.ResourceManager"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "BUILDFORGE_ADDRESSABLES"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.addressables",
+      "expression": "1.0.0",
+      "define": "BUILDFORGE_ADDRESSABLES"
+    }
+  ],
+  "noEngineReferences": false
+}

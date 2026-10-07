@@ -1,0 +1,102 @@
+// Builds one Unity Build Profile with Build Forge, using the standalone Unity CLI on a Windows agent.
+//
+// Copy this file to the repository root, or point the job's Script Path at it.
+// The agent needs Git, the Unity CLI ("unity") on the PATH of the account the
+// job runs as, and an activated Unity editor of the version in
+// ProjectSettings/ProjectVersion.txt with the platform modules your profiles use.
+//
+// Adjust PROJECT_DIR, OUTPUT_DIR, the profile names and the credential IDs below.
+
+pipeline {
+    // Any agent label expression that selects your Unity build machines.
+    agent { label 'unity && windows' }
+
+    parameters {
+        // Unity Build Profile asset names in Assets/Settings/Build Profiles.
+        choice(name: 'PROFILE_NAME', choices: ['Quest', 'Steam Frame', 'Windows'],
+               description: 'Unity Build Profile to build')
+        string(name: 'VARIANT_NAME', defaultValue: 'Default',
+               description: 'Build Forge variant (Project Settings > Build Forge > Build Variants), or Default')
+    }
+
+    options {
+        // Unity keeps the project open while it builds: two builds in one
+        // workspace fail, and they would share the settings a build changes.
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        // The Unity project folder for "unity run", relative to the repository
+        // root: './Client' for a subfolder, '.' for a project at the root.
+        PROJECT_DIR = './Client'
+        // The profiles' output folder relative to the workspace (the default
+        // output path is Builds/... inside the Unity project).
+        OUTPUT_DIR = 'Client/Builds'
+    }
+
+    stages {
+        stage('Check tools') {
+            steps {
+                // Shows the CLI version this agent runs; pin and check it.
+                bat 'unity --version'
+            }
+        }
+
+        stage('Remove previous output') {
+            steps {
+                // Build Forge removes what the previous build recorded, but a new
+                // workspace has no record; start from an empty folder instead.
+                dir("${env.OUTPUT_DIR}") {
+                    deleteDir()
+                }
+            }
+        }
+
+        stage('Activate') {
+            steps {
+                // The job builds every profile of PROFILE_NAME in one workspace, across
+                // platforms. Unity 6000.3.23 can fail to compile when -activeBuildProfile
+                // changes platform, so switch the workspace to the profile in a run of its
+                // own first (the build window's Shared workspace command). A job per
+                // profile, in a workspace of its own, can leave this stage out.
+                bat '''
+                    set "UNITY_EDITOR_VERSION="
+                    unity run "%PROJECT_DIR%" --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile "Assets/Settings/Build Profiles/%PROFILE_NAME%.asset"
+                    if errorlevel 1 exit /b %ERRORLEVEL%
+                '''
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Android Keystore Env reads these variable names by default. Create the
+                // credentials in Jenkins (a secret file and two secret texts), or remove
+                // this block for jobs that build no Android profile. Keep the key alias in
+                // Player Settings, or add a string credential for ANDROID_KEY_ALIAS.
+                withCredentials([
+                    file(credentialsId: 'android-keystore-file', variable: 'ANDROID_KEYSTORE_PATH'),
+                    string(credentialsId: 'android-keystore-password', variable: 'ANDROID_KEYSTORE_PASSWORD'),
+                    string(credentialsId: 'android-key-password', variable: 'ANDROID_KEY_PASSWORD')
+                ]) {
+                    // Jenkins sets BUILD_NUMBER for every build; Build Number's variable
+                    // sources read it. Batch mode counts as a CI build for Build Forge.
+                    // Single quotes: cmd, not Groovy, expands the variables, so secrets
+                    // never pass through Groovy string interpolation.
+                    bat '''
+                        set "UNITY_EDITOR_VERSION="
+                        unity run "%PROJECT_DIR%" --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/%PROFILE_NAME%.asset" -forgeVariant "%VARIANT_NAME%"
+                        if errorlevel 1 exit /b %ERRORLEVEL%
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        // Archive only after a successful build: a failed build can leave partial
+        // output, and the Unity CLI reports a failed build as exit code 6.
+        success {
+            archiveArtifacts artifacts: "${env.OUTPUT_DIR}/**", fingerprint: true
+        }
+    }
+}

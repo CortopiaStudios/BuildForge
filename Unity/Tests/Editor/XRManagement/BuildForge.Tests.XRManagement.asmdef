@@ -1,0 +1,13 @@
+{
+  "name": "BuildForge.Tests.XRManagement",
+  "references": ["BuildForge.Editor", "BuildForge.Runtime", "BuildForge.Editor.XRManagement", "Unity.XR.Management", "Unity.XR.Management.Editor", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS", "BUILDFORGE_XR_MANAGEMENT"],
+  "versionDefines": [
+    {"name": "com.unity.xr.management", "expression": "4.0.0", "define": "BUILDFORGE_XR_MANAGEMENT"},
+    {"name": "com.unity.xr.management", "expression": "4.7.0", "define": "BUILDFORGE_XR_MANAGEMENT_4_7"}
+  ]
+}

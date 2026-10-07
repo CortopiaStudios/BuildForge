@@ -1,0 +1,19 @@
+{
+  "name": "BuildForge.Samples.ExampleIntegration.Editor",
+  "rootNamespace": "BuildForge.Samples.ExampleIntegration",
+  "references": [
+    "BuildForge.Editor",
+    "BuildForge.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

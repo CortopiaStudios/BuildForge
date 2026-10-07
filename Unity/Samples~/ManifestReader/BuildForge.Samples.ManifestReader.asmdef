@@ -1,0 +1,16 @@
+{
+  "name": "BuildForge.Samples.ManifestReader",
+  "rootNamespace": "BuildForge.Samples",
+  "references": [
+    "BuildForge.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

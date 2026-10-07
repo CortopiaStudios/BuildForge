@@ -1,0 +1,113 @@
+# Builds one Unity Build Profile with Build Forge on a self-hosted Windows runner.
+#
+# Copy this file to .github/workflows/ in your repository. GitHub's hosted
+# runners have no Unity editor: the runner needs Git, the Unity CLI ("unity") on
+# its PATH and an activated Unity editor of the version in
+# ProjectSettings/ProjectVersion.txt, with the platform modules your profiles use.
+#
+# Adjust PROJECT_DIR, the profile names and the secrets below.
+
+name: Build player
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Unity Build Profile (an asset name in Assets/Settings/Build Profiles)
+        type: choice
+        options:
+          - Quest
+          - Steam Frame
+          - Windows
+        default: Windows
+      variant:
+        description: Build Forge variant, or Default
+        type: string
+        default: Default
+
+# One Unity process per checkout: queue runs instead of running two at once.
+concurrency:
+  group: build-player-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # The Unity project folder relative to the repository root: ./Client for a
+  # subfolder, . for a project at the root.
+  PROJECT_DIR: ./Client
+
+jobs:
+  build:
+    runs-on: [self-hosted, windows]
+    # A cancelled or timed-out job can leave the Unity editor running on Windows;
+    # check the runner before the next job if that happens.
+    timeout-minutes: 120
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          # Build Number's git commit count needs the full history; a shallow
+          # clone fails the build.
+          fetch-depth: 0
+          # Keep Library/ between runs on this runner, so imports stay incremental.
+          clean: false
+
+      - name: Remove the previous build output
+        shell: powershell
+        run: |
+          $builds = Join-Path $env:PROJECT_DIR 'Builds'
+          if (Test-Path $builds) { Remove-Item -Recurse -Force $builds }
+
+      - name: Check the Unity CLI
+        shell: powershell
+        run: unity --version
+
+      # Android Keystore Env reads ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD
+      # and ANDROID_KEY_PASSWORD by default. Store the keystore as a base64 secret.
+      - name: Write the Android keystore
+        if: ${{ inputs.profile != 'Windows' }}
+        shell: powershell
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if (-not $env:KEYSTORE_BASE64) { throw 'The ANDROID_KEYSTORE_BASE64 secret is not set.' }
+          $path = Join-Path $env:RUNNER_TEMP 'release.keystore'
+          [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String($env:KEYSTORE_BASE64))
+          "ANDROID_KEYSTORE_PATH=$path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      # The workflow builds every profile of the choice in the runner's one workspace,
+      # across platforms. Unity 6000.3.23 can fail to compile when -activeBuildProfile
+      # changes platform, so switch the workspace to the profile in a run of its own
+      # first (the build window's Shared workspace command). A workflow per profile, on
+      # a runner of its own, can leave this step out.
+      - name: Activate the profile
+        shell: powershell
+        env:
+          PROFILE_NAME: ${{ inputs.profile }}
+        run: |
+          Remove-Item Env:UNITY_EDITOR_VERSION -ErrorAction SilentlyContinue
+          unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset"
+          exit $LASTEXITCODE
+
+      - name: Build
+        shell: powershell
+        env:
+          # Build Number's variable sources read BUILD_NUMBER.
+          BUILD_NUMBER: ${{ github.run_number }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Inputs reach the script as environment variables, not as ${{ }} inside
+          # it, so a crafted input cannot inject commands.
+          PROFILE_NAME: ${{ inputs.profile }}
+          VARIANT_NAME: ${{ inputs.variant }}
+        run: |
+          Remove-Item Env:UNITY_EDITOR_VERSION -ErrorAction SilentlyContinue
+          unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset" -forgeVariant $env:VARIANT_NAME
+          exit $LASTEXITCODE
+
+      # Runs only after a successful build; a failed build can leave partial output.
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.profile }}-${{ inputs.variant }}-${{ github.run_number }}
+          path: ${{ env.PROJECT_DIR }}/Builds/
+          if-no-files-found: error

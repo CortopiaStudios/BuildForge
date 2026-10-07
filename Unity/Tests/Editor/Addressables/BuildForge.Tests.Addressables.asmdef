@@ -1,0 +1,10 @@
+{
+  "name": "BuildForge.Tests.Addressables",
+  "references": ["BuildForge.Editor", "BuildForge.Editor.Addressables", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS", "BUILDFORGE_ADDRESSABLES"],
+  "versionDefines": [{"name": "com.unity.addressables", "expression": "1.0.0", "define": "BUILDFORGE_ADDRESSABLES"}]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "BuildForge.Tests.OpenXR",
+  "references": ["BuildForge.Editor", "BuildForge.Runtime", "BuildForge.Editor.OpenXR", "Unity.XR.OpenXR", "Unity.XR.OpenXR.Editor", "UnityEngine.TestRunner", "UnityEditor.TestRunner"],
+  "includePlatforms": ["Editor"],
+  "overrideReferences": true,
+  "precompiledReferences": ["nunit.framework.dll"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS", "BUILDFORGE_OPENXR"],
+  "versionDefines": [{"name": "com.unity.xr.openxr", "expression": "1.0.0", "define": "BUILDFORGE_OPENXR"}]
+}

@@ -1,0 +1,32 @@
+{
+  "name": "BuildForge.Editor.OpenXR",
+  "rootNamespace": "BuildForge.Editor.OpenXR",
+  "references": [
+    "BuildForge.Runtime",
+    "BuildForge.Editor",
+    "BuildForge.Editor.XRManagement",
+    "Unity.XR.Management",
+    "Unity.XR.Management.Editor",
+    "Unity.XR.OpenXR",
+    "Unity.XR.OpenXR.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "BUILDFORGE_OPENXR"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.unity.xr.openxr",
+      "expression": "1.0.0",
+      "define": "BUILDFORGE_OPENXR"
+    }
+  ],
+  "noEngineReferences": false
+}

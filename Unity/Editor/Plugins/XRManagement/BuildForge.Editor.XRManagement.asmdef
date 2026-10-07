@@ -1,0 +1,9 @@
+{
+  "name": "BuildForge.Editor.XRManagement",
+  "rootNamespace": "BuildForge.Editor.XRManagement",
+  "references": ["BuildForge.Editor", "BuildForge.Runtime", "Unity.XR.Management", "Unity.XR.Management.Editor"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true,
+  "defineConstraints": ["BUILDFORGE_XR_MANAGEMENT"],
+  "versionDefines": [{"name": "com.unity.xr.management", "expression": "4.0.0", "define": "BUILDFORGE_XR_MANAGEMENT"}]
+}
