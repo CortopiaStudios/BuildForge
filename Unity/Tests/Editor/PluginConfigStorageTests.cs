@@ -145,8 +145,7 @@ namespace BuildForge.Tests.Editor
                 StringAssert.Contains("key: BuildNumber", text);
                 StringAssert.Contains("offset: 42", text);
                 StringAssert.Contains("class: BuildNumberConfig", text);
-                StringAssert.IsMatch(@"envVarName:[ 	]*?
-", text,
+                StringAssert.IsMatch(@"envVarName:[ \t]*\r?\n", text,
                     "An untouched fallback string stores empty, not its default.");
                 StringAssert.DoesNotContain("jsonData", text);
                 StringAssert.DoesNotContain("{\"", text, "No JSON blobs anywhere in the profile asset.");
@@ -195,8 +194,7 @@ namespace BuildForge.Tests.Editor
                 var text = File.ReadAllText(path);
                 StringAssert.Contains("key: " + key, text);
                 StringAssert.Contains("keystorePathEnvVar: X_TEST", text);
-                StringAssert.IsMatch(@"keystorePassEnvVar:[ 	]*?
-", text,
+                StringAssert.IsMatch(@"keystorePassEnvVar:[ \t]*\r?\n", text,
                     "An untouched fallback string stores empty, not its default.");
                 StringAssert.Contains("class: AndroidKeystoreEnvGlobalConfig", text);
                 StringAssert.DoesNotContain("jsonData", text);
