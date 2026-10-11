@@ -152,6 +152,17 @@ here — see ARCHITECTURE.md (decisions, pitfalls), Development~/LEARNINGS.md
    service-account key (`unity auth login --client-id/--client-secret`).
    Per-session sandbox activation was evaluated and rejected: ephemeral
    machines make it a recurring manual dance.
+4. **The CI command can stall after a finished build** (fix to be designed;
+   seen on a Jenkins agent and reproduced locally with Unity 6000.3 and the
+   Unity CLI 1.0.0-beta.12): after `Build process complete` and Unity's whole
+   shutdown, `unity run ... -logFile -` keeps waiting. The editor has exited,
+   but the `Unity.Licensing.Client.exe` it launched inherited the log pipe and
+   stays alive (in the local repro while Unity Hub was open), so the CLI never
+   sees the end of the log. Ending that process releases the step at once,
+   with the build's exit code. Not every run is affected. Options: the CI
+   recipes end an editor-launched licensing client once the editor exits,
+   start a licensing client before the build so the editor doesn't launch
+   one, or stop streaming the log through stdout.
 
 ## Release sequence (owner: Patrik, at the very end, in this order)
 
