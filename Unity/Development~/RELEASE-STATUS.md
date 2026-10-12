@@ -153,16 +153,35 @@ here — see ARCHITECTURE.md (decisions, pitfalls), Development~/LEARNINGS.md
    Per-session sandbox activation was evaluated and rejected: ephemeral
    machines make it a recurring manual dance.
 4. **The CI command can stall after a finished build** (fix to be designed;
-   seen on a Jenkins agent and reproduced locally with Unity 6000.3 and the
-   Unity CLI 1.0.0-beta.12): after `Build process complete` and Unity's whole
-   shutdown, `unity run ... -logFile -` keeps waiting. The editor has exited,
-   but the `Unity.Licensing.Client.exe` it launched inherited the log pipe and
-   stays alive (in the local repro while Unity Hub was open), so the CLI never
-   sees the end of the log. Ending that process releases the step at once,
-   with the build's exit code. Not every run is affected. Options: the CI
-   recipes end an editor-launched licensing client once the editor exits,
-   start a licensing client before the build so the editor doesn't launch
-   one, or stop streaming the log through stdout.
+   Windows; seen on a Jenkins agent, reproduced locally with Unity CLI
+   1.0.0-beta.12 and beta.13): after `Build process complete` and Unity's
+   whole shutdown, `unity run` keeps waiting. It returns only once every
+   process holding the output pipe it gave the editor has closed it; its log
+   options (`--log-file`, `--no-tail`, `-logFile <file>`) don't change that.
+   - When no licensing client is running for the account, the editor
+     launches `Unity.Licensing.Client.exe`, which inherits that pipe. The
+     client exits within a second of its last connection closing, so a lone
+     build of a small test project returned normally.
+   - It stalls while another process of the same account stays connected to
+     that client: Unity Hub opened during a local build, or a second editor
+     (reproduced: the first build's `unity run` waited 66 s, until the second
+     editor exited). Ending the client releases the step at once, with the
+     build's exit code.
+   - Not yet explained: the Jenkins stall, on an agent that runs one build at
+     a time. A lone local build of the same Android project, run the same
+     way with Unity Hub closed, returned normally: the editor launched its
+     own licensing client, and that client, the asset import worker and the
+     editor's other helpers all exited with the editor. So something on the
+     agent held the pipe or kept the client alive; what is unknown until a
+     stall there is caught with its process list.
+   - `unity license status` does not start a lasting licensing client.
+     Starting one before every `unity run`, as the editor would
+     (`<editor>/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe
+     --namedPipe Unity-LicenseClient-<account>`), made editors join it and
+     cured the overlapping case; whether it covers the Jenkins case depends
+     on what held the pipe there. 1.0 documents the fix as a step before
+     each `unity run`; the planned `forge` command-line tool takes it over
+     after 1.0.
 
 ## Release sequence (owner: Patrik, at the very end, in this order)
 
