@@ -21,6 +21,7 @@
 
 ## Layout
 - `Unity/`: the Build Forge Unity package (`com.cortopiastudios.buildforge`), with its own README, ARCHITECTURE, CHANGELOG, the user manual in `Documentation~/` and notes for Build Forge's developers in `Development~/`.
+- `CLI/`: `forge`, the planned command-line tool (C#, .NET 10); not started, only its design note `CLI/DESIGN.md`.
 - `Server/`: the planned CI server; not started.
 
 ## Build system (Unity/)

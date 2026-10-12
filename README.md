@@ -4,6 +4,7 @@ A configuration driven, extendable and predictable build system for Unity that e
 
 - [`Unity/`](Unity/): the Build Forge Unity package, `com.cortopiastudios.buildforge`. Start with its [README](Unity/README.md).
 - [`Unity/Documentation~/`](Unity/Documentation~/index.md): the user manual.
+- [`CLI/`](CLI/DESIGN.md): `forge`, a planned command-line tool that builds and uploads a project's builds from a profile name; not started yet.
 - `Server/`: a planned CI build server; not started yet.
 
 Add the package to a Unity project in the Package Manager from this git URL:
