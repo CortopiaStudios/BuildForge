@@ -28,11 +28,11 @@ Getting started
 
 - [Installation](installation.md): git URL, pinning a version, the lock file, private repositories.
 - [Quick start](quick-start.md): from a new Build Profile to a first build and its CI command.
-- [Concepts](concepts.md): the Build Forge section, Activate, Apply, Revert to Baseline, drift, builds, defines.
+- [Concepts](concepts.md): the Build Forge section, files and version control, Activate, Apply, Revert to Baseline, drift, builds, defines, what is stored where.
 
 Configuration
 
-- [Profiles and settings](settings.md): the Build Forge section, output paths, Remove Previous Build Output, Project Settings > Build Forge, what is stored where.
+- [Profiles and settings](settings.md): the Build Forge section, output paths, Remove Previous Build Output, Project Settings > Build Forge.
 - [Build variants](variants.md): variant names, rules, restrictions and their defines.
 - [Bundled plugins](plugins/index.md), one page each:
   [XR Loaders](plugins/xr-loaders.md),

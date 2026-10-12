@@ -19,7 +19,7 @@ Consequences of storing them in the Build Profile:
 
 The Build Forge settings are edited in the **Build Forge** section of the Build Profile editor, in Unity's Build Profiles window and in the Inspector. See [Profiles and settings](settings.md).
 
-## What is stored where
+## Files and version control
 
 | Location | Holds | Version control |
 |---|---|---|
@@ -141,6 +141,24 @@ The define is in the Build Profile's own Scripting Defines list, which Unity app
 ## Variants
 
 A variant is a project-wide name, such as `Internal`, picked per build. It adds a `BUILD_VARIANT_<NAME>` define and can change development options, add defines and mark the product name. See [Build variants](variants.md).
+
+## What is stored where
+
+A setting belongs in one of three places, depending on what it varies with:
+
+| Place | Varies with | Examples |
+|---|---|---|
+| The **profile** | What you build for: a platform, device or store | Platform, scenes, signing, OpenXR features, XR loaders, the Android manifest, and Player Settings such as Target API Level, Install Location, Default Orientation and Split Application Binary |
+| A **variant** | How you build: the same change on every profile that allows the variant | Development Build and its debugging options, defines for debug code, Mark Product Name, the version, IL2CPP settings, stripping and compression |
+| The **project** | Nothing: the same for every build | The variants and their rules, Installed Plugins and the plugins' global settings such as default environment variable names, and the Player Settings in Project Settings |
+
+A variant's rule applies to every profile that allows the variant, so the test for a variant setting is whether one value is right for all of them. A setting that only some profiles need is a profile setting, even when it looks like build tuning, such as Thin link-time optimization for two of five Android profiles.
+
+A profile setting has three possible homes:
+
+- **The Unity Build Profile's own settings**: platform, scenes, scripting defines and build options such as compression. A variant rule can override the build options for its builds.
+- **The profile's Build Forge settings**: each plugin's configuration, such as the OpenXR features, the signing environment variables or the Android manifest.
+- **Player Settings.** Unity can give a Build Profile its own Player Settings, but only as a complete copy that later changes to Project Settings > Player no longer reach; [Player Overrides](player-overrides.md) shows what each copy changes. For one or two values, a [custom plugin](custom-plugins.md) enabled on the profile can set them for its builds and restore them afterwards, so the profile keeps building with the shared Player Settings.
 
 ## CI detection
 
