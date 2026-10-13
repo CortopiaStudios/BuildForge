@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - In a narrow build window, the details pane no longer scrolls sideways and hides the header's buttons: the Build Forge Settings row measured the Build Forge anvil at its full 256 px
+- An error that stops a build started from the build window, such as an unsafe output directory, is logged as a Build Forge error instead of escaping from the editor's update loop, where it also dropped other callbacks queued with the build
 
 ## [0.9.0] - 2026-10-07
 

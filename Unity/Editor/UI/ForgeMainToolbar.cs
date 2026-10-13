@@ -530,6 +530,12 @@ namespace BuildForge.Editor.UI
                 {
                     ForgeBuildRunner.RunBuild(profile, variant, out _, runPlayer: run);
                 }
+                catch (Exception e)
+                {
+                    // Logged rather than thrown, like Activate and Apply: a throw out of
+                    // a delayCall also drops the other callbacks queued with it.
+                    Debug.LogError($"[Build Forge] Building '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                }
                 finally
                 {
                     s_StateKey = null;

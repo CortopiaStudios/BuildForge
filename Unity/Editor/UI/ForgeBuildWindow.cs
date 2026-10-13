@@ -1098,7 +1098,19 @@ namespace BuildForge.Editor.UI
 
         void StartBuild(ForgeProfile profile, string variant, bool runPlayer)
         {
-            EditorApplication.delayCall += () => ForgeBuildRunner.RunBuild(profile, variant, out _, runPlayer);
+            // Logged rather than thrown, like Activate and Apply: a throw out of a
+            // delayCall also drops the other callbacks queued with it.
+            EditorApplication.delayCall += () =>
+            {
+                try
+                {
+                    ForgeBuildRunner.RunBuild(profile, variant, out _, runPlayer);
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogError($"[Build Forge] Building '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                }
+            };
         }
 
         // Activating switches platforms (domain reload) and applying saves
