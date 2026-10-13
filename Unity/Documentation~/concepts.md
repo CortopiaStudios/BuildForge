@@ -166,7 +166,7 @@ Plugins can do some work only on build machines, such as uploading symbols. A bu
 
 ## Build interception
 
-With **Project Settings > Build Forge > Intercept Builds** on (the default), Build Forge stops every player build that it did not start, with a message pointing to its build window. That includes Unity's Build buttons and other scripts that call `BuildPipeline.BuildPlayer`. The point is that every build gets the plugin settings, the manifest and the restore. Turn it off while older build scripts still have to work.
+With **Project Settings > Build Forge > Intercept Builds** on (the default), Build Forge stops every player build that it did not start. Unity's own Build and Build And Run stop before Unity asks for a location. Other scripts that call `BuildPipeline.BuildPlayer` fail as their build starts. In the editor a dialog says so and offers to open the build window; the console gets the message too. The point is that every build gets the plugin settings, the manifest and the restore. Turn it off while older build scripts still have to work.
 
 ## Fresh clones
 

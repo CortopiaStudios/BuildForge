@@ -4,7 +4,7 @@
 
 ### "Build Forge is configured to intercept builds"
 
-A build was started outside Build Forge, for example with Unity's own Build button or a script calling `BuildPipeline.BuildPlayer`, while **Intercept Builds** is on. Build through the Build Forge window or the command line, or turn interception off in **Project Settings > Build Forge > Intercept Builds** while other build scripts must keep working.
+A build was started outside Build Forge, for example with Unity's own Build button or a script calling `BuildPipeline.BuildPlayer`, while **Intercept Builds** is on. In the editor a dialog says so; **Open Build Forge** opens the build window. Build through the Build Forge window, the main toolbar's **Build** and **Build and Run**, or the command line, or turn interception off in **Project Settings > Build Forge > Intercept Builds** while other build scripts must keep working.
 
 ### "Unity Build Profile '…' must be active before building"
 

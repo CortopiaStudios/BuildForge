@@ -258,7 +258,7 @@ The result is cached after the first load; concurrent `LoadAsync` callers share 
 
 ### Build Interception
 
-Prevents builds that bypass Build Forge. Any `BuildPipeline.BuildPlayer()` call not initiated through Build Forge is blocked with a `BuildFailedException` directing the user to the Build Forge Build Window.
+Prevents builds that bypass Build Forge. Unity's own Build and Build And Run are stopped before Unity asks for a location (through `BuildPlayerWindow.RegisterGetBuildPlayerOptionsHandler`); any other `BuildPipeline.BuildPlayer()` call not initiated through Build Forge is blocked with a `BuildFailedException`. In the editor a dialog directs the user to the Build Forge window or the main toolbar's Build buttons, and the console gets the message too.
 
 **Enabled by default** — installing the package changes how builds start. Disable in **Project Settings > Build Forge > Intercept Builds**.
 
@@ -490,6 +490,7 @@ Tests/
     CloudDiagnosticsConfigTests.cs         # Crash reporting mode resolution
     EditorStateApplierTests.cs             # Apply/revert/drift invariant with fake plugins
     EditorStateLedgerTests.cs              # Ledger key/entry helpers
+    ForgeBuildInterceptorTests.cs          # Interception of Unity's Build buttons and other builds
     ForgePluginContractTests.cs            # Contract every bundled plugin must meet
     ForgeProfileLookupTests.cs             # 1:1 rule: resolve and shared-profile errors
     ForgeProfileOutputPathTests.cs         # Output path placeholders and extensions
