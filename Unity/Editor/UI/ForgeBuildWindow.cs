@@ -667,9 +667,12 @@ namespace BuildForge.Editor.UI
             var drift = ForgeEditorState.GetDrift();
             if (drift.Count > 0)
             {
-                var where = selectedProfile == appliedProfile
-                    ? ""
-                    : $" Select '{appliedProfile.DisplayName}' to re-apply it.";
+                // The action bar has Re-apply only for the active profile.
+                var where = appliedProfile.BuildProfile != BuildProfile.GetActiveBuildProfile()
+                    ? $" Activate '{appliedProfile.DisplayName}' again, then re-apply it."
+                    : selectedProfile == appliedProfile
+                        ? ""
+                        : $" Select '{appliedProfile.DisplayName}' to re-apply it.";
                 var text = $"Editor settings differ from '{appliedProfile.DisplayName}' as applied: " +
                     string.Join(", ", drift.Select(DescribeDriftKey)) + ". " +
                     "Re-apply restores the profile's state; Revert to Baseline undoes it." + where;
