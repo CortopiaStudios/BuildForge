@@ -105,6 +105,9 @@ namespace BuildForge.Editor.UI
                 string.Join(",", ForgeSettings.instance.BuildVariants),
                 // The Build buttons' tooltip names the window's variant.
                 ForgeBuildWindow.SessionVariant ?? "",
+                // Whether the Build buttons are enabled: the variant rules and the active
+                // profile's Allowed Variants are edited without a projectChanged.
+                active != null ? BuildVariants.ProfileError(ForgeProfileEmbedding.Get(active), ForgeBuildWindow.SessionVariant) ?? "" : "",
                 // The Build buttons' icons come in a version per editor theme.
                 EditorGUIUtility.isProSkin ? "dark" : "light",
                 reason ?? "");

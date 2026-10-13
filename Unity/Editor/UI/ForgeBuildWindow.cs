@@ -53,8 +53,11 @@ namespace BuildForge.Editor.UI
             minSize = new Vector2(720, 300);
             // SessionState outlives domain reloads but not the editor: in a fresh
             // editor nothing is stored and the selection follows the applied variant.
+            // Stored right away, so that the main toolbar's Build buttons, which read
+            // it, keep building what the window shows when the applied variant changes.
             selectedVariant = BuildVariants.RestoreSelection(
                 SessionState.GetString(SelectedVariantKey, ""), ForgeEditorState.AppliedVariant);
+            SessionState.SetString(SelectedVariantKey, BuildVariants.StoreSelection(selectedVariant));
             RefreshProfiles();
         }
 
@@ -87,9 +90,10 @@ namespace BuildForge.Editor.UI
 
         /// <summary>
         /// The variant Apply and the Build buttons use, for callers without a window (the main
-        /// toolbar's Build buttons): the selection stored for this editor session,
-        /// in a fresh editor the applied variant, as the window starts with; none,
-        /// the default build, once it is no longer configured.
+        /// toolbar's Build buttons): the selection stored for this editor session, which
+        /// a window stores as it opens; until then, in a fresh editor, the applied
+        /// variant, as the window starts with; none, the default build, once it is no
+        /// longer configured.
         /// </summary>
         internal static string SessionVariant
         {
