@@ -41,8 +41,11 @@ namespace BuildForge.Tests.Editor
             finally { UnityEngine.Object.DestroyImmediate(profile); }
         }
 
+        // A Windows profile carrying Meta Quest's platform id: name and icon come from
+        // the id, not from the build target, which a real Meta Quest profile shares
+        // with Android.
         [Test]
-        public void AMetaQuestProfile_IsMetaQuest_NotItsAndroidBuildTarget()
+        public void AMetaQuestPlatformId_IsMetaQuest_NotTheBuildTarget()
         {
             var profile = ProfileWithPlatform(MetaQuestPlatformId);
             try
@@ -51,7 +54,10 @@ namespace BuildForge.Tests.Editor
                     Assert.Ignore("This editor has no Meta Quest platform; it comes with Android Build Support.");
                 Assert.AreEqual("Meta Quest", ForgeBuildWindow.PlatformName(profile));
                 Assert.AreEqual("BuildSettings.Meta", BuildProfilePlatform.IconName(profile));
-                Assert.IsNotNull(ForgeBuildWindow.PlatformIcon(profile));
+                var icon = ForgeBuildWindow.PlatformIcon(profile);
+                Assert.IsNotNull(icon);
+                Assert.AreNotSame(ForgeBuildWindow.PlatformIcon(BuildProfileUtility.GetBuildTarget(profile)), icon,
+                    "Meta Quest's own icon, not the build target's.");
             }
             finally { UnityEngine.Object.DestroyImmediate(profile); }
         }
