@@ -258,7 +258,7 @@ The result is cached after the first load; concurrent `LoadAsync` callers share 
 
 ### Build Interception
 
-Prevents builds that bypass Build Forge. Unity's own Build and Build And Run are stopped before Unity asks for a location (through `BuildPlayerWindow.RegisterGetBuildPlayerOptionsHandler`); any other `BuildPipeline.BuildPlayer()` call not initiated through Build Forge is blocked with a `BuildFailedException`. In the editor a dialog directs the user to the Build Forge window or the main toolbar's Build buttons, and the console gets the message too.
+Prevents builds that bypass Build Forge. Unity's own Build and Build And Run are stopped before Unity asks for a location (through `BuildPlayerWindow.RegisterGetBuildPlayerOptionsHandler`); any other `BuildPipeline.BuildPlayer()` call not initiated through Build Forge is blocked with a `BuildFailedException`. In the editor a dialog directs the user to the Build Forge window or the main toolbar's Build buttons, and the console gets the message too. The handler is registered at domain load, so Unity's buttons pick up a change of the setting at the next domain reload; until then the pre-build check still blocks their builds, after the location prompt.
 
 **Enabled by default** — installing the package changes how builds start. Disable in **Project Settings > Build Forge > Intercept Builds**.
 

@@ -10,9 +10,9 @@ A build was started outside Build Forge, for example with Unity's own Build butt
 
 Builds run on the active Unity Build Profile only. Activate the profile in the build window or the main toolbar, call `BuildProfile.SetActiveBuildProfile` in a script, or pass `-activeBuildProfile` on the command line.
 
-### Build or Apply is disabled
+### Build or Apply is missing or disabled
 
-Hover the button for the reason. The usual ones: the profile is not active (Build, Apply); it has nothing to apply, meaning no plugin with editor settings and no variants (Apply); the selected variant is not allowed for the profile; or the editor is in Play Mode, compiling, importing or building.
+The build window shows **Apply**, **Build** and **Build and Run** only for the active profile; for any other profile the action bar has **Activate** instead. A disabled button gives its reason as its tooltip. The usual ones: the profile has nothing to apply, meaning no plugin with editor settings and no variants (Apply); the selected variant is not allowed for the profile; or the editor is in Play Mode, compiling, importing or building. The main toolbar's **Build** and **Build and Run** are disabled for the same reasons, and while the active Build Profile has no Build Forge settings or Unity is on a platform profile.
 
 ### The build stops before it starts
 

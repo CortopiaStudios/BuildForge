@@ -63,7 +63,7 @@ No scripting defines are needed. While a package is missing, **Project Settings 
 
 ## What changes when the package is installed
 
-- **Builds outside Build Forge are blocked.** Build interception is on by default: Unity's own Build buttons and scripts that call `BuildPipeline.BuildPlayer` fail with a message pointing to the Build Forge window. Turn it off in **Project Settings > Build Forge > Intercept Builds** while existing build scripts must keep working, for example during a migration.
+- **Builds outside Build Forge are blocked.** Build interception is on by default: Unity's own Build buttons stop before asking for a location, and scripts that call `BuildPipeline.BuildPlayer` fail, both with a message pointing to the Build Forge window, which the editor shows in a dialog. Turn it off in **Project Settings > Build Forge > Intercept Builds** while existing build scripts must keep working, for example during a migration.
 - A **Build Forge** element appears in Unity's main toolbar. Hide it like any toolbar element; see [Build window and main toolbar](build-window.md#main-toolbar).
 - Nothing else changes until you add Build Forge settings to a Build Profile. Build Forge's project settings are written to `ProjectSettings/ForgeSettings.asset` when you first change one; commit that file.
 

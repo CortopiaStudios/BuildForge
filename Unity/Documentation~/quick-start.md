@@ -30,15 +30,15 @@ Edits are saved to the Build Profile asset right away, so the file on disk alway
 
 ## 4. Activate the profile
 
-Open **Window > Build Forge > Build**. The list on the left shows every Unity Build Profile that has Build Forge settings. Select **Windows** and click **Activate Windows**.
+Open **Window > Build Forge > Build**. The list on the left shows every Unity Build Profile that has Build Forge settings. Select **Windows** and click **Activate** at the bottom left.
 
 Activating makes the profile Unity's active Build Profile, like Unity's own Switch Profile, after reverting any other profile's applied plugin settings. If the profile targets another platform than the editor is on, Unity switches platform and reimports assets.
 
-Once the profile is active, the same button reads **Apply Windows**. Apply writes a profile's plugin settings, such as OpenXR features, to the editor so Play Mode matches the profile. In a project without OpenXR, XR Plug-in Management or variants, this profile has nothing to apply, so the button stays disabled with that reason as its tooltip. See [Concepts](concepts.md#apply-and-re-apply).
+Once the profile is active, the action bar shows its actions on the right instead: **Apply**, with **Revert to Baseline** in its ▾ menu, then **Build** and **Build and Run**. Apply writes a profile's plugin settings, such as OpenXR features, to the editor so Play Mode matches the profile. In a project without OpenXR, XR Plug-in Management or variants, this profile has nothing to apply, so **Apply** stays disabled with that reason as its tooltip. See [Concepts](concepts.md#apply-and-re-apply).
 
 ## 5. Build
 
-Click **Build Windows**. Build Forge:
+Click **Build**. Build Forge:
 
 1. removes the previous build's output, if there is any;
 2. runs every plugin's pre-build step in order (the details pane lists them under **Plugins for this build**);
@@ -48,7 +48,7 @@ Click **Build Windows**. Build Forge:
 
 With no variants configured, the player is at `Builds/StandaloneWindows64/Windows/<Product>.exe`, where `<Product>` is the product name with spaces and special characters replaced (`My Game` becomes `My_Game`).
 
-Unity's own Build buttons are blocked while Build Forge's build interception is on, which is the default. Builds go through the Build Forge window, the command line, or your own editor scripts calling `ForgeBuildRunner.RunBuild`.
+Unity's own Build buttons are blocked while Build Forge's build interception is on, which is the default. Builds go through the Build Forge window, the main toolbar's **Build** and **Build and Run**, the command line, or your own editor scripts calling `ForgeBuildRunner.RunBuild`.
 
 ## 6. Check the manifest
 

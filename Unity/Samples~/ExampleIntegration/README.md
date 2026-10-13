@@ -46,7 +46,7 @@ While the profile is active, the foldout's last line shows the identifier varian
 
 ## 4. Build the variant
 
-Open **Window > Build Forge > Build**, select **Quest**, click **Activate Quest**, set **Variant** to **Internal**, and click **Build Quest (Internal)**.
+Open **Window > Build Forge > Build**, select **Quest**, click **Activate**, set **Variant** in the details header to **Internal**, and click **Build**.
 
 The details pane lists the plugin under **Plugins for this build** as `append '.internal' to the application identifier`, and the build log shows:
 

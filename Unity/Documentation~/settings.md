@@ -143,7 +143,7 @@ Stored in `ProjectSettings/ForgeSettings.asset`; commit it.
 
 | Section | Setting | Default | Effect |
 |---|---|---|---|
-| Build Interception | Intercept Builds | On | Builds not started by Build Forge fail with a message pointing to its build window. |
+| Build Interception | Intercept Builds | On | Builds not started by Build Forge are stopped with a message pointing to its build window. See [Concepts](concepts.md#build-interception). |
 | Build Manifest | Write Build Manifest | On | Every build gets [the manifest](build-manifest.md). |
 | | Log Manifest Contents | Off | Logs the manifest's JSON during the build. |
 | Output | Sanitize Product Name | On | Sanitizes `{ProjectName}`. |
