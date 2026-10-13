@@ -4,8 +4,8 @@ This walk-through takes a project with Build Forge installed from a new Unity Bu
 
 ## 1. Create a Unity Build Profile
 
-1. Open Unity's Build Profiles window (**File > Build Profiles**) <!-- unverified: Unity menu path and button labels -->.
-2. Click **Add Build Profile**, choose **Windows**, and add it. Unity saves the profile as an asset in the project (by default under `Assets/Settings/Build Profiles/`) <!-- unverified: Unity's default folder for new Build Profiles -->.
+1. Open Unity's Build Profiles window (**File > Build Profiles**).
+2. Click **Add Build Profile**, choose **Windows**, and add it. Unity saves the profile as an asset in the project (by default under `Assets/Settings/Build Profiles/`).
 3. Rename it **Windows**.
 
 The name matters: Build Forge uses the Unity Build Profile's name everywhere. It becomes the scripting define `BUILD_PROFILE_WINDOWS`, the `{ProfileName}` part of the output path, the row in the build window, and `BuildProfile` in the build manifest.

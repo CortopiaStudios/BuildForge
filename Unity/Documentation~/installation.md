@@ -10,7 +10,7 @@ Build Forge is a UPM package. Its source is the `Unity` folder of the repository
 
 ## Install from the git URL
 
-In the Package Manager, open the **+** menu, choose to install a package from a git URL <!-- unverified: the exact menu label differs between Unity versions -->, and enter:
+In the Package Manager, open the **+** menu, choose **Install package from git URL**, and enter:
 
 ```
 https://github.com/CortopiaStudios/BuildForge.git?path=/Unity
@@ -40,7 +40,7 @@ Tracking a branch and refreshing the lock deliberately suits a project that is d
 ## Other ways to install
 
 - **Embedded copy**: copy the `Unity` folder into the project as `Packages/com.cortopiastudios.buildforge/`. The copy is then part of your repository and is updated by hand.
-- **Local working copy**: while you work on Build Forge itself, point the manifest at a checkout with a `file:` reference, for example `"com.cortopiastudios.buildforge": "file:../../BuildForge/Unity"`. <!-- unverified: a relative file: path is resolved from the project's Packages folder --> Commit such a manifest only to a branch that every machine can resolve.
+- **Local working copy**: while you work on Build Forge itself, point the manifest at a checkout with a `file:` reference, for example `"com.cortopiastudios.buildforge": "file:../../BuildForge/Unity"`; a relative path starts from the project's `Packages` folder. Commit such a manifest only to a branch that every machine can resolve.
 
 ## Private repositories
 

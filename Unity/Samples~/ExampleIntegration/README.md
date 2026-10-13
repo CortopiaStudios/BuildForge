@@ -21,7 +21,7 @@ The plugin needs Build Forge on Unity 6000.3 or later and the Android platform m
 
 ## 1. Import the sample
 
-In the Package Manager, select Build Forge, open its **Samples** and import **Example Integration**. Unity copies it into the project under `Assets/Samples/Build Forge/<version>/Example Integration/`. <!-- unverified: Unity's import folder for package samples -->
+In the Package Manager, select Build Forge, open its **Samples** and import **Example Integration**. Unity copies it into the project under `Assets/Samples/Build Forge/<version>/Example Integration/`.
 
 The plugin compiles into its own editor assembly, and Build Forge finds it without registration: **Application ID Suffix** appears in **Project Settings > Build Forge > Installed Plugins** and in the Build Forge section of every Android Build Profile, off.
 
