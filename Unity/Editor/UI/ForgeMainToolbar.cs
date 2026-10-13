@@ -12,14 +12,16 @@ using UnityEngine;
 namespace BuildForge.Editor.UI
 {
     /// <summary>
-    /// Build Profile and apply dropdowns in Unity's main toolbar (the
-    /// MainToolbarElement API, Unity 6.3+), one element that the user places.
+    /// Build Profile and apply dropdowns and Build buttons in Unity's main toolbar
+    /// (the MainToolbarElement API, Unity 6.3+), one element that the user places.
     /// Picking a profile activates it, like the build window's Activate. The
     /// second dropdown shows what is applied to the active profile, worded like
     /// the window's Editor line, and applies it like the window's Apply: it lists
     /// the variants when the project has any and offers Apply or Re-apply when it
     /// has none. Revert to Baseline follows whenever anything is applied, as in
-    /// the window.
+    /// the window. Build and Build and Run build the active profile with the
+    /// window's variant, like the window's Build; Build and Run also runs the
+    /// player, like Unity's Build And Run.
     /// Unity hides package toolbar elements until the user shows them; this one is
     /// shown by default, hidden with Unity's own toolbar menu (right-click > Hide,
     /// or the ⋮ menu), and the choice is kept per user in UserSettings
@@ -101,6 +103,8 @@ namespace BuildForge.Editor.UI
                 // the applied plugins' settings at most every two seconds.
                 active != null && applied == active ? string.Join(",", ForgeEditorState.GetDrift()) : "",
                 string.Join(",", ForgeSettings.instance.BuildVariants),
+                // The Build buttons' tooltip names the window's variant.
+                ForgeBuildWindow.SessionVariant ?? "",
                 reason ?? "");
         }
 
@@ -120,6 +124,14 @@ namespace BuildForge.Editor.UI
                 enabled = state.CanMutate,
                 displayed = ApplyEntriesFor(state).Count > 0,
             };
+            foreach (var run in new[] { false, true })
+            {
+                var button = BuildButtonFor(run, state);
+                yield return new MainToolbarButton(new MainToolbarContent(button.Label, button.Tooltip), () => Build(run))
+                {
+                    enabled = button.Enabled,
+                };
+            }
         }
 
         /// <summary>What the dropdowns show, read fresh whenever they are built or opened.</summary>
@@ -330,6 +342,60 @@ namespace BuildForge.Editor.UI
                 state.Applied, ForgeEditorState.AppliedVariant, state.AnythingApplied, state.CanMutate);
         }
 
+        internal readonly struct BuildButton
+        {
+            public readonly string Label;
+            public readonly string Tooltip;
+            public readonly bool Enabled;
+
+            public BuildButton(string label, string tooltip, bool enabled)
+            {
+                Label = label;
+                Tooltip = tooltip;
+                Enabled = enabled;
+            }
+        }
+
+        /// <summary>
+        /// The Build button, or Build and Run (<paramref name="run"/>). It builds the
+        /// active profile (<paramref name="profileName"/>, null when the active Unity
+        /// Build Profile has no single set of Build Forge settings, for
+        /// <paramref name="noProfileReason"/>) with the build window's variant, and is
+        /// enabled when the window's Build would be: the variant is allowed for the
+        /// profile (<paramref name="variantError"/> otherwise) and mutating is not
+        /// refused. The tooltip names what it builds.
+        /// </summary>
+        internal static BuildButton BuildButtonFor(bool run, string profileName, string noProfileReason, string variant,
+            bool variantsConfigured, string variantError, bool canMutate, string mutateReason)
+        {
+            var label = run ? "Build and Run" : "Build";
+            if (!canMutate)
+                return new BuildButton(label, mutateReason, false);
+            if (profileName == null)
+                return new BuildButton(label, noProfileReason, false);
+            if (variantError != null)
+                return new BuildButton(label, variantError, false);
+            var what = variantsConfigured
+                ? $"'{profileName}' with {(variant == null ? "the default variant" : $"variant '{variant}'")}"
+                : $"'{profileName}'";
+            var tooltip = $"Build {what} through Build Forge{(run ? ", then run it" : "")}.";
+            if (variantsConfigured)
+                tooltip += " The variant is the build window's, which the apply menu also sets.";
+            return new BuildButton(label, tooltip, true);
+        }
+
+        static BuildButton BuildButtonFor(bool run, State state)
+        {
+            var profile = state.ActiveForgeProfile;
+            var variant = ForgeBuildWindow.SessionVariant;
+            var noProfileReason = profile != null ? null
+                : "Activate a Build Profile with Build Forge settings to build it. " + (state.Active == null
+                    ? $"No Unity Build Profile is active; Unity is on the {EditorUserBuildSettings.activeBuildTarget} platform profile."
+                    : state.ResolveError);
+            return BuildButtonFor(run, profile?.DisplayName, noProfileReason, variant, ForgeSettings.instance.BuildVariants.Count > 0,
+                profile != null ? BuildVariants.ProfileError(profile, variant) : null, state.CanMutate, state.MutateReason);
+        }
+
         static void ShowProfileMenu(Rect rect)
         {
             var state = State.Capture();
@@ -428,6 +494,34 @@ namespace BuildForge.Editor.UI
                     ForgeBuildWindow.OfferToStopTracking(e);
                 }
                 s_StateKey = null;
+            };
+        }
+
+        // The buttons show the state of the last refresh, up to a second old, so
+        // the click checks it again. Like the window's Build, the build itself runs
+        // outside the click.
+        static void Build(bool run)
+        {
+            var state = State.Capture();
+            var button = BuildButtonFor(run, state);
+            if (!button.Enabled)
+            {
+                Debug.LogWarning($"[Build Forge] {button.Label} is not available: {button.Tooltip}");
+                s_StateKey = null;
+                return;
+            }
+            var profile = state.ActiveForgeProfile;
+            var variant = ForgeBuildWindow.SessionVariant;
+            EditorApplication.delayCall += () =>
+            {
+                try
+                {
+                    ForgeBuildRunner.RunBuild(profile, variant, out _, runPlayer: run);
+                }
+                finally
+                {
+                    s_StateKey = null;
+                }
             };
         }
     }

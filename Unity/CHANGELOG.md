@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Build** and **Build and Run** in the main toolbar's Build Forge element, next to the profile and apply dropdowns. They build the active profile like the build window's Build, with the variant the window has selected, which picking a variant in the apply dropdown also sets; **Build and Run** then runs the build like Unity's Build And Run, without showing it in the file browser. Disabled when the window's Build would be, with the reason as their tooltip
+
 ### Changed
 - The build manifest's fields are grouped, in this order in the JSON: the product (`productName`, `productVersion`, `buildNumber`), the target (`buildProfile`, `buildVariant`, `buildTarget`, `buildTargetGroup`, `developmentBuild`, `managedCodeVariant`) and the environment (`unityVersion`, `buildForgeVersion`, `buildTimestamp`). `BuildProfileName` (`buildProfileName`) is renamed `BuildProfile` (`buildProfile`), so scripts that read the old key need the new one. The manual explains what `developmentBuild` and `managedCodeVariant` each say, since from Unity 6.6 Development Build no longer decides how the C# code is compiled
 - The build manifest's `managedCodeVariant` is `Debug` for a development build with Script Debugging, which Unity compiles like the Debug variant whatever the Managed Code Variant setting says; it recorded the setting before

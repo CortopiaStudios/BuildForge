@@ -58,8 +58,11 @@ namespace BuildForge.Editor.Core
         /// Build overload that also exposes the context, so callers (the CLI
         /// entry point) can inspect post-build restore/cleanup failures that
         /// would otherwise be swallowed after a successful build.
+        /// <paramref name="runPlayer"/> also runs the built player, like Unity's
+        /// Build And Run (the main toolbar's Build and Run).
         /// </summary>
-        internal static BuildReport RunBuild(ForgeProfile forgeProfile, string variant, out ForgeBuildContext context)
+        internal static BuildReport RunBuild(ForgeProfile forgeProfile, string variant, out ForgeBuildContext context,
+            bool runPlayer = false)
         {
             context = null;
 
@@ -211,7 +214,7 @@ namespace BuildForge.Editor.Core
                     BuildManifestWriter.WriteManifest(manifest);
                 }
 
-                Debug.Log($"[Build Forge] Starting build: {buildName} -> {outputPath}");
+                Debug.Log($"[Build Forge] Starting build{(runPlayer ? " and run" : "")}: {buildName} -> {outputPath}");
                 // Unity skips native postprocessors when a build fails. XR uses
                 // those callbacks to remove its temporary preloaded settings.
                 // Capture after Forge pre-hooks, so their own additions remain
@@ -223,7 +226,8 @@ namespace BuildForge.Editor.Core
                     {
                         buildProfile = buildProfile,
                         locationPathName = outputPath,
-                        options = context.DevelopmentBuild ? BuildOptions.Development : BuildOptions.None,
+                        options = (context.DevelopmentBuild ? BuildOptions.Development : BuildOptions.None)
+                                  | (runPlayer ? BuildOptions.AutoRunPlayer : BuildOptions.None),
                     });
                 }
                 finally
@@ -372,7 +376,9 @@ namespace BuildForge.Editor.Core
 
                 IsForgeBuildInProgress = false;
 
-                RevealBuildIfWanted(context, report);
+                // A build that also runs shows the player instead, like Unity's Build And Run.
+                if (!runPlayer)
+                    RevealBuildIfWanted(context, report);
 
                 if (context.PostBuildFailures.Count > 0)
                 {

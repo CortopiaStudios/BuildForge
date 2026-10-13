@@ -54,12 +54,13 @@ The build window automatically discovers every Build Profile with Build Forge se
 
 ### Main Toolbar
 
-Two dropdowns in Unity's main toolbar (Unity 6.3's main toolbar API), together one toolbar element named **Build Forge**:
+Two dropdowns and two buttons in Unity's main toolbar (Unity 6.3's main toolbar API), together one toolbar element named **Build Forge**:
 
 - **Build Profile** — the active Unity Build Profile, or "Platform profile" when Unity is on one of those. Pick another Build Profile with Build Forge settings to activate it, exactly like the build window's **Activate** (another profile's applied plugin settings are reverted first, so nothing stale remains)
 - **Apply** — shows what is applied to the active profile, worded like the build window's Editor line: "Not applied", or "Applied" with the applied variant in parentheses ("Applied (Internal)", "Applied (default variant)") and ", drifted" when editor settings changed since. It applies the active profile exactly like the window's **Apply**: pick a variant when the project has variants (the build window then selects that variant too), otherwise **Apply**, or **Re-apply** once applied. **Revert to Baseline** undoes whatever is applied, as in the window, including another profile's settings left applied when Unity switched profiles without Build Forge; the tooltip then carries the window's warning. Shown when there is something to apply (plugin settings such as OpenXR features, or variants) or to revert
+- **Build** and **Build and Run** — build the active profile like the build window's **Build**, with the variant the window has selected (which picking a variant in the apply dropdown also sets); the tooltip names both. **Build and Run** also runs the build afterwards, like Unity's Build And Run. Disabled when the window's Build would be, with the reason as the tooltip
 
-Profiles that cannot be activated and variants the profile does not allow are listed disabled, and both dropdowns are disabled in Play Mode, while scripts compile or assets import, and during builds. They are shown by default, although Unity starts package toolbar elements hidden. Hide them like any toolbar element: right-click > **Hide**, or **Build Forge** in the toolbar's ⋮ menu, which also shows them again. Build Forge keeps the choice per user in `UserSettings/ForgeUserPreferences.asset`, so it survives a layout reset. Unity remembers where toolbar elements were placed; hold Ctrl and drag to move them. Unity 6.6 cuts toolbar labels at 120 px, so a long profile or variant name ends in "…" there; hover for the full label.
+Profiles that cannot be activated and variants the profile does not allow are listed disabled, and the dropdowns and buttons are disabled in Play Mode, while scripts compile or assets import, and during builds. They are shown by default, although Unity starts package toolbar elements hidden. Hide them like any toolbar element: right-click > **Hide**, or **Build Forge** in the toolbar's ⋮ menu, which also shows them again. Build Forge keeps the choice per user in `UserSettings/ForgeUserPreferences.asset`, so it survives a layout reset. Unity remembers where toolbar elements were placed; hold Ctrl and drag to move them. Unity 6.6 cuts toolbar labels at 120 px, so a long profile or variant name ends in "…" there; hover for the full label.
 
 ### Plugin System
 
@@ -456,7 +457,7 @@ Editor/
       PlayModeXRLoaders.cs                 # Play Mode mirror: XR loaders and Initialize XR on Startup to Standalone
   UI/
     ForgeBuildWindow.cs                    # Build window with auto-discovery
-    ForgeMainToolbar.cs                    # Build Profile and apply dropdowns in the main toolbar
+    ForgeMainToolbar.cs                    # Build Profile and apply dropdowns, Build buttons in the main toolbar
     ForgeProfileEditor.cs                  # Custom inspector with inline plugin UI
     ForgeSettingsProvider.cs               # Project Settings integration
     PlayerSettingsDiffView.cs              # Reusable Player Overrides diff UI
@@ -491,7 +492,7 @@ Tests/
     ForgeProfileOutputPathTests.cs         # Output path placeholders and extensions
     ForgeSettingsPluginToggleTests.cs     # Plugin enable/disable precedence tests
     GitHelperTests.cs                     # Git process runner tests
-    MainToolbarTests.cs                    # Main toolbar menus and labels
+    MainToolbarTests.cs                    # Main toolbar menus, labels and Build buttons
     MangleForFilenameTests.cs             # Output path sanitization tests
     NormalizeValueTests.cs                 # Diff value normalization
     PlayerSettingsDiffComputerTests.cs     # Diff computation tests

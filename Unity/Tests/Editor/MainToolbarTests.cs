@@ -11,8 +11,9 @@ using UnityEngine;
 namespace BuildForge.Tests.Editor
 {
     /// <summary>
-    /// The main toolbar's Build Profile and apply dropdowns: what their menus
-    /// offer and what they show. The toolbar itself needs an interactive editor.
+    /// The main toolbar's Build Profile and apply dropdowns and Build buttons: what
+    /// their menus offer and what they show. The toolbar itself needs an
+    /// interactive editor.
     /// </summary>
     public class MainToolbarTests
     {
@@ -150,6 +151,43 @@ namespace BuildForge.Tests.Editor
             // Nothing to apply and nothing applied: nothing to offer, so the dropdown is hidden.
             Assert.IsEmpty(ForgeMainToolbar.ApplyEntries(false, new string[0], _ => null,
                 applied: false, appliedVariant: null, anythingApplied: false, canMutate: true));
+        }
+
+        [Test]
+        public void BuildButtons_NameWhatTheyBuild()
+        {
+            var build = ForgeMainToolbar.BuildButtonFor(false, "Quest", null, "Internal", true, null, true, null);
+            Assert.That(build.Enabled);
+            Assert.AreEqual("Build", build.Label);
+            Assert.AreEqual("Build 'Quest' with variant 'Internal' through Build Forge. " +
+                            "The variant is the build window's, which the apply menu also sets.", build.Tooltip);
+
+            var run = ForgeMainToolbar.BuildButtonFor(true, "Quest", null, null, true, null, true, null);
+            Assert.That(run.Enabled);
+            Assert.AreEqual("Build and Run", run.Label);
+            StringAssert.StartsWith("Build 'Quest' with the default variant through Build Forge, then run it.", run.Tooltip);
+
+            // Without variants the tooltip doesn't mention them.
+            var plain = ForgeMainToolbar.BuildButtonFor(false, "Quest", null, null, false, null, true, null);
+            Assert.AreEqual("Build 'Quest' through Build Forge.", plain.Tooltip);
+        }
+
+        [Test]
+        public void BuildButtons_AreDisabledWhenTheWindowsBuildWouldBe_WithTheReason()
+        {
+            var refused = ForgeMainToolbar.BuildButtonFor(false, "Quest", null, null, false, null, false, "Not available in Play Mode.");
+            Assert.That(!refused.Enabled);
+            Assert.AreEqual("Not available in Play Mode.", refused.Tooltip);
+
+            var noProfile = ForgeMainToolbar.BuildButtonFor(true, null, "Activate a Build Profile with Build Forge settings to build it.",
+                null, true, null, true, null);
+            Assert.That(!noProfile.Enabled);
+            Assert.AreEqual("Activate a Build Profile with Build Forge settings to build it.", noProfile.Tooltip);
+
+            var variantRefused = ForgeMainToolbar.BuildButtonFor(false, "Quest", null, "China", true,
+                "Variant 'China' is not enabled for 'Quest'.", true, null);
+            Assert.That(!variantRefused.Enabled);
+            Assert.AreEqual("Variant 'China' is not enabled for 'Quest'.", variantRefused.Tooltip);
         }
 
         [Test]

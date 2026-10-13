@@ -84,6 +84,22 @@ namespace BuildForge.Editor.UI
                 window.SelectVariant(variant);
         }
 
+        /// <summary>
+        /// The variant Apply and the Build buttons use, for callers without a window (the main
+        /// toolbar's Build buttons): the selection stored for this editor session,
+        /// in a fresh editor the applied variant, as the window starts with; none,
+        /// the default build, once it is no longer configured.
+        /// </summary>
+        internal static string SessionVariant
+        {
+            get
+            {
+                var variant = BuildVariants.RestoreSelection(
+                    SessionState.GetString(SelectedVariantKey, ""), ForgeEditorState.AppliedVariant);
+                return variant == null || ForgeSettings.instance.BuildVariants.Contains(variant) ? variant : null;
+            }
+        }
+
         static string WithVariant(string name, string variant)
             => string.IsNullOrEmpty(variant) ? name : $"{name} ({variant})";
 

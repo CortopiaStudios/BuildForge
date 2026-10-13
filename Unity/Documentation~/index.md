@@ -4,7 +4,7 @@ Build Forge (`com.cortopiastudios.buildforge`) is a Unity package that extends U
 
 Around that it adds:
 
-- a build window to activate, apply and build profiles, and a main toolbar element to activate and apply them;
+- a build window to activate, apply and build profiles, and a main toolbar element to activate, apply, build and run them;
 - **Apply** and **Revert to Baseline**, so Play Mode can run with a profile's plugin settings, with drift detection;
 - build variants, such as an internal build with debug tools, selectable per build;
 - a `BUILD_PROFILE_<NAME>` scripting define in every Build Profile with Build Forge settings;

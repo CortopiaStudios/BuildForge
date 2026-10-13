@@ -60,7 +60,7 @@ After a failed **Revert to Baseline**, a dialog lists what could not be restored
 
 ## Main toolbar
 
-Build Forge adds two dropdowns to Unity's main toolbar, together one toolbar element named **Build Forge**.
+Build Forge adds two dropdowns and two buttons to Unity's main toolbar, together one toolbar element named **Build Forge**.
 
 ### Profile dropdown
 
@@ -86,10 +86,16 @@ The menu:
 
 The dropdown is shown only while its menu has something to offer.
 
+### Build and Build and Run
+
+**Build** builds the active profile like the build window's **Build**. **Build and Run** also runs the build afterwards, like Unity's own Build And Run, and doesn't show it in the file browser.
+
+Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, or the variant isn't allowed for it.
+
 ### Behavior
 
 - Profiles that cannot be activated and variants the profile does not allow are listed but disabled.
-- Both dropdowns are disabled in Play Mode, while scripts compile or assets import, and during builds.
+- The dropdowns and buttons are disabled in Play Mode, while scripts compile or assets import, and during builds.
 - The labels follow changes made elsewhere, such as Unity's own Switch Profile, within about a second.
 - Unity starts package toolbar elements hidden; Build Forge shows its own by default. Hide it like any toolbar element: right-click > **Hide**, or **Build Forge** in the toolbar's ⋮ menu, which also shows it again. The choice is kept per user in `UserSettings/ForgeUserPreferences.asset`, so it survives a layout reset.
 - Unity remembers where toolbar elements were placed. Hold Ctrl and drag to move it.
