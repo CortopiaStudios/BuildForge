@@ -71,7 +71,7 @@ namespace BuildForge.Tests.Editor
         {
             var manifest = new BuildManifest
             {
-                BuildProfileName = "Release",
+                BuildProfile = "Release",
                 ProductVersion = "1.0.0"
             };
 
@@ -82,7 +82,7 @@ namespace BuildForge.Tests.Editor
             var json = manifest.ToJson();
             var restored = BuildManifest.FromJson(json);
 
-            Assert.AreEqual("Release", restored.BuildProfileName);
+            Assert.AreEqual("Release", restored.BuildProfile);
             Assert.AreEqual("1.0.0", restored.ProductVersion);
             Assert.AreEqual(1, restored.PluginSections.Count);
             Assert.AreEqual("main", restored.GetSection("Git").Get("branch"));

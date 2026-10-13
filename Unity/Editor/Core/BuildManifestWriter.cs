@@ -39,19 +39,19 @@ namespace BuildForge.Editor.Core
             // fragile and redundant with the active-profile guarantee.
             var manifest = new BuildManifest
             {
-                BuildProfileName = forgeProfile.DisplayName,
-                BuildVariant = BuildVariants.EffectiveName(context.Variant, BuildVariants.Configured.Count > 0) ?? "",
-                BuildTimestamp = System.DateTime.UtcNow.ToString("o"),
-                BuildTarget = context.BuildTarget.ToString(),
-                BuildTargetGroup = context.BuildTargetGroup.ToString(),
                 ProductName = PlayerSettings.productName,
                 ProductVersion = PlayerSettings.bundleVersion,
                 BuildNumber = BuildNumberFor(context),
-                UnityVersion = Application.unityVersion,
-                BuildForgeVersion = GetBuildForgeVersion(),
+                BuildProfile = forgeProfile.DisplayName,
+                BuildVariant = BuildVariants.EffectiveName(context.Variant, BuildVariants.Configured.Count > 0) ?? "",
+                BuildTarget = context.BuildTarget.ToString(),
+                BuildTargetGroup = context.BuildTargetGroup.ToString(),
                 // Both follow the active Build Profile like the rest of the static API.
                 DevelopmentBuild = context.DevelopmentBuild,
-                ManagedCodeVariant = GetManagedCodeVariant(context.BuildTargetGroup)
+                ManagedCodeVariant = GetManagedCodeVariant(context),
+                UnityVersion = Application.unityVersion,
+                BuildForgeVersion = GetBuildForgeVersion(),
+                BuildTimestamp = System.DateTime.UtcNow.ToString("o")
             };
 
             return manifest;
@@ -62,14 +62,25 @@ namespace BuildForge.Editor.Core
         /// its own player setting; earlier editors have no such setting, and the
         /// manifest field stays empty there.
         /// </summary>
-        static string GetManagedCodeVariant(BuildTargetGroup group)
+        static string GetManagedCodeVariant(ForgeBuildContext context)
         {
 #if UNITY_6000_6_OR_NEWER
-            return PlayerSettings.GetManagedCodeVariant(UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(group)).ToString();
+            var setting = PlayerSettings.GetManagedCodeVariant(
+                UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(context.BuildTargetGroup)).ToString();
+            return EffectiveManagedCodeVariant(setting, context.DevelopmentBuild, VariantBuildSettings.IsScriptDebugging(context.BuildProfile));
 #else
             return "";
 #endif
         }
+
+        /// <summary>
+        /// The variant the build compiles its C# code with: the setting, except that
+        /// Script Debugging, which Unity uses only in development builds, compiles
+        /// like Debug whatever the setting says (Unity's manual, "Code variants and
+        /// Development Builds").
+        /// </summary>
+        internal static string EffectiveManagedCodeVariant(string setting, bool developmentBuild, bool scriptDebugging)
+            => developmentBuild && scriptDebugging ? "Debug" : setting;
 
         /// <summary>Writes the manifest to the Library temp folder the injector adds to the build.</summary>
         public static void WriteManifest(BuildManifest manifest)

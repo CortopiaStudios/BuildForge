@@ -12,23 +12,61 @@ It is on by default. **Project Settings > Build Forge > Build Manifest > Write B
 
 ## Fields
 
+The fields come in three groups, in this order in the file: the product, what was built, and the environment it was built in. The plugins' sections follow.
+
+### Product
+
 | Property | JSON key | Value |
 |---|---|---|
-| `BuildProfileName` | `buildProfileName` | The Unity Build Profile the build was made from. |
-| `BuildVariant` | `buildVariant` | The variant, `Default` for the default build once the project has variants, empty when it has none. |
-| `BuildTimestamp` | `buildTimestamp` | When the manifest was written, right before the player build, in UTC and ISO 8601, for example `2026-10-05T11:42:07.1234567Z`. |
-| `BuildTarget` | `buildTarget` | Unity's build target, for example `Android`. |
-| `BuildTargetGroup` | `buildTargetGroup` | Its target group, for example `Android` or `Standalone`. |
 | `ProductName` | `productName` | The product name, marked for a variant build, for example `My Game (Internal)`. |
 | `ProductVersion` | `productVersion` | `PlayerSettings.bundleVersion` as built, including a `-forgeVersion` override or a plugin's change. |
 | `BuildNumber` | `buildNumber` | The [Build Number](plugins/build-number.md) plugin's number when it is enabled for the profile, on every platform; otherwise the Android version code or iOS build number as built; empty when there is neither. |
+
+### Target
+
+| Property | JSON key | Value |
+|---|---|---|
+| `BuildProfile` | `buildProfile` | The name of the Unity Build Profile the build was made from. |
+| `BuildVariant` | `buildVariant` | The variant, `Default` for the default build once the project has variants, empty when it has none. |
+| `BuildTarget` | `buildTarget` | Unity's build target, for example `Android`. |
+| `BuildTargetGroup` | `buildTargetGroup` | Its target group, for example `Android` or `Standalone`. |
+| `DevelopmentBuild` | `developmentBuild` | Whether the player is a development build, after the variant's rule. See [Development build and managed code variant](#development-build-and-managed-code-variant). |
+| `ManagedCodeVariant` | `managedCodeVariant` | Unity 6.6 and later: the managed code variant the C# code was compiled with, `Debug`, `Checked`, `Instrumented` or `Release`. That is the Managed Code Variant player setting, or `Debug` for a development build with Script Debugging. Empty on earlier editors. See [Development build and managed code variant](#development-build-and-managed-code-variant). |
+
+### Environment
+
+| Property | JSON key | Value |
+|---|---|---|
 | `UnityVersion` | `unityVersion` | The editor version that built the player. |
 | `BuildForgeVersion` | `buildForgeVersion` | The version in Build Forge's `package.json`, or `unknown` when it cannot be read. |
-| `DevelopmentBuild` | `developmentBuild` | Whether the player is a development build, after the variant's rule. |
-| `ManagedCodeVariant` | `managedCodeVariant` | Unity 6.6 and later: the Managed Code Variant player setting (`Debug`, `Checked`, `Instrumented` or `Release`). Empty on earlier editors. |
-| `PluginSections` | `pluginSections` | One section per contributing plugin, each with a `name` and `entries` of `key` and `value`. |
+| `BuildTimestamp` | `buildTimestamp` | When the manifest was written, right before the player build, in UTC and ISO 8601, for example `2026-10-05T11:42:07.1234567Z`. |
+
+`PluginSections` (`pluginSections`) holds one section per contributing plugin, each with a `name` and `entries` of `key` and `value`; see [Plugin sections](#plugin-sections).
 
 The values are taken after every plugin's pre-build step, so they are what the build used.
+
+## Development build and managed code variant
+
+Two fields say how the player was built. From Unity 6.6 they describe different things, and you need both to know what a player contains:
+
+- `developmentBuild` is about the engine. A development player runs Unity's development engine binary, which contains the profiler and the memory leak detector, and `Debug.isDebugBuild` is true in it.
+- `managedCodeVariant` is about your C# code: how Unity compiled it.
+
+| Managed code variant | Compiled with | Optimization |
+|---|---|---|
+| `Release` | No diagnostics | On |
+| `Instrumented` | Profiler instrumentation: `UNITY_INCLUDE_INSTRUMENTATION`, `ENABLE_PROFILER` | On |
+| `Checked` | Instrumented's, plus assertions and safety checks: `UNITY_ASSERTIONS`, `UNITY_ENABLE_CHECKS` | On |
+| `Debug` | Checked's, plus `DEBUG` | Off |
+
+Before Unity 6.6, Development Build decided both: a development build's C# code was compiled like `Checked`, and `managedCodeVariant` is empty. From Unity 6.6 the two are set separately, so a development build can run `Release` code and a release build `Checked` code. When a bug report or a performance measurement comes from a player, check both fields.
+
+Two details on Unity's side, as of Unity 6.6:
+
+- With **Script Debugging** on in a development build, Unity compiles the C# code like `Debug` whatever the Managed Code Variant setting says, so `managedCodeVariant` is `Debug` for such a build.
+- A development build still defines `UNITY_ASSERTIONS` and `UNITY_INCLUDE_INSTRUMENTATION` whatever the variant, which Unity says may change.
+
+For the settings themselves, see Unity's [Configure a build for debugging and profiling](https://docs.unity.com/en-us/engine/6000.6/manual/building-and-publishing/managed-code-variants).
 
 ## Plugin sections
 
@@ -48,18 +86,18 @@ An example, shortened:
 
 ```json
 {
-    "buildProfileName": "Quest",
-    "buildTimestamp": "2026-10-05T11:42:07.1234567Z",
-    "buildTarget": "Android",
-    "buildTargetGroup": "Android",
     "productName": "My Game (Internal)",
     "productVersion": "1.4.0",
     "buildNumber": "412",
-    "unityVersion": "6000.3.23f1",
-    "buildForgeVersion": "0.9.0",
+    "buildProfile": "Quest",
+    "buildVariant": "Internal",
+    "buildTarget": "Android",
+    "buildTargetGroup": "Android",
     "developmentBuild": true,
     "managedCodeVariant": "",
-    "buildVariant": "Internal",
+    "unityVersion": "6000.3.23f1",
+    "buildForgeVersion": "0.9.0",
+    "buildTimestamp": "2026-10-05T11:42:07.1234567Z",
     "pluginSections": [
         {
             "name": "Git",
@@ -93,7 +131,7 @@ public class BuildInfo : MonoBehaviour
         if (manifest == null)
             return; // in the editor, or in a player built without the manifest
 
-        Debug.Log($"{manifest.BuildProfileName} {manifest.BuildVariant} {manifest.ProductVersion} ({manifest.BuildNumber})");
+        Debug.Log($"{manifest.BuildProfile} {manifest.BuildVariant} {manifest.ProductVersion} ({manifest.BuildNumber})");
 
         var git = manifest.GetSection("Git");
         if (git != null)

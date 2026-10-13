@@ -19,16 +19,16 @@ namespace BuildForge.Samples
                 return;
             }
 
-            Debug.Log($"[ManifestDisplay] BuildProfileName: {manifest.BuildProfileName}, BuildVariant: '{manifest.BuildVariant}'");
-            Debug.Log($"[ManifestDisplay] DevelopmentBuild: {manifest.DevelopmentBuild}, ManagedCodeVariant: {manifest.ManagedCodeVariant}");
-            Debug.Log($"[ManifestDisplay] BuildTimestamp: {manifest.BuildTimestamp}");
-            Debug.Log($"[ManifestDisplay] BuildTarget: {manifest.BuildTarget}");
-            Debug.Log($"[ManifestDisplay] BuildTargetGroup: {manifest.BuildTargetGroup}");
             Debug.Log($"[ManifestDisplay] ProductName: {manifest.ProductName}");
             Debug.Log($"[ManifestDisplay] ProductVersion: {manifest.ProductVersion}");
             Debug.Log($"[ManifestDisplay] BuildNumber: {manifest.BuildNumber}");
+            Debug.Log($"[ManifestDisplay] BuildProfile: {manifest.BuildProfile}, BuildVariant: '{manifest.BuildVariant}'");
+            Debug.Log($"[ManifestDisplay] BuildTarget: {manifest.BuildTarget}");
+            Debug.Log($"[ManifestDisplay] BuildTargetGroup: {manifest.BuildTargetGroup}");
+            Debug.Log($"[ManifestDisplay] DevelopmentBuild: {manifest.DevelopmentBuild}, ManagedCodeVariant: {manifest.ManagedCodeVariant}");
             Debug.Log($"[ManifestDisplay] UnityVersion: {manifest.UnityVersion}");
             Debug.Log($"[ManifestDisplay] BuildForgeVersion: {manifest.BuildForgeVersion}");
+            Debug.Log($"[ManifestDisplay] BuildTimestamp: {manifest.BuildTimestamp}");
 
             foreach (var section in manifest.PluginSections)
             {

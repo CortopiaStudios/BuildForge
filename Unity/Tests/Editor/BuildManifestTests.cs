@@ -1,3 +1,4 @@
+using System.Linq;
 using BuildForge.Runtime;
 using NUnit.Framework;
 
@@ -10,7 +11,7 @@ namespace BuildForge.Tests.Editor
         {
             var manifest = new BuildManifest
             {
-                BuildProfileName = "TestProfile",
+                BuildProfile = "TestProfile",
                 BuildTarget = "StandaloneWindows64",
                 BuildTargetGroup = "Standalone",
                 ProductName = "TestGame",
@@ -21,7 +22,7 @@ namespace BuildForge.Tests.Editor
                 ManagedCodeVariant = "Debug"
             };
 
-            Assert.AreEqual("TestProfile", manifest.BuildProfileName);
+            Assert.AreEqual("TestProfile", manifest.BuildProfile);
             Assert.AreEqual("StandaloneWindows64", manifest.BuildTarget);
             Assert.AreEqual("TestGame", manifest.ProductName);
             Assert.AreEqual("1.0.0", manifest.ProductVersion);
@@ -62,7 +63,7 @@ namespace BuildForge.Tests.Editor
         {
             var manifest = new BuildManifest
             {
-                BuildProfileName = "RoundTrip",
+                BuildProfile = "RoundTrip",
                 BuildVariant = "Internal",
                 DevelopmentBuild = true,
                 ManagedCodeVariant = "Release",
@@ -78,7 +79,7 @@ namespace BuildForge.Tests.Editor
             var json = manifest.ToJson();
             var deserialized = BuildManifest.FromJson(json);
 
-            Assert.AreEqual("RoundTrip", deserialized.BuildProfileName);
+            Assert.AreEqual("RoundTrip", deserialized.BuildProfile);
             Assert.AreEqual("Internal", deserialized.BuildVariant);
             Assert.IsTrue(deserialized.DevelopmentBuild);
             Assert.AreEqual("Release", deserialized.ManagedCodeVariant);
@@ -86,6 +87,25 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual("TestApp", deserialized.ProductName);
             Assert.AreEqual(1, deserialized.PluginSections.Count);
             Assert.AreEqual("on", deserialized.PluginSections[0].Get("feature"));
+        }
+
+        [Test]
+        public void Json_HasTheDocumentedKeys_GroupedAsProductTargetEnvironment()
+        {
+            // CI scripts read these keys from built players; the order is the manual's.
+            var json = new BuildManifest().ToJson(prettyPrint: false);
+            var keys = new[]
+            {
+                "productName", "productVersion", "buildNumber",
+                "buildProfile", "buildVariant", "buildTarget", "buildTargetGroup", "developmentBuild", "managedCodeVariant",
+                "unityVersion", "buildForgeVersion", "buildTimestamp",
+                "pluginSections",
+            };
+
+            var positions = keys.Select(key => json.IndexOf($"\"{key}\":", System.StringComparison.Ordinal)).ToArray();
+
+            CollectionAssert.DoesNotContain(positions, -1, json);
+            CollectionAssert.IsOrdered(positions, json);
         }
     }
 }

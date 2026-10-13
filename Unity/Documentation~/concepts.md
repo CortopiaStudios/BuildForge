@@ -13,7 +13,7 @@ A **Unity Build Profile** is Unity's asset for one way of building the project: 
 Consequences of storing them in the Build Profile:
 
 - **One per Build Profile.** Two configurations that differ only in plugin settings, for example two OpenXR feature sets for the same platform, need two Unity Build Profiles.
-- **One name.** Everything user-facing uses the Unity Build Profile's name: the build window, the `{ProfileName}` output path placeholder, the `BUILD_PROFILE_<NAME>` define and the manifest's `BuildProfileName`.
+- **One name.** Everything user-facing uses the Unity Build Profile's name: the build window, the `{ProfileName}` output path placeholder, the `BUILD_PROFILE_<NAME>` define and the manifest's `BuildProfile`.
 - **They travel with the asset.** Renaming, duplicating or deleting the Build Profile in the editor carries the Build Forge settings; a duplicate gets its own independent copy.
 - **Only Build Profile assets in `Assets/`** can hold them. Unity's platform profiles live in `Library/`, which is not committed.
 

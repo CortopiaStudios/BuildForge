@@ -11,44 +11,27 @@ namespace BuildForge.Runtime
     [Serializable]
     public class BuildManifest
     {
-        [SerializeField] string buildProfileName;
-        [SerializeField] string buildTimestamp;
-        [SerializeField] string buildTarget;
-        [SerializeField] string buildTargetGroup;
+        // Product
         [SerializeField] string productName;
         [SerializeField] string productVersion;
         [SerializeField] string buildNumber;
-        [SerializeField] string unityVersion;
-        [SerializeField] string buildForgeVersion;
+
+        // Target
+        [SerializeField] string buildProfile;
+        [SerializeField] string buildVariant;
+        [SerializeField] string buildTarget;
+        [SerializeField] string buildTargetGroup;
         [SerializeField] bool developmentBuild;
         [SerializeField] string managedCodeVariant;
-        [SerializeField] string buildVariant;
+
+        // Environment
+        [SerializeField] string unityVersion;
+        [SerializeField] string buildForgeVersion;
+        [SerializeField] string buildTimestamp;
+
         [SerializeField] List<ManifestSection> pluginSections = new();
 
-        /// <summary>The name of the Unity Build Profile the build was made from.</summary>
-        public string BuildProfileName
-        {
-            get => buildProfileName;
-            set => buildProfileName = value;
-        }
-
-        public string BuildTimestamp
-        {
-            get => buildTimestamp;
-            set => buildTimestamp = value;
-        }
-
-        public string BuildTarget
-        {
-            get => buildTarget;
-            set => buildTarget = value;
-        }
-
-        public string BuildTargetGroup
-        {
-            get => buildTargetGroup;
-            set => buildTargetGroup = value;
-        }
+        // Product
 
         public string ProductName
         {
@@ -68,6 +51,62 @@ namespace BuildForge.Runtime
             set => buildNumber = value;
         }
 
+        // Target
+
+        /// <summary>The name of the Unity Build Profile the build was made from.</summary>
+        public string BuildProfile
+        {
+            get => buildProfile;
+            set => buildProfile = value;
+        }
+
+        /// <summary>The Build Forge build variant the player was built with: "Internal", …, or "Default" once the project defines variants; empty when it defines none.</summary>
+        public string BuildVariant
+        {
+            get => buildVariant;
+            set => buildVariant = value;
+        }
+
+        public string BuildTarget
+        {
+            get => buildTarget;
+            set => buildTarget = value;
+        }
+
+        public string BuildTargetGroup
+        {
+            get => buildTargetGroup;
+            set => buildTargetGroup = value;
+        }
+
+        /// <summary>
+        /// Whether the player is a development build, after the variant's rule: it
+        /// runs Unity's development engine binary, with the profiler and the memory
+        /// leak detector, and <c>Debug.isDebugBuild</c> is true in it. From Unity 6.6
+        /// this no longer decides how the C# code was compiled; see <see cref="ManagedCodeVariant"/>.
+        /// </summary>
+        public bool DevelopmentBuild
+        {
+            get => developmentBuild;
+            set => developmentBuild = value;
+        }
+
+        /// <summary>
+        /// The managed code variant the C# code was compiled with on Unity 6.6 and
+        /// later ("Debug", "Checked", "Instrumented" or "Release"), independently of
+        /// <see cref="DevelopmentBuild"/>: the Managed Code Variant player setting, or
+        /// "Debug" for a development build with Script Debugging, which Unity compiles
+        /// like Debug whatever the setting says. Empty on earlier editors, where
+        /// Development Build decided it.
+        /// </summary>
+        public string ManagedCodeVariant
+        {
+            get => managedCodeVariant;
+            set => managedCodeVariant = value;
+        }
+
+        // Environment
+
         public string UnityVersion
         {
             get => unityVersion;
@@ -80,29 +119,10 @@ namespace BuildForge.Runtime
             set => buildForgeVersion = value;
         }
 
-        /// <summary>The Build Forge build variant the player was built with: "Internal", …, or "Default" once the project defines variants; empty when it defines none.</summary>
-        public string BuildVariant
+        public string BuildTimestamp
         {
-            get => buildVariant;
-            set => buildVariant = value;
-        }
-
-        /// <summary>The Build Profile's Development Build option at build time.</summary>
-        public bool DevelopmentBuild
-        {
-            get => developmentBuild;
-            set => developmentBuild = value;
-        }
-
-        /// <summary>
-        /// The Managed Code Variant player setting at build time ("Debug",
-        /// "Checked", "Instrumented" or "Release"). Empty on editors before
-        /// Unity 6.6, where the variant was still implied by Development Build.
-        /// </summary>
-        public string ManagedCodeVariant
-        {
-            get => managedCodeVariant;
-            set => managedCodeVariant = value;
+            get => buildTimestamp;
+            set => buildTimestamp = value;
         }
 
         public IReadOnlyList<ManifestSection> PluginSections => pluginSections;

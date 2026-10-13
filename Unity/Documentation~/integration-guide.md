@@ -34,7 +34,7 @@ Things Build Forge does not do: it does not override Player Settings, does not b
 
 Create one Unity Build Profile per target configuration in Unity's Build Profiles window. Unity has no public API for creating Build Profile assets, so this step is done by hand.
 
-- **Name them as they should appear.** The name becomes the `BUILD_PROFILE_` define, a folder in the output path, the build window's row and the manifest's `BuildProfileName`. Renaming later is possible and Build Forge follows, but code that uses the old define does not.
+- **Name them as they should appear.** The name becomes the `BUILD_PROFILE_` define, a folder in the output path, the build window's row and the manifest's `BuildProfile`. Renaming later is possible and Build Forge follows, but code that uses the old define does not.
 - **Profiles may share a platform.** Headsets that are all Android get one Android Build Profile each.
 - **Decide on the Quest profile type.** Unity's Meta Quest Build Profile type and a plain Android profile both work; the Meta Quest type changes shared Android OpenXR features in the editor. See [Meta Quest Build Profiles](plugins/openxr.md#meta-quest-build-profiles).
 - **Set scenes and defines on each profile.** Move defines that belong to one target out of Player Settings into that profile's Scripting Defines list: a define in the Android Player Settings reaches every Android profile that has no Player Settings of its own.

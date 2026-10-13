@@ -96,5 +96,36 @@ namespace BuildForge.Tests.Editor
         {
             Assert.DoesNotThrow(() => new BuildManifestInjector().PrepareForBuild(null));
         }
+
+        [Test]
+        public void ManagedCodeVariant_IsDebug_ForADevelopmentBuildWithScriptDebugging_ElseTheSetting()
+        {
+            Assert.AreEqual("Debug", BuildManifestWriter.EffectiveManagedCodeVariant("Release", developmentBuild: true, scriptDebugging: true));
+            // Unity uses Script Debugging only in development builds.
+            Assert.AreEqual("Release", BuildManifestWriter.EffectiveManagedCodeVariant("Release", developmentBuild: false, scriptDebugging: true));
+            Assert.AreEqual("Checked", BuildManifestWriter.EffectiveManagedCodeVariant("Checked", developmentBuild: true, scriptDebugging: false));
+#if UNITY_6000_6_OR_NEWER
+            Assert.AreEqual(ManagedCodeVariant.Debug.ToString(), BuildManifestWriter.EffectiveManagedCodeVariant("Release", true, true));
+#endif
+        }
+
+        [Test]
+        public void ScriptDebugging_IsReadFromTheBuildProfile_AsAVariantRuleSetsIt()
+        {
+            var profile = VariantRulesTests.CreateNativeProfile();
+            try
+            {
+                var rule = new BuildVariantRule { Variant = "Development", DevelopmentBuild = VariantOverride.Enabled };
+                rule.BuildConfiguration.ScriptDebugging = VariantOverride.Enabled;
+                VariantBuildSettings.Apply(profile, rule);
+                Assert.IsTrue(VariantBuildSettings.IsDevelopment(profile));
+                Assert.IsTrue(VariantBuildSettings.IsScriptDebugging(profile));
+
+                rule.BuildConfiguration.ScriptDebugging = VariantOverride.Disabled;
+                VariantBuildSettings.Apply(profile, rule);
+                Assert.IsFalse(VariantBuildSettings.IsScriptDebugging(profile));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(profile); }
+        }
     }
 }

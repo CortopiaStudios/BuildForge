@@ -223,6 +223,11 @@ namespace BuildForge.Editor.Core
             => new SerializedObject(profile).FindProperty(Prefix + Fields[0])?.boolValue
                 ?? EditorUserBuildSettings.development;
 
+        /// <summary>The profile's Script Debugging option; Unity uses it only in development builds.</summary>
+        internal static bool IsScriptDebugging(BuildProfile profile)
+            => new SerializedObject(profile).FindProperty(Prefix + "m_AllowDebugging")?.boolValue
+                ?? EditorUserBuildSettings.allowDebugging;
+
         /// <summary>
         /// The development options the rule turns on that a build of this profile
         /// would not use, because it is not a development build (Unity uses them

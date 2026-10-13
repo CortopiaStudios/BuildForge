@@ -242,7 +242,7 @@ var manifest = await BuildManifestLoader.LoadAsync();
 // Synchronous (blocks briefly on Android, fine on other platforms; not supported on WebGL)
 var manifest = BuildManifestLoader.Load();
 
-Debug.Log($"Profile: {manifest.BuildProfileName}");
+Debug.Log($"Profile: {manifest.BuildProfile}");
 Debug.Log($"Built at: {manifest.BuildTimestamp}");
 Debug.Log($"Development build: {manifest.DevelopmentBuild}, managed code: {manifest.ManagedCodeVariant}"); // variant is empty before Unity 6.6
 
