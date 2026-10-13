@@ -8,11 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Build** and **Build and Run** in the main toolbar's Build Forge element, next to the profile and apply dropdowns. They build the active profile like the build window's Build, with the variant the window has selected, which picking a variant in the apply dropdown also sets; **Build and Run** then runs the build like Unity's Build And Run, without showing it in the file browser. Disabled when the window's Build would be, with the reason as their tooltip
+- **Build** and **Build and Run** in the main toolbar's Build Forge element, next to the profile and apply dropdowns. They build the active profile like the build window's Build, with the variant the window has selected, which picking a variant in the apply dropdown also sets; **Build and Run** then runs the build like Unity's Build And Run, without showing it in the file browser. Disabled when the window's Build would be, with the reason as their tooltip. They show the build window's icons: the Build Forge anvil on Build, Unity's Play icon on Build and Run
+- **Build and Run** in the build window's action bar, next to Build and green like it, with Unity's Play icon: builds the active profile like Build, then runs it like Unity's Build And Run, without showing it in the file browser
 
 ### Changed
+- The build window's action buttons no longer repeat the profile's name, which the details pane shows, or the variant, which the details header shows: **Activate**, **Apply** or **Re-apply**, **Build**. A label that doesn't fit its slot, such as a long variant name, ends in "…" instead of being cut at both ends, and its tooltip starts with the whole label
+- The build window's Build button shows the Build Forge anvil instead of Unity's Play icon, which moved to Build and Run
+- The build window's action bar shows the actions the selected profile has: **Activate**, on the left, for a profile that is not active; for the active one, on the right, **Apply** / **Re-apply** with **Revert to Baseline** in its ▾ menu, the other direction of the same applied state, then **Build** and **Build and Run**. The **Variant** dropdown moved to the details header, since the details and the CI Command show the selected variant for any profile. Each notice about applied settings has a **Revert to Baseline** button, so it is there whichever profile is selected
+- The plugin list's name column widens to fit long plugin names, up to 40% of the details pane
 - The build manifest's fields are grouped, in this order in the JSON: the product (`productName`, `productVersion`, `buildNumber`), the target (`buildProfile`, `buildVariant`, `buildTarget`, `buildTargetGroup`, `developmentBuild`, `managedCodeVariant`) and the environment (`unityVersion`, `buildForgeVersion`, `buildTimestamp`). `BuildProfileName` (`buildProfileName`) is renamed `BuildProfile` (`buildProfile`), so scripts that read the old key need the new one. The manual explains what `developmentBuild` and `managedCodeVariant` each say, since from Unity 6.6 Development Build no longer decides how the C# code is compiled
 - The build manifest's `managedCodeVariant` is `Debug` for a development build with Script Debugging, which Unity compiles like the Debug variant whatever the Managed Code Variant setting says; it recorded the setting before
+- The main toolbar's apply dropdown shows the state as an icon, a check mark while applied and the warning icon once drifted, and only the applied variant as text ("Internal" instead of "Applied (Internal)"), so it fits Unity 6.6's 120 px label limit
+
+### Fixed
+- In a narrow build window, the details pane no longer scrolls sideways and hides the header's buttons: the Build Forge Settings row measured the Build Forge anvil at its full 256 px
 
 ## [0.9.0] - 2026-10-07
 

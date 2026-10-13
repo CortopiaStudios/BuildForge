@@ -21,14 +21,17 @@ The toolbar's **Refresh** button finds profiles again and recomputes the warning
 While something is applied, the top of the details pane explains the editor state:
 
 - A warning when Unity switched to another Build Profile, or to a platform profile, without Build Forge, with the fixes. See [When Unity switches profiles on its own](concepts.md#when-unity-switches-profiles-on-its-own).
-- Then either the drift notice, naming the editor settings that differ from the profile as applied, with a **Dismiss Drift** button (see [Drift](concepts.md#drift)), or a reminder that the applied settings live in version-controlled assets, so revert to baseline before committing them.
-- If the applied Build Profile no longer exists, or no Build Forge settings can be found for it, only a warning that Revert to Baseline restores the settings it changed.
+- Then either the drift notice, naming the editor settings that differ from the profile as applied, with **Dismiss Drift** and **Revert to Baseline** buttons (see [Drift](concepts.md#drift)), or a reminder that the applied settings live in version-controlled assets, so revert to baseline before committing them, with a **Revert to Baseline** button.
+- If the applied Build Profile no longer exists, or no Build Forge settings can be found for it, only a warning that Revert to Baseline restores the settings it changed, with that button.
+
+So Revert to Baseline is always in the notices, whichever profile is selected.
 
 ### Details
 
 | Item | Shows |
 |---|---|
-| Header | The platform icon, the profile's name, and **Open in Inspector**, which selects the Unity Build Profile: the Inspector shows Unity's settings and the Build Forge section. |
+| Header | The platform icon, the profile's name, the **Variant** dropdown once variants exist, and **Open in Inspector**, which selects the Unity Build Profile: the Inspector shows Unity's settings and the Build Forge section. |
+| Variant | The variant the details below and the CI Command show, for any selected profile, and the one Apply, Build and Build and Run use, as do the main toolbar's Build buttons: `<default>` or a configured name. Variants the selected profile does not allow are listed as unavailable. A long name ends in "…"; the tooltip then starts with the whole label. |
 | Unity Build Profile | The asset, marked "(active)" when it is; click to show it in the Project window. |
 | Build Forge Settings | Click to edit them in the Inspector, in the Unity Build Profile's Build Forge section. |
 | Platform | The build target. |
@@ -44,15 +47,14 @@ While something is applied, the top of the details pane explains the editor stat
 
 ### Action bar
 
-Every slot is always shown and is disabled with the reason as its tooltip, so the buttons do not move as the state changes.
+The action bar shows the actions the selected profile has. For a profile that is not active, that is **Activate**, on the left. The active profile's actions are on the right, as in Unity's Build Profiles window. Each side keeps to its edge, so no button moves when the selection changes, and a button the profile has is disabled with the reason as its tooltip rather than hidden. The actions use the variant picked in the details header. **Build** and **Build and Run** are green, Build with the Build Forge anvil and Build and Run with Unity's Play icon, as in the main toolbar.
 
-| Slot | Action |
+| Button | Action |
 |---|---|
-| Variant | Shown once variants exist. The variant for Build and Apply: `<default>` or a configured name. Variants the selected profile does not allow are listed as unavailable. |
-| Revert to Baseline | Restores every setting the applied profile changed. Available whenever something is applied, whichever profile is selected. |
-| Activate *profile* | For a profile that is not active: makes it the active Unity Build Profile, after reverting another profile's applied settings. |
-| Apply *profile* / Re-apply *profile* | For the active profile: writes its plugin settings and the variant's defines to the editor. Disabled when the profile has nothing to apply. |
-| Build *profile* | Builds the selected profile with the selected variant. Only for the active profile. |
+| Activate | For a profile that is not active: makes it the active Unity Build Profile, after reverting another profile's applied settings. |
+| Apply / Re-apply | Writes the active profile's plugin settings and the variant's defines to the editor. Disabled when the profile has nothing to apply. Its **▾** menu holds **Revert to Baseline**, which restores every setting the applied profile changed. |
+| Build | Builds the active profile with the selected variant. |
+| Build and Run | Builds like **Build**, then runs the build, like Unity's own Build And Run, and doesn't show it in the file browser. |
 
 The actions run after the current editor frame, never in the middle of drawing, and are refused in Play Mode, while scripts compile or assets import, and during a build.
 
@@ -68,15 +70,15 @@ Shows the active Unity Build Profile with its platform icon, or **Platform profi
 
 ### Apply dropdown
 
-Its label says what is applied to the active profile, in the build window's words:
+Its icon and label say what is applied to the active profile. Only the variant is text, so that it fits the toolbar:
 
-| Label | Meaning |
+| Shows | Meaning |
 |---|---|
 | Not applied | Nothing of the active profile is applied. |
-| Applied | Applied, in a project without variants. |
-| Applied (Internal) | Applied with the `Internal` variant. |
-| Applied (default variant) | Applied with the default build, in a project with variants. |
-| Applied, drifted (…) | Applied, and editor settings changed since. |
+| A check mark and **Applied** | Applied, in a project without variants. |
+| A check mark and **Internal** | Applied with the `Internal` variant. |
+| A check mark and **\<default\>** | Applied with the default build, in a project with variants. |
+| The warning icon | Applied, and editor settings changed since; the tooltip names them. |
 
 The menu:
 
@@ -88,7 +90,7 @@ The dropdown is shown only while its menu has something to offer.
 
 ### Build and Build and Run
 
-**Build** builds the active profile like the build window's **Build**. **Build and Run** also runs the build afterwards, like Unity's own Build And Run, and doesn't show it in the file browser.
+**Build** and **Build and Run** build the active profile like the build window's buttons of the same names, and show the same icons: **Build and Run** also runs the build afterwards, like Unity's own Build And Run, and doesn't show it in the file browser.
 
 Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, or the variant isn't allowed for it.
 
@@ -99,5 +101,5 @@ Both build the variant the build window has selected, which picking a variant in
 - The labels follow changes made elsewhere, such as Unity's own Switch Profile, within about a second.
 - Unity starts package toolbar elements hidden; Build Forge shows its own by default. Hide it like any toolbar element: right-click > **Hide**, or **Build Forge** in the toolbar's ⋮ menu, which also shows it again. The choice is kept per user in `UserSettings/ForgeUserPreferences.asset`, so it survives a layout reset.
 - Unity remembers where toolbar elements were placed. Hold Ctrl and drag to move it.
-- Unity 6.6 cuts toolbar labels at 120 pixels, so a long profile or variant name ends in "…" there; hover for the full label.
+- Unity 6.6 cuts toolbar labels at 120 pixels, so a long profile or variant name still ends in "…" there; hover for the full label.
 - Batch mode has no toolbar; nothing of this runs there.

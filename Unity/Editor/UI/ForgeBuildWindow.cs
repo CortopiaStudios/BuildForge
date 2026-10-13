@@ -47,8 +47,9 @@ namespace BuildForge.Editor.UI
             // Set here rather than only when opened from the menu, so a window
             // restored from a saved layout gets the icon too.
             SetTitle();
-            // Four action slots, three gaps and the horizontal margins must fit
-            // even when a saved window layout is restored after a reload.
+            // The details header with its buttons, and the action bar's three actions
+            // with their gaps and margins, must fit even when a saved window layout is
+            // restored after a reload.
             minSize = new Vector2(720, 300);
             // SessionState outlives domain reloads but not the editor: in a fresh
             // editor nothing is stored and the selection follows the applied variant.
@@ -99,9 +100,6 @@ namespace BuildForge.Editor.UI
                 return variant == null || ForgeSettings.instance.BuildVariants.Contains(variant) ? variant : null;
             }
         }
-
-        static string WithVariant(string name, string variant)
-            => string.IsNullOrEmpty(variant) ? name : $"{name} ({variant})";
 
         void OnInspectorUpdate()
         {
@@ -172,9 +170,19 @@ namespace BuildForge.Editor.UI
         void SetTitle()
         {
             titleIconDark = EditorGUIUtility.isProSkin;
-            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(IconFolder + (titleIconDark ? "d_ForgeProfile.png" : "ForgeProfile.png"));
-            titleContent = new GUIContent("Build Forge", icon);
+            titleContent = new GUIContent("Build Forge", ForgeIcon());
         }
+
+        /// <summary>The anvil in the current editor theme's version.</summary>
+        static Texture2D ForgeIcon()
+            => AssetDatabase.LoadAssetAtPath<Texture2D>(IconFolder + (EditorGUIUtility.isProSkin ? "d_ForgeProfile.png" : "ForgeProfile.png"));
+
+        /// <summary>
+        /// The Build buttons' icons, in the action bar and the main toolbar: the anvil
+        /// on Build, Unity's Play icon on Build and Run.
+        /// </summary>
+        internal static Texture2D BuildIcon(bool run)
+            => run ? EditorGUIUtility.IconContent("PlayButton").image as Texture2D : ForgeIcon();
 
         void OnGUI()
         {
@@ -427,6 +435,10 @@ namespace BuildForge.Editor.UI
             var content = new GUIContent(isActive ? $"{buildProfile.name} (active)" : buildProfile.name,
                 AssetPreview.GetMiniThumbnail(buildProfile),
                 "Click to show the Unity Build Profile in the Project window.");
+            // Both rows' icons are measured and drawn at 16 px: the anvil is a 256 px
+            // texture, and measured as such it set the details pane's minimum width, so
+            // a narrow window scrolled the pane sideways, out of sight of the header's buttons.
+            EditorGUIUtility.SetIconSize(new Vector2(16f, 16f));
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.PrefixLabel("Unity Build Profile");
             if (GUILayout.Button(content, isActive ? EditorStyles.boldLabel : EditorStyles.label,
@@ -441,6 +453,7 @@ namespace BuildForge.Editor.UI
                     EditorStyles.label, GUILayout.Height(EditorGUIUtility.singleLineHeight)))
                 Selection.activeObject = InspectorTarget(profile);
             EditorGUILayout.EndHorizontal();
+            EditorGUIUtility.SetIconSize(Vector2.zero);
 
             EditorGUILayout.LabelField("Platform", target.ToString());
 
@@ -560,9 +573,23 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true));
             GUILayout.Space(6);
             cachedTitleStyle ??= new GUIStyle(EditorStyles.boldLabel) { fontSize = 14 };
-            EditorGUILayout.LabelField(profile.DisplayName, cachedTitleStyle, GUILayout.Height(20f), GUILayout.ExpandWidth(true));
-            EditorGUILayout.LabelField(subtitle, EditorStyles.miniLabel, GUILayout.ExpandWidth(true));
+            // MinWidth 0: the title and subtitle give way to the buttons beside them and are
+            // cut, or a narrow window scrolls the details pane sideways, hiding the buttons.
+            EditorGUILayout.LabelField(profile.DisplayName, cachedTitleStyle, GUILayout.Height(20f), GUILayout.ExpandWidth(true), GUILayout.MinWidth(0f));
+            EditorGUILayout.LabelField(subtitle, EditorStyles.miniLabel, GUILayout.ExpandWidth(true), GUILayout.MinWidth(0f));
             EditorGUILayout.EndVertical();
+            // The variant sits with the details, which show it for any selected profile,
+            // and not with the actions, which only the active profile has.
+            var variants = ForgeSettings.instance.BuildVariants;
+            if (variants.Count > 0)
+            {
+                EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(false));
+                GUILayout.Space(6);
+                var canMutate = ForgeEditorState.CanMutate(out var mutateReason);
+                DrawVariantDropdown(CurrentVariant, variants, canMutate, mutateReason);
+                EditorGUILayout.EndVertical();
+                GUILayout.Space(6);
+            }
             EditorGUILayout.BeginVertical(GUILayout.Width(120f));
             GUILayout.Space(6);
             if (GUILayout.Button("Open in Inspector", EditorStyles.miniButton, GUILayout.Width(120f)))
@@ -582,14 +609,16 @@ namespace BuildForge.Editor.UI
             if (!ForgeEditorState.HasAppliedGuid)
                 return;
 
-            // These boxes explain the editor state; the actions live in the action
-            // bar (Apply / Re-apply / Revert to Baseline for the selected profile),
-            // so the only button here is the one the bar does not have.
+            // These boxes explain the editor state. Whichever is shown last carries
+            // Revert to Baseline, which the action bar has only for the active profile,
+            // in the Apply button's menu; the drift box also has Dismiss Drift.
             var canMutate = ForgeEditorState.CanMutate(out var reason);
+            (GUIContent content, bool enabled, System.Action onClick) revert = (new GUIContent("Revert to Baseline",
+                canMutate ? "Restore every plugin-managed setting to its pre-apply state." : reason), canMutate, StartRevert);
 
             if (appliedProfile == null)
             {
-                EditorGUILayout.HelpBox(ForgeEditorState.UnresolvedAppliedWarning, MessageType.Warning);
+                DrawWarningBoxWithButtons(ForgeEditorState.UnresolvedAppliedWarning, revert);
                 return;
             }
 
@@ -602,39 +631,45 @@ namespace BuildForge.Editor.UI
             {
                 var where = selectedProfile == appliedProfile
                     ? ""
-                    : $" Select '{appliedProfile.DisplayName}' for those actions.";
+                    : $" Select '{appliedProfile.DisplayName}' to re-apply it.";
                 var text = $"Editor settings differ from '{appliedProfile.DisplayName}' as applied: " +
                     string.Join(", ", drift.Select(DescribeDriftKey)) + ". " +
                     "Re-apply restores the profile's state; Revert to Baseline undoes it." + where;
-                var dismiss = new GUIContent("Dismiss Drift",
+                (GUIContent content, bool enabled, System.Action onClick) dismiss = (new GUIContent("Dismiss Drift",
                     canMutate
                         ? "Stop reporting the current settings as drift. The profile is unchanged, and the " +
                           "next Apply or build rewrites the settings from it."
-                        : reason);
-                if (DrawWarningBoxWithButton(text, dismiss, canMutate))
-                    EditorApplication.delayCall += () =>
+                        : reason), canMutate, () => EditorApplication.delayCall += () =>
                     {
                         ForgeEditorState.DismissDrift();
                         if (this != null) Repaint();
-                    };
+                    });
+                DrawWarningBoxWithButtons(text, dismiss, revert);
             }
             else
             {
+                // No FlexibleSpace: inside the scroll view it would stretch the row.
+                EditorGUILayout.BeginHorizontal(GUILayout.ExpandHeight(false));
                 EditorGUILayout.LabelField(
                     $"'{appliedProfile.DisplayName}' is applied to the editor. Its settings live in " +
                     "version-controlled assets — revert to baseline before committing them, or commit deliberately.",
-                    EditorStyles.wordWrappedMiniLabel);
+                    EditorStyles.wordWrappedMiniLabel, GUILayout.ExpandWidth(true));
+                using (new EditorGUI.DisabledScope(!revert.enabled))
+                {
+                    if (GUILayout.Button(revert.content, GUILayout.Height(20f), GUILayout.ExpandWidth(false)))
+                        revert.onClick();
+                }
+                EditorGUILayout.EndHorizontal();
             }
         }
 
         /// <summary>
-        /// A warning box with its action inside, like Unity's own notices with a
-        /// Dismiss button: icon and wrapped text on the left, the button on the
-        /// right. Returns true when the button was clicked.
+        /// A warning box with its actions inside, like Unity's own notices with a
+        /// Dismiss button: icon and wrapped text on the left, the buttons stacked on
+        /// the right, each with its own enabled state.
         /// </summary>
-        static bool DrawWarningBoxWithButton(string text, GUIContent button, bool enabled)
+        static void DrawWarningBoxWithButtons(string text, params (GUIContent content, bool enabled, System.Action onClick)[] buttons)
         {
-            var clicked = false;
             // No FlexibleSpace anywhere in here: inside the scroll view it would
             // stretch the box to fill the pane.
             EditorGUILayout.BeginHorizontal(EditorStyles.helpBox, GUILayout.ExpandHeight(false));
@@ -644,11 +679,16 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.LabelField(text, cachedNoticeTextStyle, GUILayout.ExpandWidth(true), GUILayout.MinHeight(32f));
             EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(false), GUILayout.ExpandHeight(false));
             GUILayout.Space(6f);
-            using (new EditorGUI.DisabledScope(!enabled))
-                clicked = GUILayout.Button(button, GUILayout.Height(20f));
+            foreach (var (content, enabled, onClick) in buttons)
+            {
+                using (new EditorGUI.DisabledScope(!enabled))
+                {
+                    if (GUILayout.Button(content, GUILayout.Height(20f)) && onClick != null)
+                        onClick();
+                }
+            }
             EditorGUILayout.EndVertical();
             EditorGUILayout.EndHorizontal();
-            return clicked;
         }
 
         /// <summary>
@@ -702,6 +742,9 @@ namespace BuildForge.Editor.UI
             }
 
             var step = 0;
+            // The name column fits the longest name, from the standard label width up
+            // to 40% of the details pane, so long plugin names aren't cut off.
+            var nameWidth = NameColumnWidth(plugins, (EditorGUIUtility.currentViewWidth - LeftPaneWidth) * 0.4f);
             foreach (var plugin in plugins)
             {
                 string skipReason = null;
@@ -725,8 +768,9 @@ namespace BuildForge.Editor.UI
                     }
                     else
                     {
-                        EditorGUILayout.LabelField(new GUIContent($"{step}.  {plugin.DisplayName}", plugin.Description),
-                            GUILayout.Width(EditorGUIUtility.labelWidth));
+                        EditorGUILayout.LabelField(
+                            FitContent($"{step}.  {plugin.DisplayName}", plugin.Description, null, EditorStyles.label, nameWidth),
+                            GUILayout.Width(nameWidth));
                         // Wrapped: OpenXR's Only Listed Features names every feature it turns off.
                         EditorGUILayout.LabelField(new GUIContent(what, what), EditorStyles.wordWrappedMiniLabel);
                     }
@@ -734,8 +778,9 @@ namespace BuildForge.Editor.UI
                 else
                 {
                     using (new EditorGUI.DisabledScope(true))
-                        EditorGUILayout.LabelField(new GUIContent($"\u2013   {plugin.DisplayName}", plugin.Description),
-                            GUILayout.Width(EditorGUIUtility.labelWidth));
+                        EditorGUILayout.LabelField(
+                            FitContent($"\u2013   {plugin.DisplayName}", plugin.Description, null, EditorStyles.label, nameWidth),
+                            GUILayout.Width(nameWidth));
                     EditorGUILayout.LabelField(skipReason, EditorStyles.miniLabel);
                 }
                 EditorGUILayout.EndHorizontal();
@@ -744,6 +789,17 @@ namespace BuildForge.Editor.UI
             if (step == 0)
                 EditorGUILayout.LabelField("No plugin runs for this profile; the build is a plain Unity build with the manifest.",
                     EditorStyles.wordWrappedMiniLabel);
+        }
+
+        /// <summary>The width of the plugin list's name column: its longest entry, at least the standard label width, at most <paramref name="cap"/>.</summary>
+        internal static float NameColumnWidth(IReadOnlyList<IForgePlugin> plugins, float cap)
+        {
+            var prefix = $"{plugins.Count}.  ";
+            var widest = 0f;
+            foreach (var plugin in plugins)
+                widest = Mathf.Max(widest, EditorStyles.label.CalcSize(new GUIContent(prefix + plugin.DisplayName)).x);
+            var min = EditorGUIUtility.labelWidth;
+            return Mathf.Clamp(widest, min, Mathf.Max(min, cap));
         }
 
         void DrawCICommand()
@@ -788,13 +844,16 @@ namespace BuildForge.Editor.UI
         const float ActionButtonHeight = 24f;
         const float ActionButtonWidth = 170f;
         const float ActionGap = 6f;
+        const float MenuArrowWidth = 20f;
 
         /// <summary>
-        /// Bottom action bar, right-aligned like the Build Profiles window. Every
-        /// slot is always drawn (Variant when variants exist, Revert to Baseline,
-        /// Activate/Apply, Build) and is disabled with a reason instead of
-        /// disappearing, so nothing shifts as the state changes; all slots share
-        /// one width and one gap.
+        /// Bottom action bar, with the actions the selected profile has: Activate, on the
+        /// left, for a profile that is not the active one; for the active one, on the
+        /// right as in the Build Profiles window, Apply or Re-apply with Revert to
+        /// Baseline in its menu, Build and Build and Run. Each side keeps to its edge, so
+        /// no button moves when the selection changes, and a button the profile has is
+        /// disabled with a reason rather than hidden. The variant is picked in the
+        /// details header, since the details show it for any profile.
         /// </summary>
         void DrawActionBar()
         {
@@ -804,7 +863,6 @@ namespace BuildForge.Editor.UI
 
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(8);
-            GUILayout.FlexibleSpace();
 
             var canMutate = ForgeEditorState.CanMutate(out var mutateReason);
             var variants = ForgeSettings.instance.BuildVariants;
@@ -814,81 +872,77 @@ namespace BuildForge.Editor.UI
                 ? selectedProfile : null;
             var activeBuildProfile = BuildProfile.GetActiveBuildProfile();
             var isActive = selection != null && selection.BuildProfile == activeBuildProfile;
-            var name = selection != null ? selection.DisplayName : "";
 
-            // Slot 1: variant (only when the project defines any).
-            if (variants.Count > 0)
-            {
-                DrawVariantDropdown(variant, variants, canMutate, mutateReason);
-                GUILayout.Space(ActionGap);
-            }
+            // The labels leave out the profile, which the details pane names above, and
+            // the variant, which the details header shows, so they fit the fixed slots.
 
-            // Slot 2: Revert to Baseline.
-            var somethingApplied = ForgeEditorState.HasAppliedGuid;
-            DrawActionButton("Revert to Baseline",
-                !somethingApplied ? "Nothing is applied to the editor." : canMutate ? "Restore every plugin-managed setting to its pre-apply state." : mutateReason,
-                somethingApplied && canMutate, StartRevert);
-            GUILayout.Space(ActionGap);
-
-            // Slot 3: Activate (non-active selection) or Apply / Re-apply (active selection).
-            if (selection == null)
+            if (!isActive)
             {
-                DrawActionButton("Activate", "Select a profile with a Unity Build Profile.", false, null);
-            }
-            else if (!isActive)
-            {
-                DrawActionButton($"Activate {name}",
-                    !canMutate ? mutateReason
-                    : ForgeEditorState.IsApplied(selection)
-                        ? "Makes this the active Unity Build Profile again. It is still applied, so its plugin settings are kept."
-                        : "Makes this the active Unity Build Profile. Another profile's applied plugin settings are " +
-                          "reverted to baseline first. Apply the profile afterwards so Play Mode matches it.",
-                    canMutate, () => StartActivate(selection));
+                // Activate, for a selected profile that is not the active one.
+                if (selection == null)
+                    DrawActionButton("Activate", "Select a profile with a Unity Build Profile.", false, null);
+                else
+                    DrawActionButton("Activate",
+                        !canMutate ? mutateReason
+                        : ForgeEditorState.IsApplied(selection)
+                            ? "Makes this the active Unity Build Profile again. It is still applied, so its plugin settings are kept."
+                            : "Makes this the active Unity Build Profile. Another profile's applied plugin settings are " +
+                              "reverted to baseline first. Apply the profile afterwards so Play Mode matches it.",
+                        canMutate, () => StartActivate(selection));
+                GUILayout.FlexibleSpace();
             }
             else
             {
-                var isApplied = ForgeEditorState.IsApplied(selection);
-                // Re-apply also removes overrides that were deleted or disabled
-                // since Apply. Drift only observes editor changes, not config edits.
-                var hasSomethingToApply = isApplied || ForgeEditorState.HasEditorApplicableSettings(selection) || variants.Count > 0;
-                var label = isApplied ? $"Re-apply {WithVariant(name, variant)}" : $"Apply {WithVariant(name, variant)}";
-                string reason;
-                bool enabled;
-                if (!hasSomethingToApply) { reason = "This profile has no plugin settings to apply."; enabled = false; }
-                else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
-                else if (!canMutate) { reason = mutateReason; enabled = false; }
-                else
-                {
-                    reason = "Writes the profile's plugin settings (such as OpenXR features) to the editor so " +
-                             "Play Mode matches this profile. The baseline is recorded for Revert to Baseline.";
-                    enabled = true;
-                }
-                var capturedVariant = variant;
-                DrawActionButton(label, reason, enabled, () => StartApply(selection, capturedVariant));
-            }
-            GUILayout.Space(ActionGap);
+                GUILayout.FlexibleSpace();
 
-            // Slot 4: Build (the primary action, green).
-            {
-                var label = selection != null ? $"Build {WithVariant(name, variant)}" : "Build";
-                string reason;
-                bool enabled;
-                if (selection == null) { reason = "Select a profile with a Unity Build Profile."; enabled = false; }
-                else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
-                else if (!isActive) { reason = "Activate the profile first; builds run on the active Unity Build Profile."; enabled = false; }
-                else if (!canMutate) { reason = mutateReason; enabled = false; }
-                else { reason = "Build this profile through Build Forge."; enabled = true; }
-
-                var prevColor = GUI.backgroundColor;
-                if (enabled) GUI.backgroundColor = new Color(0.3f, 0.8f, 0.3f);
-                var content = EditorGUIUtility.TrTextContentWithIcon(label, reason, "PlayButton");
-                var capturedVariant = variant;
-                using (new EditorGUI.DisabledScope(!enabled))
+                // Apply or Re-apply, with Revert to Baseline in its menu: the two directions
+                // of one applied state. Revert is for whatever is applied, so its part has
+                // its own enabled state.
                 {
-                    if (GUILayout.Button(content, GUILayout.Height(ActionButtonHeight), GUILayout.Width(ActionButtonWidth)))
-                        StartBuild(selection, capturedVariant);
+                    var isApplied = ForgeEditorState.IsApplied(selection);
+                    // Re-apply also removes overrides that were deleted or disabled
+                    // since Apply. Drift only observes editor changes, not config edits.
+                    var hasSomethingToApply = isApplied || ForgeEditorState.HasEditorApplicableSettings(selection) || variants.Count > 0;
+                    string reason;
+                    bool enabled;
+                    if (!hasSomethingToApply) { reason = "This profile has no plugin settings to apply."; enabled = false; }
+                    else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
+                    else if (!canMutate) { reason = mutateReason; enabled = false; }
+                    else
+                    {
+                        reason = "Writes the profile's plugin settings (such as OpenXR features) to the editor so " +
+                                 "Play Mode matches this profile. The baseline is recorded for Revert to Baseline.";
+                        enabled = true;
+                    }
+                    var somethingApplied = ForgeEditorState.HasAppliedGuid;
+                    var capturedVariant = variant;
+                    DrawButtonWithMenu(isApplied ? "Re-apply" : "Apply", reason, enabled, () => StartApply(selection, capturedVariant),
+                        !somethingApplied ? "Revert to Baseline: nothing is applied to the editor."
+                        : canMutate ? "Revert to Baseline: restore every plugin-managed setting to its pre-apply state."
+                        : mutateReason,
+                        somethingApplied && canMutate,
+                        menu => menu.AddItem(new GUIContent("Revert to Baseline"), false, StartRevert));
                 }
-                GUI.backgroundColor = prevColor;
+                GUILayout.Space(ActionGap);
+
+                // Build and Build and Run, the primary actions (green), enabled alike.
+                {
+                    string reason;
+                    bool enabled;
+                    if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
+                    else if (!canMutate) { reason = mutateReason; enabled = false; }
+                    else { reason = null; enabled = true; }
+
+                    var capturedVariant = variant;
+                    var prevColor = GUI.backgroundColor;
+                    if (enabled) GUI.backgroundColor = new Color(0.3f, 0.8f, 0.3f);
+                    DrawActionButton("Build", reason ?? "Build this profile through Build Forge.", enabled,
+                        () => StartBuild(selection, capturedVariant, runPlayer: false), BuildIcon(false));
+                    GUILayout.Space(ActionGap);
+                    DrawActionButton("Build and Run", reason ?? "Build this profile through Build Forge, then run it.", enabled,
+                        () => StartBuild(selection, capturedVariant, runPlayer: true), BuildIcon(true));
+                    GUI.backgroundColor = prevColor;
+                }
             }
 
             GUILayout.Space(8);
@@ -896,30 +950,97 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.Space(8);
         }
 
-        static void DrawActionButton(string label, string tooltip, bool enabled, System.Action onClick)
+        /// <summary>
+        /// A slot split into a button and a ▾ part that opens a menu, like Unity's
+        /// Build button with its options. Each part has its own enabled state and
+        /// tooltip; the menu drops below the whole slot.
+        /// </summary>
+        static void DrawButtonWithMenu(string label, string tooltip, bool enabled, System.Action onClick,
+            string menuTooltip, bool menuEnabled, System.Action<GenericMenu> fillMenu)
+        {
+            var rect = GUILayoutUtility.GetRect(ActionButtonWidth, ActionButtonHeight, GUI.skin.button,
+                GUILayout.Width(ActionButtonWidth), GUILayout.Height(ActionButtonHeight));
+            var buttonRect = new Rect(rect.x, rect.y, rect.width - MenuArrowWidth, rect.height);
+            var arrowRect = new Rect(buttonRect.xMax, rect.y, MenuArrowWidth, rect.height);
+            // The editor skin's joined button halves, as in Unity's own split buttons.
+            var left = GUI.skin.FindStyle("ButtonLeft") ?? GUI.skin.button;
+            var right = GUI.skin.FindStyle("ButtonRight") ?? GUI.skin.button;
+            using (new EditorGUI.DisabledScope(!enabled))
+            {
+                if (GUI.Button(buttonRect, FitContent(label, tooltip, null, left, buttonRect.width), left) && onClick != null)
+                    onClick();
+            }
+            using (new EditorGUI.DisabledScope(!menuEnabled))
+            {
+                if (EditorGUI.DropdownButton(arrowRect, new GUIContent("▾", menuTooltip), FocusType.Passive, right))
+                {
+                    var menu = new GenericMenu();
+                    fillMenu(menu);
+                    menu.DropDown(rect);
+                }
+            }
+        }
+
+        static void DrawActionButton(string label, string tooltip, bool enabled, System.Action onClick, Texture image = null)
         {
             using (new EditorGUI.DisabledScope(!enabled))
             {
-                if (GUILayout.Button(new GUIContent(label, tooltip),
-                        GUILayout.Height(ActionButtonHeight), GUILayout.Width(ActionButtonWidth)) && onClick != null)
+                // Measured and drawn at 16 px: the anvil is a 256 px texture.
+                EditorGUIUtility.SetIconSize(new Vector2(16f, 16f));
+                var clicked = GUILayout.Button(FitContent(label, tooltip, image, GUI.skin.button, ActionButtonWidth),
+                    GUILayout.Height(ActionButtonHeight), GUILayout.Width(ActionButtonWidth));
+                EditorGUIUtility.SetIconSize(Vector2.zero);
+                if (clicked && onClick != null)
                     onClick();
             }
         }
 
         /// <summary>
-        /// Unity's pattern for a menu-opening control: reserve the rect up front
-        /// (valid in every event), EditorGUI.DropdownButton on it, drop the menu
-        /// at that rect. Drawn with the button style so it matches its siblings.
+        /// <paramref name="label"/> for a control <paramref name="width"/> wide: a label
+        /// that doesn't fit ends in "…", since Unity cuts centered text at both ends,
+        /// and the tooltip then starts with the whole label. <paramref name="suffix"/>,
+        /// such as a dropdown's arrow, stays after the shortened text.
+        /// </summary>
+        internal static GUIContent FitContent(string label, string tooltip, Texture image, GUIStyle style, float width,
+            string suffix = "")
+        {
+            var content = new GUIContent(label + suffix, image, tooltip);
+            if (style.CalcSize(content).x <= width)
+                return content;
+            for (var length = label.Length - 1; length > 0; length--)
+            {
+                content.text = label.Substring(0, length).TrimEnd() + "…" + suffix;
+                if (style.CalcSize(content).x <= width)
+                    break;
+            }
+            content.tooltip = string.IsNullOrEmpty(tooltip) ? label : label + "\n\n" + tooltip;
+            return content;
+        }
+
+        // The details header's variant dropdown grows with its label up to this width.
+        const float VariantDropdownMaxWidth = 170f;
+
+        /// <summary>
+        /// The variant dropdown in the details header, a mini pull-down like the Open in
+        /// Inspector button beside it, as wide as its label up to a cap. Unity's pattern
+        /// for a menu-opening control: reserve the rect up front (valid in every event),
+        /// EditorGUI.DropdownButton on it, drop the menu at that rect.
         /// </summary>
         void DrawVariantDropdown(string variant, IReadOnlyList<string> variants, bool canMutate, string mutateReason)
         {
-            var caption = new GUIContent($"Variant: {variant ?? BuildVariants.DefaultLabel}  \u25be",
-                canMutate ? "The build variant for Build and Apply (Project Settings > Build Forge > Build Variants)." : mutateReason);
-            var rect = GUILayoutUtility.GetRect(caption, GUI.skin.button,
-                GUILayout.Height(ActionButtonHeight), GUILayout.Width(ActionButtonWidth));
+            var style = EditorStyles.miniPullDown;
+            var label = $"Variant: {variant ?? BuildVariants.DefaultLabel}";
+            var width = Mathf.Min(style.CalcSize(new GUIContent(label)).x, VariantDropdownMaxWidth);
+            var caption = FitContent(label,
+                canMutate
+                    ? "The variant these details and the CI Command show, and the one Apply, Build and Build and Run use " +
+                      "(Project Settings > Build Forge > Build Variants)."
+                    : mutateReason,
+                null, style, width);
+            var rect = GUILayoutUtility.GetRect(caption, style, GUILayout.Width(width));
             using (new EditorGUI.DisabledScope(!canMutate))
             {
-                if (EditorGUI.DropdownButton(rect, caption, FocusType.Passive, GUI.skin.button))
+                if (EditorGUI.DropdownButton(rect, caption, FocusType.Passive, style))
                 {
                     var menu = new GenericMenu();
                     menu.AddItem(new GUIContent(BuildVariants.DefaultLabel), variant == null, () => SelectVariant(null));
@@ -937,9 +1058,9 @@ namespace BuildForge.Editor.UI
             }
         }
 
-        void StartBuild(ForgeProfile profile, string variant)
+        void StartBuild(ForgeProfile profile, string variant, bool runPlayer)
         {
-            EditorApplication.delayCall += () => ForgeBuildRunner.RunBuild(profile, variant);
+            EditorApplication.delayCall += () => ForgeBuildRunner.RunBuild(profile, variant, out _, runPlayer);
         }
 
         // Activating switches platforms (domain reload) and applying saves

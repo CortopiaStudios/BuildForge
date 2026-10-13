@@ -15,8 +15,8 @@ namespace BuildForge.Editor.UI
     /// Build Profile and apply dropdowns and Build buttons in Unity's main toolbar
     /// (the MainToolbarElement API, Unity 6.3+), one element that the user places.
     /// Picking a profile activates it, like the build window's Activate. The
-    /// second dropdown shows what is applied to the active profile, worded like
-    /// the window's Editor line, and applies it like the window's Apply: it lists
+    /// second dropdown shows what is applied to the active profile, the state as
+    /// its icon and the variant as text, and applies it like the window's Apply: it lists
     /// the variants when the project has any and offers Apply or Re-apply when it
     /// has none. Revert to Baseline follows whenever anything is applied, as in
     /// the window. Build and Build and Run build the active profile with the
@@ -105,6 +105,8 @@ namespace BuildForge.Editor.UI
                 string.Join(",", ForgeSettings.instance.BuildVariants),
                 // The Build buttons' tooltip names the window's variant.
                 ForgeBuildWindow.SessionVariant ?? "",
+                // The Build buttons' icons come in a version per editor theme.
+                EditorGUIUtility.isProSkin ? "dark" : "light",
                 reason ?? "");
         }
 
@@ -127,7 +129,7 @@ namespace BuildForge.Editor.UI
             foreach (var run in new[] { false, true })
             {
                 var button = BuildButtonFor(run, state);
-                yield return new MainToolbarButton(new MainToolbarContent(button.Label, button.Tooltip), () => Build(run))
+                yield return new MainToolbarButton(new MainToolbarContent(button.Label, ForgeBuildWindow.BuildIcon(run), button.Tooltip), () => Build(run))
                 {
                     enabled = button.Enabled,
                 };
@@ -204,7 +206,11 @@ namespace BuildForge.Editor.UI
                 tooltip = variantsConfigured
                     ? "Pick a variant to apply the profile with it: its defines and the profile's plugin settings, so Play Mode matches."
                     : "Apply the profile's plugin settings (such as OpenXR features), so Play Mode matches.";
-            return new MainToolbarContent(ApplyText(variantsConfigured, state.Applied, drift.Count > 0, appliedVariant), tooltip);
+            var text = ApplyText(variantsConfigured, state.Applied, appliedVariant);
+            var icon = ApplyIcon(state.Applied, drift.Count > 0);
+            return icon != null
+                ? new MainToolbarContent(text, EditorGUIUtility.IconContent(icon).image as Texture2D, tooltip)
+                : new MainToolbarContent(text, tooltip);
         }
 
         /// <summary>
@@ -217,20 +223,22 @@ namespace BuildForge.Editor.UI
             => activeBuildProfileName ?? "Platform profile";
 
         /// <summary>
-        /// The apply dropdown's label, worded like the build window's Editor line:
-        /// "Not applied", or "Applied" (", drifted" when the editor settings
-        /// changed since) with the applied variant in parentheses, "default
-        /// variant" for the default build once the project has variants. The
-        /// state comes first because Unity 6.6 cuts toolbar dropdown text at
-        /// 120 px: a long variant name ends in an ellipsis there.
+        /// The apply dropdown's label: "Not applied", or what is applied, with the
+        /// state shown by <see cref="ApplyIcon"/>: the applied variant, "&lt;default&gt;"
+        /// for the default build once the project has variants, "Applied" without
+        /// variants. Only that much is text because Unity 6.6 cuts toolbar dropdown
+        /// text at 120 px ("Applied (Development)" ended in an ellipsis there).
         /// </summary>
-        internal static string ApplyText(bool variantsConfigured, bool applied, bool drifted, string appliedVariant)
+        internal static string ApplyText(bool variantsConfigured, bool applied, string appliedVariant)
         {
             if (!applied)
                 return "Not applied";
-            var text = drifted ? "Applied, drifted" : "Applied";
-            return appliedVariant != null ? $"{text} ({appliedVariant})" : variantsConfigured ? $"{text} (default variant)" : text;
+            return appliedVariant ?? (variantsConfigured ? BuildVariants.DefaultLabel : "Applied");
         }
+
+        /// <summary>The apply dropdown's icon: none while nothing is applied, a check mark while applied, Unity's warning icon once drifted.</summary>
+        internal static string ApplyIcon(bool applied, bool drifted)
+            => !applied ? null : drifted ? "console.warnicon.sml" : "GreenCheckmark";
 
         internal readonly struct ProfileEntry
         {
@@ -468,7 +476,7 @@ namespace BuildForge.Editor.UI
                 try
                 {
                     ForgeEditorState.Apply(profile, variant);
-                    // Build and Apply in the window now default to the variant picked here.
+                    // Apply and the Build buttons in the window now default to the variant picked here.
                     ForgeBuildWindow.SetSelectedVariant(variant);
                 }
                 catch (Exception e)

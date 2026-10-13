@@ -90,7 +90,7 @@ Listing `Default`, an unknown name or a name twice in Allowed Variants is an err
 
 | Where | How |
 |---|---|
-| Build window | The **Variant** dropdown in the action bar, shown once variants exist. It applies to both Build and Apply. The choice is remembered for the editor session; in a new session it starts at the applied variant. |
+| Build window | The **Variant** dropdown in the details header, shown once variants exist. The details and the CI Command show that variant, for any selected profile, and Apply, Build and Build and Run use it. The choice is remembered for the editor session; in a new session it starts at the applied variant. |
 | Main toolbar | The apply dropdown lists the default build and each variant; picking one applies the active profile with it and makes the build window select it too. **Build** and **Build and Run** build the build window's variant. |
 | Command line | `-forgeVariant Internal`. `-forgeVariant Default` (any casing) is the default build, the same as leaving the argument out. Other names must match a configured variant exactly, including case. An unknown or disallowed variant, or an empty value, fails the build. |
 | Your scripts | `ForgeBuildRunner.RunBuild(forgeProfile, "Internal")`. |

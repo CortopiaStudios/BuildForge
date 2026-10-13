@@ -96,7 +96,7 @@ If a setting cannot be restored, its baseline is kept for another attempt, and A
 
 While a profile is applied, Build Forge compares the current editor state of each applied setting with the state right after the Apply. A difference is **drift**: someone, or some package, changed an applied setting since. A missing variant define on the applied Build Profile counts as drift too. Editing the profile's own configuration is not drift; use Re-apply for that.
 
-The build window lists drifted settings, for example `OpenXR (Android)`, with **Dismiss Drift**, and the toolbar label reads **Applied, drifted**. The fixes:
+The build window lists drifted settings, for example `OpenXR (Android)`, with **Dismiss Drift**, and the toolbar's apply dropdown shows the warning icon. The fixes:
 
 - **Re-apply** writes the profile's settings again.
 - **Revert to Baseline** undoes the Apply.

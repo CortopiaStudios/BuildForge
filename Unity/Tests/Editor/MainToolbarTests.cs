@@ -191,19 +191,39 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void Labels_ShowTheActiveBuildProfileAndWhatIsApplied_LikeTheWindowsEditorLine()
+        public void Labels_ShowTheActiveBuildProfileAndWhatIsApplied()
         {
             Assert.AreEqual("Quest", ForgeMainToolbar.ProfileText("Quest"));
             Assert.AreEqual("Platform profile", ForgeMainToolbar.ProfileText(null));
-            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(true, false, false, "Internal"));
-            Assert.AreEqual("Applied (default variant)", ForgeMainToolbar.ApplyText(true, true, false, null));
-            Assert.AreEqual("Applied (Internal)", ForgeMainToolbar.ApplyText(true, true, false, "Internal"));
-            Assert.AreEqual("Applied, drifted (Internal)", ForgeMainToolbar.ApplyText(true, true, true, "Internal"));
-            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(false, false, false, null));
-            Assert.AreEqual("Applied", ForgeMainToolbar.ApplyText(false, true, false, null));
-            Assert.AreEqual("Applied, drifted", ForgeMainToolbar.ApplyText(false, true, true, null));
+            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(true, false, "Internal"));
+            Assert.AreEqual("<default>", ForgeMainToolbar.ApplyText(true, true, null));
+            Assert.AreEqual("Internal", ForgeMainToolbar.ApplyText(true, true, "Internal"));
+            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(false, false, null));
+            Assert.AreEqual("Applied", ForgeMainToolbar.ApplyText(false, true, null));
             // A variant applied before the variant list was emptied is still named, as in the window.
-            Assert.AreEqual("Applied (Internal)", ForgeMainToolbar.ApplyText(false, true, false, "Internal"));
+            Assert.AreEqual("Internal", ForgeMainToolbar.ApplyText(false, true, "Internal"));
+        }
+
+        [Test]
+        public void ApplyIcon_ShowsTheState_CheckMarkWhileApplied_WarningOnceDrifted()
+        {
+            Assert.IsNull(ForgeMainToolbar.ApplyIcon(applied: false, drifted: false));
+            Assert.AreEqual("GreenCheckmark", ForgeMainToolbar.ApplyIcon(applied: true, drifted: false));
+            Assert.AreEqual("console.warnicon.sml", ForgeMainToolbar.ApplyIcon(applied: true, drifted: true));
+            // Both icons exist in the editor.
+            Assert.IsNotNull(EditorGUIUtility.FindTexture("GreenCheckmark"));
+            Assert.IsNotNull(EditorGUIUtility.FindTexture("console.warnicon.sml"));
+        }
+
+        [Test]
+        public void BuildIcons_AreTheAnvilOnBuild_AndUnitysPlayIconOnBuildAndRun()
+        {
+            // Shared by the build window's action bar and the toolbar's buttons.
+            var anvil = ForgeBuildWindow.BuildIcon(run: false);
+            Assert.IsNotNull(anvil, "The anvil icon did not load from the package's Editor/Icons folder.");
+            StringAssert.EndsWith("ForgeProfile", anvil.name);
+            Assert.IsNotNull(ForgeBuildWindow.BuildIcon(run: true));
+            Assert.AreSame(EditorGUIUtility.IconContent("PlayButton").image, ForgeBuildWindow.BuildIcon(run: true));
         }
     }
 }

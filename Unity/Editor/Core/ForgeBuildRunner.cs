@@ -59,7 +59,7 @@ namespace BuildForge.Editor.Core
         /// entry point) can inspect post-build restore/cleanup failures that
         /// would otherwise be swallowed after a successful build.
         /// <paramref name="runPlayer"/> also runs the built player, like Unity's
-        /// Build And Run (the main toolbar's Build and Run).
+        /// Build And Run (Build and Run in the build window and the main toolbar).
         /// </summary>
         internal static BuildReport RunBuild(ForgeProfile forgeProfile, string variant, out ForgeBuildContext context,
             bool runPlayer = false)
@@ -99,7 +99,7 @@ namespace BuildForge.Editor.Core
                 throw new InvalidOperationException(
                     $"Unity Build Profile '{forgeProfile.BuildProfile.name}' must be active before building; " +
                     $"the active profile is {activeName}. Activate it via the Build Forge window's " +
-                    "'Activate <profile>' button, BuildProfile.SetActiveBuildProfile(), or the -activeBuildProfile " +
+                    "'Activate' button or the main toolbar's profile dropdown, BuildProfile.SetActiveBuildProfile(), or the -activeBuildProfile " +
                     "command line argument.");
             }
 
