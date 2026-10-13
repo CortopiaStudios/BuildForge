@@ -65,8 +65,11 @@ namespace BuildForge.Editor.Core
         static string GetManagedCodeVariant(ForgeBuildContext context)
         {
 #if UNITY_6000_6_OR_NEWER
-            var setting = PlayerSettings.GetManagedCodeVariant(
-                UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(context.BuildTargetGroup)).ToString();
+            // A dedicated server has Player Settings of its own, as the build uses.
+            var target = BuildProfileUtility.IsDedicatedServer(context.BuildProfile)
+                ? UnityEditor.Build.NamedBuildTarget.Server
+                : UnityEditor.Build.NamedBuildTarget.FromBuildTargetGroup(context.BuildTargetGroup);
+            var setting = PlayerSettings.GetManagedCodeVariant(target).ToString();
             return EffectiveManagedCodeVariant(setting, context.DevelopmentBuild, VariantBuildSettings.IsScriptDebugging(context.BuildProfile));
 #else
             return "";
