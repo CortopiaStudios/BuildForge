@@ -95,8 +95,9 @@ namespace BuildForge.Editor.Core
                 DialogOverride();
                 return;
             }
-            // Batch mode has nobody to show it to; the log has the message.
-            if (Application.isBatchMode)
+            // Batch mode and CI, also an editor started with -forgeCI, have nobody to
+            // show it to; the log has the message.
+            if (Application.isBatchMode || BuildEnvironment.IsCI)
                 return;
             if (EditorUtility.DisplayDialog(DialogTitle, DialogMessage, "Open Build Forge", "Close"))
                 // Once the build call has returned.
