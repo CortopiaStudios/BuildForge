@@ -21,7 +21,7 @@ Build Forge addresses these gaps without duplicating what Build Profiles already
 Compares a Build Profile's Player Settings against the platform defaults and shows only what's different. Uses YAML-to-YAML comparison for full type coverage — no property types are skipped.
 
 - **Colors** render as swatches
-- **Object references** (textures, assets) render as thumbnails
+- **Object references** (textures, assets) render as read-only object fields
 - **Enums** show display names resolved via reflection (forward-compatible with new Unity versions)
 - **Integer-backed enums** resolved via reflection on `PlayerSettings` C# properties
 - **Booleans** show as Yes/No
@@ -29,7 +29,7 @@ Compares a Build Profile's Player Settings against the platform defaults and sho
 - **Display name overrides** for properties where Unity's internal name differs from the UI label (extensible dictionary)
 - **Copy button** to export the diff as a markdown table
 
-Shown inline in the Build Forge section of the Build Profile editor (under a "Player Overrides" foldout). The same view is also available as a standalone window — **Window > Build Forge > Player Overrides** — in its Single Profile mode, with a dropdown to inspect any Unity Build Profile in the project, including ones without Build Forge settings.
+Shown in the Inspector view of the Build Forge settings (Assets > Build Forge > Edit Build Forge Settings), under a "Player Overrides" foldout. The same view is also available as a standalone window — **Window > Build Forge > Player Overrides** — in its Single Profile mode, with a dropdown to inspect any Unity Build Profile in the project, including ones without Build Forge settings.
 
 The window's **Matrix** mode puts every Unity Build Profile that has Player Settings of its own side by side: one row per Player Setting that differs from Project Settings in any of them, one column per profile. A Build Profile's Player Settings are a full copy, so a later change to Project Settings, such as a version bump, does not reach it; the matrix makes such stale values visible next to deliberate overrides. Each platform's profiles are led by a column with that platform's Project Settings values, since a per-platform setting has one value per platform. That keeps every cell to one value (Windows and macOS profiles get separate groups, because Unity keys some of their settings separately).
 
@@ -134,7 +134,7 @@ The included OpenXR plugin configures XR settings and features per Build Profile
 
 - **All OpenXR settings** auto-discovered via SerializedObject (render mode, depth submission, latency optimization, foveated rendering, etc.) — forward-compatible with new settings in future OpenXR versions
 - **Feature overrides** — Enable, Disable, or No Override per feature; or **Only Listed Features**, an allow-list: the ticked features on, every other visible feature off, and hidden features (vendor SDKs' own) left to their packages
-- **Interaction profile overrides** — optional, hidden by default. Most projects should enable all supported interaction profiles globally in XR Plug-in Management and let the OpenXR runtime select the right one at launch. Per-profile overrides are available for cases like excluding vendor-specific profiles from a build. Enable in **Project Settings > Build Forge > OpenXR > Interaction Profiles**.
+- **Interaction profile overrides** — optional, hidden by default. Most projects should enable all supported interaction profiles globally in XR Plug-in Management and let the OpenXR runtime select the right one at launch. Per-profile overrides are available for cases like excluding vendor-specific profiles from a build. Enable in **Project Settings > Build Forge > Installed Plugins > OpenXR > Interaction Profiles**.
 - **Disabled checkbox** per feature showing the effective state at a glance
 - Only shown for platforms that have OpenXR settings configured
 
@@ -170,7 +170,7 @@ Four parameters can be overridden, each from a configurable environment variable
 | Key Alias | `ANDROID_KEY_ALIAS` |
 | Key Password | `ANDROID_KEY_PASSWORD` |
 
-Default env var names are configured globally in **Project Settings > Build Forge > Android Keystore Env**. Per-profile settings inherit from global by default; each field can be switched to **Override** (custom env var name) or cleared (skip that parameter). If an env var is not set or the name is empty, the existing value from tiers 1/2 is left untouched.
+Default env var names are configured globally in **Project Settings > Build Forge > Installed Plugins > Android Keystore Env**. Per-profile settings inherit from global by default; each field can be switched to **Override** (custom env var name) or cleared (skip that parameter). If an env var is not set or the name is empty, the existing value from tiers 1/2 is left untouched.
 
 Opt-in per profile via the **Enabled** toggle (off by default). When enabled, unambiguous misconfigurations fail the build before it starts instead of degrading silently:
 
@@ -205,7 +205,7 @@ Orchestrates builds through Unity 6's profile-aware `BuildPipeline.BuildPlayer(B
 3. Writes the build manifest to a Library temp folder that the build pipeline adds to the player's StreamingAssets (the project's Assets folder is never touched)
 4. Calls `BuildPipeline.BuildPlayer()` with the Build Profile — scenes, player settings, scripting defines, and build options are handled natively by the profile
 5. In `finally`: runs plugin `OnPostBuild` in reverse order, cleans up manifest
-6. After a successful build from the editor, shows the built file in the file browser (Explorer, Finder, or the Linux file manager), like Unity's own Build button. Never in CI or batch mode; disable in **Project Settings > Build Forge > Output > Reveal Build In File Browser**
+6. After a successful build from the editor, shows the built file in the file browser (Explorer, Finder, or the Linux file manager), like Unity's own Build button. Never for CI builds, or for Build and Run, which runs the player instead; disable in **Project Settings > Build Forge > Output > Reveal Build In File Browser**
 
 With **Remove Previous Build Output** on, every build first removes the artifact file it is about to write (the APK, AAB or Windows/Linux executable), then the files the previous build of the same profile and variant produced in the destination, including old filenames after a rename and supporting files such as `Game_Data` or the IL2CPP backup folder, and the folders that build created once they are empty. After the build, Build Forge records what it produced: every file and folder that is new in the destination since just before the build, plus the entries of Unity's build report there that the build rewrote. The comparison is what catches files packages write themselves, which the report never lists. The record is per user, in `UserSettings/ForgeBuildOutputs.asset`; nothing is written into the build folder. The destination is the artifact's parent directory for APK/AAB and desktop players, and the output path itself for directory outputs such as WebGL, iOS and Android exports. If the destination changes, the previous build's files are removed from where they were recorded, unless that place is missing, offline, or inside another Unity project or Git checkout that does not contain this project; a file there that cannot be deleted is only reported. Records are tied to the project folder's path, so a copied or moved project never cleans the original's recorded output; if the copy's output path resolves to the very same artifact file, that file is still replaced as usual.
 
@@ -222,9 +222,12 @@ Build Forge attempts to restore plugin settings after both successful builds and
 Builds can also be started from your own editor scripts:
 
 ```csharp
+using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
+using UnityEditor.Build.Profile;
 
-var forgeProfile = AssetDatabase.LoadAssetAtPath<ForgeProfile>("Assets/Settings/Release.asset");
+var buildProfile = BuildProfile.GetActiveBuildProfile();
+var forgeProfile = buildProfile != null ? buildProfile.GetComponent<ForgeProfile>() : null;
 var report = ForgeBuildRunner.RunBuild(forgeProfile); // returns Unity's BuildReport
 ```
 
@@ -264,7 +267,7 @@ Prevents builds that bypass Build Forge. Unity's own Build and Build And Run are
 
 ### Scripting Define per Build Profile
 
-Build Forge keeps a `BUILD_PROFILE_<NAME>` scripting define in each referenced Unity Build Profile's own Scripting Defines list (upper-cased name, runs of non-alphanumerics collapsed to one underscore: "Quest 3" gives `BUILD_PROFILE_QUEST_3`; letters outside ASCII are kept, so "Übung" gives `BUILD_PROFILE_ÜBUNG`). Unity applies that list whenever the profile is active, in the editor and in the build, so code can branch at compile time per profile:
+Build Forge keeps a `BUILD_PROFILE_<NAME>` scripting define in each referenced Unity Build Profile's own Scripting Defines list (upper-cased name, runs of non-alphanumerics between letters or digits collapsed to one underscore and any at the start or end left out: "Quest 3" gives `BUILD_PROFILE_QUEST_3`; letters outside ASCII are kept, so "Übung" gives `BUILD_PROFILE_ÜBUNG`). Unity applies that list whenever the profile is active, in the editor and in the build, so code can branch at compile time per profile:
 
 ```csharp
 #if BUILD_PROFILE_QUEST_3
@@ -350,7 +353,7 @@ Requires Unity 6000.3 or later. The package depends on two of Unity's built-in m
 ## Setup
 
 1. **Add Build Forge settings to a Unity Build Profile**: select the Build Profile asset and use Assets > Build Forge > Add Build Forge Settings (also in the Project window's context menu, and as **Add Build Forge Settings** in the Build Profile's "Build Forge" section). The settings are stored inside the Build Profile's `.asset`, so they share its name and file, and renaming, duplicating or deleting the Build Profile carries them. Each Build Profile has at most one; variants that differ only in plugin settings need their own Unity Build Profile
-2. **Edit them** in the "Build Forge" section of the Build Profile, last in Unity's Build Profiles window and in the Inspector when the Build Profile asset is selected, which ends with **Remove Build Forge Settings**; also Assets > Build Forge > Edit Build Forge Settings or **Open in Inspector** in the build window, which show them on their own in the Inspector.
+2. **Edit them** in the "Build Forge" section of the Build Profile, last in Unity's Build Profiles window and in the Inspector when the Build Profile asset is selected, which ends with **Remove Build Forge Settings**; **Open in Inspector** in the build window selects the Build Profile for that. Assets > Build Forge > Edit Build Forge Settings shows them on their own in the Inspector, with the Player Overrides foldout.
 3. **Configure output path** (optional) — supports `{ProjectName}`, `{ProfileName}` (the Unity Build Profile's name), `{Target}` and `{Variant}` placeholders (default: `Builds/{Target}/{ProfileName}/{Variant}/{ProjectName}`; `{Variant}` is `Default` for the default build once variants exist and collapses when none are configured). A profile stores a path only once you customize it; otherwise it follows the default, and Reset returns to it. The window, the output path, the scripting define and the manifest all use the Unity Build Profile's name
 4. **Configure plugins** (e.g. OpenXR feature overrides) directly in the Build Forge section. Edits are written to the Build Profile's `.asset` file immediately, so the YAML always matches the inspector (opt out in **Project Settings > Build Forge > Profiles > Save Profiles On Edit**)
 5. **Build** via Window > Build Forge > Build — select the profile, click "Activate" if it isn't active already, optionally "Apply" to iterate in Play Mode, then "Build" or "Build and Run"
@@ -365,7 +368,7 @@ Unity keeps the active Build Profile in `Library/`, and Build Forge keeps what i
 
 ### Output Path Sanitization
 
-The `{ProjectName}` placeholder uses `Application.productName`, which often contains spaces and special characters that cause problems with build tools, CI scripts, and path handling across platforms. By default, Build Forge sanitizes the product name when resolving `{ProjectName}`:
+The `{ProjectName}` placeholder uses Player Settings > Product Name, which often contains spaces and special characters that cause problems with build tools, CI scripts, and path handling across platforms. By default, Build Forge sanitizes the product name when resolving `{ProjectName}`:
 
 | Character | Replacement | Example |
 |---|---|---|

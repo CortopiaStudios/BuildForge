@@ -2,7 +2,7 @@
 
 A plugin is a class that takes part in every build of the profiles it applies to: it can change settings before the player build, restore them afterwards, store per-profile and project-wide configuration, draw UI in the Build Forge section, warn in the build window, and add data to the manifest. The bundled plugins use the same interface.
 
-The **Example Integration** sample contains a complete plugin, Application ID Suffix, with every part this page describes.
+The **Example Integration** sample contains a complete plugin, Application ID Suffix, with most parts this page describes; it has no Gradle step, applies nothing to the editor and has no project-wide settings.
 
 ## A minimal plugin
 

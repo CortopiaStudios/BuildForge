@@ -58,7 +58,7 @@ An editor crash or a killed editor process cannot run step 9. Restore the change
 Two states, kept apart on purpose:
 
 - **Active** is Unity's: the Build Profile Unity currently uses. The build window tags it **Active**.
-- **Applied** is Build Forge's: the profile whose plugin settings are written to the editor right now. The build window tags it **Applied** and the main toolbar's apply dropdown names it.
+- **Applied** is Build Forge's: the profile whose plugin settings are written to the editor right now. The build window tags it **Applied**, and the main toolbar's apply dropdown shows whether the active profile is the applied one, and with which variant.
 
 Build Forge's Activate keeps the two consistent. Unity can change the active profile on its own, and Build Forge then warns; see [When Unity switches profiles on its own](#when-unity-switches-profiles-on-its-own).
 
@@ -122,7 +122,7 @@ The build window reminds you while a profile is applied. A `BUILD_VARIANT_` defi
 
 ## The BUILD_PROFILE_ define
 
-Build Forge keeps one scripting define in each Unity Build Profile with Build Forge settings: `BUILD_PROFILE_` plus the profile's name, upper-cased, with every run of other characters collapsed to one underscore. "Quest 3" gives `BUILD_PROFILE_QUEST_3`. Letters outside ASCII are kept: "Übung" gives `BUILD_PROFILE_ÜBUNG`.
+Build Forge keeps one scripting define in each Unity Build Profile with Build Forge settings: `BUILD_PROFILE_` plus the profile's name, upper-cased, with every run of other characters between letters or digits collapsed to one underscore and any at the start or end left out. "Quest 3" gives `BUILD_PROFILE_QUEST_3`, "(Quest)" gives `BUILD_PROFILE_QUEST`. Letters outside ASCII are kept: "Übung" gives `BUILD_PROFILE_ÜBUNG`.
 
 The define is in the Build Profile's own Scripting Defines list, which Unity applies whenever the profile is active, in the editor and in builds:
 

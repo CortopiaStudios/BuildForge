@@ -10,7 +10,7 @@
 | The Build Profile Inspector's context menu | **Add** or **Edit Build Forge Settings** |
 | The build window | **Open in Inspector** in the details header, or double-click a profile in the list |
 
-**Edit** and **Open in Inspector** show the settings on their own in the Inspector. That view also has the **Unity Build Profile** field (read-only, with **Select**), a **Player Overrides** foldout and an **Open Build Window** button, which the section inside Unity's Build Profile editor leaves out because that editor already shows the profile and its Player Settings.
+**Edit** shows the settings on their own in the Inspector. That view also has the **Unity Build Profile** field (read-only, with **Select**) and a **Player Overrides** foldout, which the section inside Unity's Build Profile editor leaves out because that editor already shows the profile and its Player Settings. **Open in Inspector** and a double-click in the build window select the Unity Build Profile instead, so the Inspector shows Unity's settings and the Build Forge section. Both views end with an **Open Build Window** button.
 
 **Remove** asks first, then deletes the profile's plugin settings, output path and variant restrictions; version control can bring them back. The profile's `BUILD_PROFILE_<NAME>` define stays in its Scripting Defines list.
 
@@ -147,7 +147,7 @@ Stored in `ProjectSettings/ForgeSettings.asset`; commit it.
 | Build Manifest | Write Build Manifest | On | Every build gets [the manifest](build-manifest.md). |
 | | Log Manifest Contents | Off | Logs the manifest's JSON during the build. |
 | Output | Sanitize Product Name | On | Sanitizes `{ProjectName}`. |
-| | Reveal Build In File Browser | On | After a successful editor build, shows the built file in Explorer, Finder or the Linux file manager. Never for CI builds. |
+| | Reveal Build In File Browser | On | After a successful editor build, shows the built file in Explorer, Finder or the Linux file manager. Never for CI builds, or for Build and Run, which runs the player instead. |
 | Profiles | Save Profiles On Edit | On | Writes Build Forge settings to disk right after each edit. |
 | | Maintain Build Profile Defines | On | Keeps the `BUILD_PROFILE_<NAME>` define in each profile. |
 | Play Mode | Play Mode Follows Applied Profile | On | Applying a profile of another platform than Standalone also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders, Initialize XR on Startup and OpenXR feature states. See [Apply](concepts.md#apply-and-re-apply). |

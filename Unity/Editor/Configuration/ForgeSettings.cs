@@ -23,7 +23,7 @@ namespace BuildForge.Editor.Configuration
         [Tooltip("When enabled, the {ProjectName} placeholder in output paths is sanitized for safe filenames.")]
         [SerializeField] bool mangleProductName = true;
 
-        [Tooltip("When enabled, a successful build started from the editor is shown in the file browser (Explorer, Finder, or the Linux file manager), like Unity's own Build button. Never in CI or batch mode.")]
+        [Tooltip("When enabled, a successful build started from the editor is shown in the file browser (Explorer, Finder, or the Linux file manager), like Unity's own Build button. Never for CI builds, or for Build and Run, which runs the player instead.")]
         [SerializeField] bool revealBuildInFileBrowser = true;
 
         [Tooltip("When enabled, Build Forge settings are written to disk right after they are edited in the Inspector, so the Build Profile's .asset file always matches what the Inspector shows.")]

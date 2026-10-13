@@ -92,7 +92,7 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.PropertyField(revealProp,
                 new UnityEngine.GUIContent("Reveal Build In File Browser",
                     "After a successful build started from the editor, show the built file in Explorer, " +
-                    "Finder, or the Linux file manager, like Unity's own Build button. Never in CI or batch mode."));
+                    "Finder, or the Linux file manager, like Unity's own Build button. Never for CI builds, or for Build and Run, which runs the player instead."));
 
             EditorGUILayout.Space(8);
 
