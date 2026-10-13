@@ -476,22 +476,23 @@ namespace BuildForge.Editor.UI
             // Both rows' icons are measured and drawn at 16 px: the anvil is a 256 px
             // texture, and measured as such it set the details pane's minimum width, so
             // a narrow window scrolled the pane sideways, out of sight of the header's buttons.
-            EditorGUIUtility.SetIconSize(new Vector2(16f, 16f));
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.PrefixLabel("Unity Build Profile");
-            if (GUILayout.Button(content, isActive ? EditorStyles.boldLabel : EditorStyles.label,
-                    GUILayout.Height(EditorGUIUtility.singleLineHeight)))
-                EditorGUIUtility.PingObject(buildProfile);
-            EditorGUILayout.EndHorizontal();
+            using (new EditorGUIUtility.IconSizeScope(new Vector2(16f, 16f)))
+            {
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.PrefixLabel("Unity Build Profile");
+                if (GUILayout.Button(content, isActive ? EditorStyles.boldLabel : EditorStyles.label,
+                        GUILayout.Height(EditorGUIUtility.singleLineHeight)))
+                    EditorGUIUtility.PingObject(buildProfile);
+                EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.BeginHorizontal();
-            EditorGUILayout.PrefixLabel("Build Forge Settings");
-            if (GUILayout.Button(new GUIContent("Stored in the Unity Build Profile", AssetPreview.GetMiniThumbnail(profile),
-                        "Click to edit the Build Forge settings in the Inspector, in the Unity Build Profile's Build Forge section."),
-                    EditorStyles.label, GUILayout.Height(EditorGUIUtility.singleLineHeight)))
-                Selection.activeObject = InspectorTarget(profile);
-            EditorGUILayout.EndHorizontal();
-            EditorGUIUtility.SetIconSize(Vector2.zero);
+                EditorGUILayout.BeginHorizontal();
+                EditorGUILayout.PrefixLabel("Build Forge Settings");
+                if (GUILayout.Button(new GUIContent("Stored in the Unity Build Profile", AssetPreview.GetMiniThumbnail(profile),
+                            "Click to edit the Build Forge settings in the Inspector, in the Unity Build Profile's Build Forge section."),
+                        EditorStyles.label, GUILayout.Height(EditorGUIUtility.singleLineHeight)))
+                    Selection.activeObject = InspectorTarget(profile);
+                EditorGUILayout.EndHorizontal();
+            }
 
             EditorGUILayout.LabelField("Platform", PlatformLabel(PlatformName(buildProfile), target));
 
@@ -1027,10 +1028,10 @@ namespace BuildForge.Editor.UI
             using (new EditorGUI.DisabledScope(!enabled))
             {
                 // Measured and drawn at 16 px: the anvil is a 256 px texture.
-                EditorGUIUtility.SetIconSize(new Vector2(16f, 16f));
-                var clicked = GUILayout.Button(FitContent(label, tooltip, image, GUI.skin.button, ActionButtonWidth),
-                    GUILayout.Height(ActionButtonHeight), GUILayout.Width(ActionButtonWidth));
-                EditorGUIUtility.SetIconSize(Vector2.zero);
+                bool clicked;
+                using (new EditorGUIUtility.IconSizeScope(new Vector2(16f, 16f)))
+                    clicked = GUILayout.Button(FitContent(label, tooltip, image, GUI.skin.button, ActionButtonWidth),
+                        GUILayout.Height(ActionButtonHeight), GUILayout.Width(ActionButtonWidth));
                 if (clicked && onClick != null)
                     onClick();
             }
