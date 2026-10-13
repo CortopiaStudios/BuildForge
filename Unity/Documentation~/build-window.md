@@ -6,7 +6,7 @@ Open it with **Window > Build Forge > Build**. It is laid out like Unity's Build
 
 ### Profile list
 
-One row per Unity Build Profile with Build Forge settings, sorted by platform, then name. A row shows the platform icon and the profile's name, and on the right:
+One row per Unity Build Profile with Build Forge settings, sorted by platform, then name. The platform is the profile's own, as in Unity's Build Profiles window: a Meta Quest profile shows Meta Quest's icon and name, although it builds for Android. A row shows the platform icon and the profile's name, and on the right:
 
 - **Active**, outlined in green: Unity's active Build Profile.
 - **Applied**: the profile whose plugin settings are applied to the editor; its name is also bold.
@@ -34,7 +34,7 @@ So Revert to Baseline is always in the notices, whichever profile is selected.
 | Variant | The variant the details below and the CI Command show, for any selected profile, and the one Apply, Build and Build and Run use, as do the main toolbar's Build buttons: `<default>` or a configured name. Variants the selected profile does not allow are listed as unavailable. A long name ends in "…"; the tooltip then starts with the whole label. |
 | Unity Build Profile | The asset, marked "(active)" when it is; click to show it in the Project window. |
 | Build Forge Settings | Click to edit them in the Inspector, in the Unity Build Profile's Build Forge section. |
-| Platform | The build target. |
+| Platform | The profile's platform, and the build target it builds for when that has another name: `Meta Quest (Android)`, `Windows (StandaloneWindows64)`. |
 | Product Name | Shown for a variant whose build is marked, for example `My Game (Internal)`. |
 | Output | The resolved output path for the active profile; the template, marked as such, for the others. |
 | Scripting Define(s) | The profile's `BUILD_PROFILE_` define, and the selected variant's define. |

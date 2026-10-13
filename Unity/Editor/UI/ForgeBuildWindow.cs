@@ -120,8 +120,7 @@ namespace BuildForge.Editor.UI
                 // Profile last, as in the main toolbar's menu. Not with a U+FFFF
                 // sort key: culture comparison ignores that character.
                 .OrderBy(p => p.BuildProfile == null)
-                .ThenBy(p => p.BuildProfile != null ? BuildProfileUtility.GetBuildTarget(p.BuildProfile).ToString() : "",
-                    System.StringComparer.OrdinalIgnoreCase)
+                .ThenBy(p => p.BuildProfile != null ? PlatformName(p.BuildProfile) : "", System.StringComparer.OrdinalIgnoreCase)
                 .ThenBy(p => p.DisplayName)
                 .ToList();
 
@@ -294,9 +293,7 @@ namespace BuildForge.Editor.UI
 
             // Platform icon + Build Forge profile name.
             var iconRect = new Rect(rect.x + 6f, rect.y + (RowHeight - RowIconSize) / 2f, RowIconSize, RowIconSize);
-            var icon = hasBuildProfile
-                ? PlatformIcon(BuildProfileUtility.GetBuildTarget(profile.BuildProfile))
-                : null;
+            var icon = hasBuildProfile ? PlatformIcon(profile.BuildProfile) : null;
             if (icon == null)
                 icon = AssetPreview.GetMiniThumbnail(profile);
             if (icon != null)
@@ -395,6 +392,43 @@ namespace BuildForge.Editor.UI
             return texture;
         }
 
+        static readonly Dictionary<string, Texture> profilePlatformIconCache = new();
+
+        /// <summary>
+        /// Unity's small icon for the profile's own platform, as in the Build Profiles
+        /// window: Meta Quest's for a Meta Quest profile, which builds for Android. The
+        /// build target's icon when Unity's platform lookup is unavailable.
+        /// </summary>
+        internal static Texture PlatformIcon(BuildProfile profile)
+        {
+            var iconName = BuildProfilePlatform.IconName(profile);
+            if (iconName != null)
+            {
+                if (!profilePlatformIconCache.TryGetValue(iconName, out var icon))
+                    profilePlatformIconCache[iconName] = icon =
+                        EditorGUIUtility.FindTexture(iconName + ".Small") ?? EditorGUIUtility.FindTexture(iconName);
+                if (icon != null)
+                    return icon;
+            }
+            return PlatformIcon(BuildProfileUtility.GetBuildTarget(profile));
+        }
+
+        /// <summary>
+        /// The profile's own platform, as Unity's Build Profiles window names it ("Meta
+        /// Quest", "Windows"); the build target when Unity's platform lookup is unavailable.
+        /// </summary>
+        internal static string PlatformName(BuildProfile profile)
+            => BuildProfilePlatform.DisplayName(profile) ?? BuildProfileUtility.GetBuildTarget(profile).ToString();
+
+        /// <summary>
+        /// The Platform row: the platform, and the build target it builds for when that has
+        /// another name, "Meta Quest (Android)" or "Windows (StandaloneWindows64)", but "Android™".
+        /// </summary>
+        internal static string PlatformLabel(string platform, BuildTarget target)
+            => string.Equals(new string(platform.Where(char.IsLetterOrDigit).ToArray()), target.ToString(), StringComparison.OrdinalIgnoreCase)
+                ? platform
+                : $"{platform} ({target})";
+
         /// <summary>
         /// Details for the selected profile: the Unity Build Profile, platform,
         /// output path, scripting define, the full text of any issues, and the
@@ -455,7 +489,7 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.EndHorizontal();
             EditorGUIUtility.SetIconSize(Vector2.zero);
 
-            EditorGUILayout.LabelField("Platform", target.ToString());
+            EditorGUILayout.LabelField("Platform", PlatformLabel(PlatformName(buildProfile), target));
 
             var variant = CurrentVariant;
             var markedName = BuildVariants.MarkedProductName(PlayerSettings.productName, variant, BuildVariants.ShouldMark(variant));
@@ -554,11 +588,11 @@ namespace BuildForge.Editor.UI
         {
             const float IconBox = 48f;
             var buildProfile = profile.BuildProfile;
-            var icon = buildProfile != null ? PlatformIcon(BuildProfileUtility.GetBuildTarget(buildProfile)) : null;
+            var icon = buildProfile != null ? PlatformIcon(buildProfile) : null;
             if (icon == null)
                 icon = AssetPreview.GetMiniThumbnail(profile);
             var subtitle = buildProfile != null
-                ? $"{BuildProfileUtility.GetBuildTarget(buildProfile)} \u00b7 Build Forge settings stored in the Build Profile"
+                ? $"{PlatformName(buildProfile)} \u00b7 Build Forge settings stored in the Build Profile"
                 : $"Build Forge settings '{profile.ProfileName}' \u00b7 no Unity Build Profile";
 
             EditorGUILayout.BeginHorizontal();

@@ -176,8 +176,9 @@ namespace BuildForge.Editor.UI
                 // Worded like the window's Activate tooltip.
                 tooltip = "Activate a Build Profile with Build Forge settings, making it the active one. Another profile's " +
                           "applied plugin settings are reverted to baseline first. Apply the profile afterwards so Play Mode matches it.";
-            return new MainToolbarContent(ProfileText(state.Active != null ? state.Active.name : null),
-                ForgeBuildWindow.PlatformIcon(target) as Texture2D, tooltip);
+            // The profile's own platform icon, Meta Quest's for a Meta Quest profile, as in the build window.
+            var icon = state.Active != null ? ForgeBuildWindow.PlatformIcon(state.Active) : ForgeBuildWindow.PlatformIcon(target);
+            return new MainToolbarContent(ProfileText(state.Active != null ? state.Active.name : null), icon as Texture2D, tooltip);
         }
 
         static MainToolbarContent ApplyContent(State state)
@@ -268,7 +269,7 @@ namespace BuildForge.Editor.UI
             var entries = new List<ProfileEntry>();
             foreach (var profile in all.Where(p => p != null)
                          .OrderBy(p => p.BuildProfile == null)
-                         .ThenBy(p => p.BuildProfile != null ? BuildProfileUtility.GetBuildTarget(p.BuildProfile).ToString() : "", StringComparer.OrdinalIgnoreCase)
+                         .ThenBy(p => p.BuildProfile != null ? ForgeBuildWindow.PlatformName(p.BuildProfile) : "", StringComparer.OrdinalIgnoreCase)
                          .ThenBy(p => p.DisplayName))
             {
                 var isActive = profile.BuildProfile != null && profile.BuildProfile == active;
