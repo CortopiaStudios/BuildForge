@@ -265,7 +265,7 @@ Unity build callbacks, such as `IPostGenerateGradleAndroidProject` for changes t
 |---|---|
 | Plugin contract | `IForgePlugin`, `IForgeManifestContributor`, `IForgeEditorApplicable`, `IForgeGradleProcessor`, `ForgePluginAttribute`, `ForgeBuildContext` |
 | Configuration | `ForgeProfile`, `ForgeSettings` |
-| Builds | `ForgeBuildRunner` (`RunBuild`, `GetCICommand`, `IsForgeBuildInProgress`, `ForwardedCIArguments`, `StaticCIArguments`), `BuildForge.CommandLine` (the `-executeMethod` entry point) |
+| Builds | `ForgeBuildRunner` (`RunBuild`, `GetCICommand`, `IsForgeBuildInProgress`), `BuildForge.CommandLine` (the `-executeMethod` entry point) |
 | Runtime | `BuildManifest`, `ManifestSection`, `ManifestEntry`, `BuildManifestLoader` |
 
 Everything else in the package is internal and may change between releases.

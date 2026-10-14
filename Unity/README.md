@@ -342,7 +342,7 @@ Direct Editor invocations remain supported for existing automation:
 Unity -batchmode -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -projectPath "Client" -activeBuildProfile "Assets/Settings/ReleaseBuildProfile.asset"
 ```
 
-Replace `Unity` with the installed Editor executable. An explicit `-quit` is unnecessary for this direct form because Forge exits after cleanup. `ForgeBuildRunner.StaticCIArguments` is retained for existing callers; `GetCICommand` now generates the CLI form.
+Replace `Unity` with the installed Editor executable. An explicit `-quit` is unnecessary for this direct form because Forge exits after cleanup. `ForgeBuildRunner.GetCICommand` generates the CLI form.
 
 For multi-platform or batch builds, drive separate Unity invocations from the CI job. Neither form enables automatic source rewriting with `-accept-apiupdate`; resolve and commit API migrations before building.
 

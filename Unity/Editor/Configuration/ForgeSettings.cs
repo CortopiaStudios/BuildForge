@@ -187,7 +187,7 @@ namespace BuildForge.Editor.Configuration
             }
         }
 
-        public static string MangleForFilename(string name)
+        internal static string MangleForFilename(string name)
         {
             name = name.Replace("&", "and");
             name = Regex.Replace(name, @"[:()'""!.()]", "");
@@ -197,10 +197,10 @@ namespace BuildForge.Editor.Configuration
             return name;
         }
 
-        public bool IsPluginDisabledWithDefault(string pluginTypeName, bool safeToDefaultEnable)
+        internal bool IsPluginDisabledWithDefault(string pluginTypeName, bool safeToDefaultEnable)
             => PluginEnableState.IsDisabled(disabledPlugins, enabledPlugins, pluginTypeName, safeToDefaultEnable);
 
-        public void SetPluginDisabled(string pluginTypeName, bool disabled)
+        internal void SetPluginDisabled(string pluginTypeName, bool disabled)
         {
             PluginEnableState.Set(disabledPlugins, enabledPlugins, pluginTypeName, disabled);
             SaveSettings();

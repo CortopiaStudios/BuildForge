@@ -635,23 +635,12 @@ namespace BuildForge.Editor.Core
         /// project path and quit. This synchronous entry point finishes cleanup
         /// and explicitly exits with its result before returning to Unity.
         /// </summary>
-        public const string ForwardedCIArguments = ForwardedEditorArguments + " -executeMethod BuildForge.CommandLine.Build";
+        internal const string ForwardedCIArguments = ForwardedEditorArguments + " -executeMethod BuildForge.CommandLine.Build";
 
         /// <summary>The arguments ForwardedCIArguments forwards, for BuildForge.CommandLine.Activate.</summary>
         internal const string ForwardedActivateArguments = ForwardedEditorArguments + " -executeMethod BuildForge.CommandLine.Activate";
 
         const string ForwardedEditorArguments = "-nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion";
-
-        /// <summary>
-        /// Legacy direct-Editor arguments retained for existing callers.
-        /// The generated CI command uses ForwardedCIArguments instead.
-        /// No -quit is needed when directly launching the Editor.
-        /// No -accept-apiupdate either: it would let the API Updater rewrite
-        /// source on the agent and build from code nobody committed; a compile
-        /// failure is the right outcome there.
-        /// </summary>
-        public const string StaticCIArguments =
-            "-batchmode -nographics -silent-crashes -logFile - -executeMethod BuildForge.CommandLine.Build";
 
         /// <summary>
         /// The project directory relative to the git repository root, for

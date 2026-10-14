@@ -77,7 +77,7 @@ namespace BuildForge.Editor.Configuration
         }
 
         /// <summary>True when this profile is stored inside its Unity Build Profile's asset.</summary>
-        public bool IsEmbedded => Owner != null;
+        internal bool IsEmbedded => Owner != null;
 
         BuildProfile Owner
         {
@@ -99,7 +99,7 @@ namespace BuildForge.Editor.Configuration
         /// a profile made in code is its object name. For everything user-facing
         /// use <see cref="DisplayName"/>.
         /// </summary>
-        public string ProfileName => IsEmbedded ? DisplayName : name;
+        internal string ProfileName => IsEmbedded ? DisplayName : name;
 
         /// <summary>
         /// The name this profile is known by: its Unity Build Profile's name
@@ -129,14 +129,14 @@ namespace BuildForge.Editor.Configuration
         public bool RemovePreviousBuildOutput => removePreviousBuildOutput;
 
         /// <summary>True when the profile stores its own template rather than following the default.</summary>
-        public bool IsOutputPathCustomized => !string.IsNullOrEmpty(outputPath);
+        internal bool IsOutputPathCustomized => !string.IsNullOrEmpty(outputPath);
 
         /// <summary>
         /// What to store for text typed into the output path field: nothing when it
         /// is empty or equals the default (so the profile keeps following the
         /// default), otherwise the text as typed.
         /// </summary>
-        public static string NormalizeOutputPathInput(string text)
+        internal static string NormalizeOutputPathInput(string text)
         {
             var trimmed = text?.Trim() ?? "";
             return trimmed.Length == 0 || trimmed == DefaultOutputPath ? "" : text;

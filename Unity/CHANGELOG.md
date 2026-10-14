@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The build manifest's `managedCodeVariant` is `Debug` for a development build with Script Debugging, which Unity compiles like the Debug variant whatever the Managed Code Variant setting says; it recorded the setting before
 - The main toolbar's apply dropdown shows the state as an icon, a check mark while applied and the warning icon once drifted, or next to "Not applied" while another profile's settings are applied underneath the active one, as after Unity's own Switch Profile, and only the applied variant as text ("Internal" instead of "Applied (Internal)"), so it fits Unity 6.6's 120 px label limit
 
+### Removed
+- `ForgeBuildRunner.StaticCIArguments`, the arguments of the direct-Editor command, which nothing used; the manual's Command line and CI page shows that command
+- From the public scripting API, now internal: `ForgeBuildRunner.ForwardedCIArguments` (use `GetCICommand`), `ForgeProfile.ProfileName` (use `DisplayName`), `IsEmbedded`, `NormalizeOutputPathInput` and `IsOutputPathCustomized`, and `ForgeSettings.MangleForFilename`, `IsPluginDisabledWithDefault` and `SetPluginDisabled`. They served Build Forge's own UI and plugins, and a public member cannot change after 1.0
+
 ### Fixed
 - Apply stops when a plugin cannot capture or apply its settings, as a build does and as the manual says. Build Forge restores what the Apply wrote, nothing stays applied, also not the profile that was applied before, and the console names the plugin. Apply used to log the failure, apply the other plugins and mark the profile applied. XR Loaders now stops Apply on a platform without XR Plug-in Management settings, as it stops builds, instead of being skipped without a message. A revert that fails during Apply offers Stop Tracking, as Revert to Baseline does
 - The build window offers **Dismiss Drift** only while plugin settings have drifted. For a missing variant define it did nothing; only Re-apply or Revert to Baseline restores that
