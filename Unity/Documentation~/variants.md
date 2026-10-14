@@ -12,7 +12,7 @@ Add names in **Project Settings > Build Forge > Build Variants**. Each name give
 #endif
 ```
 
-Names must be unique, must not be empty or have leading or trailing spaces, and must contain a letter or digit. Two names that sanitize to the same define are an error.
+A name is a folder in the output path and an argument on the command line, so it may contain only letters (in any alphabet), digits, spaces, `-` and `_`, and must start with a letter or digit. Names must be unique, must not end in a space, and must not be a device name Windows reserves: `CON`, `PRN`, `AUX`, `NUL`, `COM0` to `COM9` or `LPT0` to `LPT9`, in any casing. Two names that sanitize to the same define, such as `QA Build` and `QA-Build`, are an error.
 
 Nothing picks a variant for a build: the build window and the main toolbar start on the applied variant, and until one is applied or picked, their Apply and Build wait for a pick, as a command-line build without `-forgeVariant` fails.
 

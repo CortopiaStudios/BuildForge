@@ -128,8 +128,28 @@ namespace BuildForge.Tests.Editor
             StringAssert.Contains("more than once", BuildVariants.ListWarning(new List<string> { "Internal", "Internal" }));
             var collision = BuildVariants.ListWarning(new List<string> { "QA Build", "QA-Build" });
             StringAssert.Contains("BUILD_VARIANT_QA_BUILD", collision);
-            StringAssert.Contains("no letters or digits", BuildVariants.ListWarning(new List<string> { "!!!" }));
         }
+
+        // A variant name is a folder in output paths and an argument on the command line.
+        [TestCase("Internal QA")] [TestCase("internal-v2")] [TestCase("Dev_2")] [TestCase("2D")]
+        [TestCase("Übung")] [TestCase("内部")] [TestCase("COM10")] [TestCase("Console")]
+        public void ListWarning_AcceptsLettersDigitsSpacesHyphensAndUnderscores(string name)
+            => Assert.IsNull(BuildVariants.ListWarning(new List<string> { name }));
+
+        [TestCase("QA/Test", "/")] [TestCase(@"QA\Test", @"\")] [TestCase("QA:1", ":")] [TestCase("Beta?", "?")]
+        [TestCase("All*", "*")] [TestCase("A|B", "|")] [TestCase("<Beta>", "<")] [TestCase("Say \"hi\"", "\"")]
+        [TestCase("v1.2", ".")] [TestCase("$HOME", "$")] [TestCase("100%", "%")] [TestCase("A&B", "&")]
+        [TestCase("Q\tA", "\t")] [TestCase("!!!", "!")] [TestCase("COM¹", "¹")]
+        public void ListWarning_RefusesOtherCharacters_NamingTheFirst(string name, string shown)
+            => StringAssert.Contains($"contains '{shown}'", BuildVariants.ListWarning(new List<string> { "Internal", name }));
+
+        [TestCase("_QA")] [TestCase("-QA")]
+        public void ListWarning_RefusesANameThatDoesNotStartWithALetterOrDigit(string name)
+            => StringAssert.Contains("must start with a letter or digit", BuildVariants.ListWarning(new List<string> { name }));
+
+        [TestCase("CON")] [TestCase("nul")] [TestCase("Aux")] [TestCase("PRN")] [TestCase("COM0")] [TestCase("com9")] [TestCase("LPT1")]
+        public void ListWarning_RefusesTheDeviceNamesWindowsReserves(string name)
+            => StringAssert.Contains("device name Windows reserves", BuildVariants.ListWarning(new List<string> { name }));
 
         [Test]
         public void WithVariantDefine_Adds_Replaces_Removes_KeepsOtherDefines()

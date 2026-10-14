@@ -358,9 +358,21 @@ namespace BuildForge.Editor.Core
         static string Defined(IReadOnlyList<string> variants)
             => "defined variants: " + string.Join(", ", variants.Select(v => $"'{v}'"));
 
+        // A variant name is a folder in output paths ({Variant}) and an argument on the
+        // command line: letters in any alphabet (with their combining marks), digits,
+        // spaces, '-' and '_' only.
+        static readonly Regex NotInVariantName = new Regex(@"[^\p{L}\p{M}\p{Nd} _-]");
+
+        // The device names Windows reserves for files and folders, in any casing.
+        static readonly HashSet<string> WindowsDeviceNames = new HashSet<string>(
+            new[] { "CON", "PRN", "AUX", "NUL" }.Concat(Enumerable.Range(0, 10).SelectMany(i => new[] { $"COM{i}", $"LPT{i}" })),
+            StringComparer.OrdinalIgnoreCase);
+
         /// <summary>
-        /// Problems in the variant list: empty names, duplicates, and two names
-        /// that sanitize to the same define. Null when the list is fine.
+        /// Problems in the variant list: empty names, characters other than letters,
+        /// digits, spaces, '-' and '_', a name that doesn't start with a letter or digit
+        /// or that Windows reserves, duplicates, and two names that sanitize to the
+        /// same define. Null when the list is fine.
         /// </summary>
         public static string ListWarning(IReadOnlyList<string> variants)
         {
@@ -371,9 +383,17 @@ namespace BuildForge.Editor.Core
             var padded = variants.FirstOrDefault(v => v != v.Trim());
             if (padded != null)
                 return $"Variant '{padded}' has leading or trailing whitespace. Remove the whitespace from its name.";
-            var noDefine = variants.FirstOrDefault(v => DefineFor(v) == Prefix);
-            if (noDefine != null)
-                return $"Variant '{noDefine}' has no letters or digits, so it would produce no usable define.";
+            foreach (var name in variants)
+            {
+                var invalid = NotInVariantName.Match(name);
+                if (invalid.Success)
+                    return $"Variant '{name}' contains '{invalid.Value}'. Use letters, digits, spaces, '-' and '_' only: " +
+                           "a variant name is a folder in the output path and an argument on the command line.";
+                if (!char.IsLetterOrDigit(name[0]))
+                    return $"Variant '{name}' must start with a letter or digit.";
+                if (WindowsDeviceNames.Contains(name))
+                    return $"Variant '{name}' is a device name Windows reserves, so no folder may have it. Pick another name.";
+            }
             var duplicate = variants.GroupBy(v => v).FirstOrDefault(g => g.Count() > 1);
             if (duplicate != null)
                 return $"Variant '{duplicate.Key}' is listed more than once.";
