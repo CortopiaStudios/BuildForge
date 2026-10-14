@@ -28,6 +28,19 @@ namespace BuildForge.Editor.Configuration
     internal enum VariantDebugSymbols { Inherit, None, [InspectorName("Symbol Table")] SymbolTable, Full }
 
     /// <summary>
+    /// The Inspector label of a field whose name cannot spell Unity's name for the
+    /// setting, such as "C++ Compiler Configuration": Unity labels a field by its
+    /// name, and [InspectorName] renames only enum values. ForgeSettingsProvider's
+    /// FieldLabelDrawer draws it.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Field)]
+    internal sealed class FieldLabelAttribute : PropertyAttribute
+    {
+        public readonly string Label;
+        public FieldLabelAttribute(string label) => Label = label;
+    }
+
+    /// <summary>
     /// A variant rule's Unity build settings. Each one is set for the variant's
     /// builds only, restored afterwards, and never written by Apply; Inherit
     /// keeps the Build Profile's or Player Settings' own value.
@@ -47,10 +60,13 @@ namespace BuildForge.Editor.Configuration
 
         [Header("IL2CPP")]
         [Tooltip("Player Settings > C++ Compiler Configuration.")]
+        [FieldLabel("C++ Compiler Configuration")]
         [SerializeField] VariantCppCompilerConfiguration cppCompilerConfiguration;
         [Tooltip("Player Settings > IL2CPP Code Generation.")]
+        [FieldLabel("IL2CPP Code Generation")]
         [SerializeField] VariantCodeGeneration il2CppCodeGeneration;
         [Tooltip("Player Settings > IL2CPP Stacktrace Information.")]
+        [FieldLabel("IL2CPP Stacktrace Information")]
         [SerializeField] VariantStacktraceInformation il2CppStacktraceInformation;
 
         [Header("Stripping")]
@@ -61,6 +77,7 @@ namespace BuildForge.Editor.Configuration
 
         [Header("Build Output")]
         [Tooltip("Build Profile > Compression Method.")]
+        [FieldLabel("Compression Method")]
         [SerializeField] VariantCompression compression;
         [Tooltip("Android Build Profile > Link Time Optimization. Other platforms keep their own settings.")]
         [SerializeField] VariantLinkTimeOptimization linkTimeOptimization;

@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Reflection;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using NUnit.Framework;
@@ -22,6 +24,23 @@ namespace BuildForge.Tests.Editor
         // Unity's own value for a UnityEditor.Compression member, which is internal.
         static int CompressionValue(string member)
             => Convert.ToInt32(Enum.Parse(typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.Compression", true), member));
+
+        // The Variant Rules list in Project Settings names each setting as Unity, the
+        // build window and the build log do, which a field name cannot always spell.
+        [Test] public void Labels_AreUnitysNamesForTheSettings()
+        {
+            var labels = typeof(VariantBuildConfiguration)
+                .GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                .Where(f => f.IsDefined(typeof(UnityEngine.SerializeField), false))
+                .Select(f => f.GetCustomAttribute<FieldLabelAttribute>()?.Label ?? ObjectNames.NicifyVariableName(f.Name));
+            CollectionAssert.AreEqual(new[]
+            {
+                "Autoconnect Profiler", "Deep Profiling Support", "Script Debugging", "Wait For Managed Debugger",
+                "C++ Compiler Configuration", "IL2CPP Code Generation", "IL2CPP Stacktrace Information",
+                "Managed Stripping Level", "Strip Engine Code",
+                "Compression Method", "Link Time Optimization", "Debug Symbols",
+            }, labels);
+        }
 
         [Test] public void DevelopmentOptionsOnWithDevelopmentOff_AreRejected()
         {

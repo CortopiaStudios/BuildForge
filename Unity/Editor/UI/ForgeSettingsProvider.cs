@@ -260,4 +260,22 @@ namespace BuildForge.Editor.UI
             return new ForgeSettingsProvider();
         }
     }
+
+    /// <summary>
+    /// Draws a field marked <see cref="FieldLabelAttribute"/> under that label, with
+    /// its tooltip, such as a Variant Rule's "C++ Compiler Configuration" in this page.
+    /// </summary>
+    [CustomPropertyDrawer(typeof(FieldLabelAttribute))]
+    internal sealed class FieldLabelDrawer : PropertyDrawer
+    {
+        public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+        {
+            // Inside a drawer, PropertyField draws the field the default way.
+            label.text = ((FieldLabelAttribute)attribute).Label;
+            EditorGUI.PropertyField(position, property, label, true);
+        }
+
+        public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
+            => EditorGUI.GetPropertyHeight(property, label, true);
+    }
 }
