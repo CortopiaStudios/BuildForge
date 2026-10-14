@@ -13,7 +13,7 @@ namespace BuildForge.Tests.Editor
     {
         static readonly string[] Original = { "USER_SYMBOL", "DEVELOPMENT", "OTHER" };
         // A Default apply with a rule owning DEVELOPMENT: the alias is removed, the variant define added.
-        static readonly string[] Written = { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_DEFAULT" };
+        static readonly string[] Written = { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_RELEASE" };
 
         [Test]
         public void UndoDefines_UntouchedSinceApply_RestoresOriginalExactly()
@@ -24,7 +24,7 @@ namespace BuildForge.Tests.Editor
         [Test]
         public void UndoDefines_UserAddedDefineSinceApply_IsKept()
         {
-            var current = new[] { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_DEFAULT", "ENABLE_LOGS" };
+            var current = new[] { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_RELEASE", "ENABLE_LOGS" };
             CollectionAssert.AreEqual(new[] { "USER_SYMBOL", "DEVELOPMENT", "OTHER", "ENABLE_LOGS" },
                 VariantDefineLedger.UndoDefines(current, Original, Written));
         }
@@ -32,7 +32,7 @@ namespace BuildForge.Tests.Editor
         [Test]
         public void UndoDefines_UserRemovedDefineSinceApply_StaysRemoved()
         {
-            var current = new[] { "USER_SYMBOL", "BUILD_VARIANT_DEFAULT" };
+            var current = new[] { "USER_SYMBOL", "BUILD_VARIANT_RELEASE" };
             CollectionAssert.AreEqual(new[] { "USER_SYMBOL", "DEVELOPMENT" },
                 VariantDefineLedger.UndoDefines(current, Original, Written));
         }
@@ -43,8 +43,8 @@ namespace BuildForge.Tests.Editor
         public void UndoDefines_RemovedDefineReturnsToItsOriginalPosition()
         {
             var original = new[] { "DEVELOPMENT", "USER_SYMBOL", "OTHER" };
-            var written = new[] { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_DEFAULT" };
-            var current = new[] { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_DEFAULT", "NEW" };
+            var written = new[] { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_RELEASE" };
+            var current = new[] { "USER_SYMBOL", "OTHER", "BUILD_VARIANT_RELEASE", "NEW" };
             CollectionAssert.AreEqual(new[] { "DEVELOPMENT", "USER_SYMBOL", "OTHER", "NEW" },
                 VariantDefineLedger.UndoDefines(current, original, written));
         }
@@ -55,10 +55,10 @@ namespace BuildForge.Tests.Editor
             // A profile committed while a variant was applied carries a stale
             // variant define into the list recorded before Apply.
             var original = new[] { "USER_SYMBOL", "BUILD_VARIANT_INTERNAL" };
-            var written = new[] { "USER_SYMBOL", "BUILD_VARIANT_DEFAULT" };
+            var written = new[] { "USER_SYMBOL", "BUILD_VARIANT_RELEASE" };
             CollectionAssert.AreEqual(new[] { "USER_SYMBOL" }, VariantDefineLedger.UndoDefines(written, original, written));
             CollectionAssert.AreEqual(new[] { "USER_SYMBOL", "ADDED" },
-                VariantDefineLedger.UndoDefines(new[] { "USER_SYMBOL", "BUILD_VARIANT_DEFAULT", "ADDED" }, original, written));
+                VariantDefineLedger.UndoDefines(new[] { "USER_SYMBOL", "BUILD_VARIANT_RELEASE", "ADDED" }, original, written));
         }
 
         [Test]

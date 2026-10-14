@@ -904,7 +904,7 @@ namespace BuildForge.Tests.Editor
             var backup = Write(Path.Combine(oldDestination, "Game_BackUpThisFolder_ButDontShipItWithYourGame", "a.cpp"));
             BuildOutputDirectory.RecordIn(BuildOutputLedger.instance, first, new[] { apk });
 
-            var newDestination = Path.Combine(oldDestination, "Default"); // the first variant was added
+            var newDestination = Path.Combine(oldDestination, "Release"); // the output path changed
             Prepare(guid, newDestination, Path.Combine(newDestination, "Game.apk"));
 
             Assert.IsFalse(File.Exists(apk));
@@ -972,7 +972,7 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual("Game.exe", ledger.Find(guid, null, out var recordedAt, out var folders).Single().path);
             Assert.AreEqual(destination, recordedAt);
             CollectionAssert.AreEqual(new[] { "Game_Data" }, folders);
-            Assert.AreEqual("Game.exe", ledger.Find(guid, "", out _, out _).Single().path, "null and empty both mean the default build");
+            Assert.AreEqual("Game.exe", ledger.Find(guid, "", out _, out _).Single().path, "null and empty both mean no variant");
             CollectionAssert.AreEquivalent(new[] { "Game (Internal).exe", "UnityPlayer.dll" },
                 ledger.RecordsOfOthers(destination, guid, null).Keys);
 

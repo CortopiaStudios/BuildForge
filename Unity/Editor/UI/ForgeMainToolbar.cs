@@ -196,12 +196,14 @@ namespace BuildForge.Editor.UI
                 // The window's drift warning, and how the toolbar re-applies.
                 tooltip = $"Editor settings differ from '{state.ActiveForgeProfile.DisplayName}' as applied: " +
                           string.Join(", ", drift.Select(ForgeBuildWindow.DescribeDriftKey)) + ". " +
-                          (variantsConfigured ? "Re-apply (pick the checked variant)" : "Re-apply") +
+                          (!variantsConfigured ? "Re-apply" : appliedVariant != null ? "Re-apply (pick the checked variant)" : "Applying a variant") +
                           " restores the profile's state; Revert to Baseline undoes it.";
             else if (state.Applied)
                 tooltip = variantsConfigured
-                    ? $"Applied with {(appliedVariant == null ? "the default variant" : $"variant '{appliedVariant}'")}. " +
-                      "Pick another variant, re-apply this one after editing the profile, or Revert to Baseline."
+                    ? (appliedVariant == null
+                        ? "Applied without a variant. Pick a variant to apply the profile with it, or Revert to Baseline."
+                        : $"Applied with variant '{appliedVariant}'. " +
+                          "Pick another variant, re-apply this one after editing the profile, or Revert to Baseline.")
                     : "Plugin settings applied. Re-apply after editing the profile, or Revert to Baseline.";
             else if (state.AnythingApplied)
                 // Another profile's settings are applied: the window's warning for that.
@@ -210,7 +212,7 @@ namespace BuildForge.Editor.UI
                 tooltip = variantsConfigured
                     ? "Pick a variant to apply the profile with it: its defines and the profile's plugin settings, so Play Mode matches."
                     : "Apply the profile's plugin settings (such as OpenXR features), so Play Mode matches.";
-            var text = ApplyText(variantsConfigured, state.Applied, appliedVariant);
+            var text = ApplyText(state.Applied, appliedVariant);
             var icon = ApplyIcon(state.Applied, drift.Count > 0, state.AnythingApplied);
             return icon != null
                 ? new MainToolbarContent(text, EditorGUIUtility.IconContent(icon).image as Texture2D, tooltip)
@@ -228,16 +230,15 @@ namespace BuildForge.Editor.UI
 
         /// <summary>
         /// The apply dropdown's label: "Not applied", or what is applied, with the
-        /// state shown by <see cref="ApplyIcon"/>: the applied variant, "&lt;default&gt;"
-        /// for the default build once the project has variants, "Applied" without
-        /// variants. Only that much is text because Unity 6.6 cuts toolbar dropdown
-        /// text at 120 px ("Applied (Development)" ended in an ellipsis there).
+        /// state shown by <see cref="ApplyIcon"/>: the applied variant, or "Applied"
+        /// without one. Only that much is text because Unity 6.6 cuts toolbar
+        /// dropdown text at 120 px ("Applied (Development)" ended in an ellipsis there).
         /// </summary>
-        internal static string ApplyText(bool variantsConfigured, bool applied, string appliedVariant)
+        internal static string ApplyText(bool applied, string appliedVariant)
         {
             if (!applied)
                 return "Not applied";
-            return appliedVariant ?? (variantsConfigured ? BuildVariants.DefaultLabel : "Applied");
+            return appliedVariant ?? "Applied";
         }
 
         /// <summary>
@@ -311,9 +312,9 @@ namespace BuildForge.Editor.UI
 
         /// <summary>
         /// The apply menu. While the active profile can be applied
-        /// (<paramref name="canApply"/>), with variants: the default build, then
-        /// each configured variant, the applied one checked; picking the checked
-        /// one re-applies it, and a variant the active profile cannot take
+        /// (<paramref name="canApply"/>), with variants: each configured variant,
+        /// the applied one checked; picking the checked one re-applies it, and a
+        /// variant the active profile cannot take
         /// (<paramref name="errorFor"/> returns why) is listed disabled, as in the
         /// build window. Without variants: Apply, or Re-apply once applied.
         /// Revert to Baseline follows whenever anything is applied, the active
@@ -333,11 +334,10 @@ namespace BuildForge.Editor.UI
             }
             else if (canApply)
             {
-                foreach (var variant in new string[] { null }.Concat(variants))
+                foreach (var variant in variants)
                 {
-                    var name = variant ?? BuildVariants.DefaultLabel;
                     var available = errorFor(variant) == null;
-                    entries.Add(new ApplyEntry(available ? name : $"{name} (unavailable for this profile)",
+                    entries.Add(new ApplyEntry(available ? variant : $"{variant} (unavailable for this profile)",
                         canMutate && available, applied && appliedVariant == variant, false, variant));
                 }
             }
@@ -379,9 +379,9 @@ namespace BuildForge.Editor.UI
         /// active profile (<paramref name="profileName"/>, null when the active Unity
         /// Build Profile has no single set of Build Forge settings, for
         /// <paramref name="noProfileReason"/>) with the build window's variant, and is
-        /// enabled when the window's Build would be: the variant is allowed for the
-        /// profile (<paramref name="variantError"/> otherwise) and mutating is not
-        /// refused. The tooltip names what it builds.
+        /// enabled when the window's Build would be: a variant is picked once the project
+        /// has variants, it is allowed for the profile (<paramref name="variantError"/>
+        /// otherwise) and mutating is not refused. The tooltip names what it builds.
         /// </summary>
         internal static BuildButton BuildButtonFor(bool run, string profileName, string noProfileReason, string variant,
             bool variantsConfigured, string variantError, bool canMutate, string mutateReason)
@@ -391,16 +391,19 @@ namespace BuildForge.Editor.UI
                 return new BuildButton(label, mutateReason, false);
             if (profileName == null)
                 return new BuildButton(label, noProfileReason, false);
+            if (variantsConfigured && variant == null)
+                return new BuildButton(label, PickVariantReason, false);
             if (variantError != null)
                 return new BuildButton(label, variantError, false);
-            var what = variantsConfigured
-                ? $"'{profileName}' with {(variant == null ? "the default variant" : $"variant '{variant}'")}"
-                : $"'{profileName}'";
+            var what = variantsConfigured ? $"'{profileName}' with variant '{variant}'" : $"'{profileName}'";
             var tooltip = $"Build {what} through Build Forge{(run ? ", then run it" : "")}.";
             if (variantsConfigured)
                 tooltip += " The variant is the build window's, which the apply menu also sets.";
             return new BuildButton(label, tooltip, true);
         }
+
+        internal const string PickVariantReason = "Pick a variant first, in the build window's details header or by applying one " +
+                                                  "from the apply dropdown: once a project has variants, every build names one.";
 
         static BuildButton BuildButtonFor(bool run, State state)
         {

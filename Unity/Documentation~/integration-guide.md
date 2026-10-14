@@ -44,10 +44,10 @@ Create one Unity Build Profile per target configuration in Unity's Build Profile
 
 1. Select all the new Build Profile assets and use **Assets > Build Forge > Add Build Forge Settings**.
 2. In **Project Settings > Build Forge**:
-   - add the variants and their rules, for example `Default` with Development Build **Disabled** and `Internal` with Development Build **Enabled** and the debug defines the old pipeline set;
+   - add the variants and their rules, for example `Release` with Development Build **Disabled** and Mark Product Name **Disabled** for the store build, and `Internal` with Development Build **Enabled** and the debug defines the old pipeline set;
    - set the Android Keystore Env variable names to the names your CI already provides, if they differ from the defaults;
    - turn on OpenXR's **Interaction Profiles** only if controller profiles really must differ per profile.
-3. Move debug defines that the old pipeline added for internal builds into the variant rules, and remove them from Player Settings, so they do not reach the default build.
+3. Move debug defines that the old pipeline added for internal builds into the variant rules, and remove them from Player Settings, so they do not reach the store build.
 
 ## 5. Configure each profile's plugins
 
@@ -133,7 +133,7 @@ Keep the old job until the new one has produced artifacts that pass the comparis
 ### Build Forge settings
 
 - **Commit while nothing is applied.** An applied variant or OpenXR state committed by accident becomes every other machine's baseline; Build Forge reports variant defines saved that way.
-- **Keep `{Variant}` in custom output paths**, or a variant build overwrites the default build.
+- **Keep `{Variant}` in custom output paths**, or the variants' builds overwrite each other.
 - **Re-check your plugins' orders when updating Build Forge.** Before 1.0 the bundled orders were renumbered once, and a project plugin at 350 had to move to 650 to stay between the same plugins.
 - **Do not list a variant rule's defines in a Build Profile as well**; the variant system owns them and removes them for other variants.
 

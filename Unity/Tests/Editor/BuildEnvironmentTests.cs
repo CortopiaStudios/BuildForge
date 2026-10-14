@@ -181,13 +181,6 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void ParseCommandLine_EmptyVariant_PointsToTheDefaultBuild()
-        {
-            Parse(out var error, "-forgeVariant", "");
-            StringAssert.Contains("pass -forgeVariant Default", error);
-        }
-
-        [Test]
         public void ParseCommandLine_FormerVersionCodeName_IsAnError()
         {
             Assert.IsNull(Parse(out var error, "-versionCode", "42"));

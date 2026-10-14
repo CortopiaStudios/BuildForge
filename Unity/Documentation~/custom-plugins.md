@@ -151,8 +151,8 @@ Plugins receive the context; they cannot create one.
 | `ForgeProfile` | Its Build Forge settings. |
 | `BuildTarget`, `BuildTargetGroup` | The platform. |
 | `OutputPath` | The resolved output path, with extension. |
-| `Variant` | The variant name, or null for the default build. |
-| `VariantDefine` | `BUILD_VARIANT_<NAME>` for a variant, null for the default build. |
+| `Variant` | The variant name, or null in a project without variants. |
+| `VariantDefine` | `BUILD_VARIANT_<NAME>`, or null in a project without variants. |
 | `DevelopmentBuild` | Whether this is a development build, after the variant's rule. |
 | `IsCI` | Whether the build counts as a CI build; see [CI detection](ci.md#ci-detection). Outside a build, `BuildEnvironment.IsCI` gives the same answer, for warnings and descriptions. |
 | `BuildNumber` | The build's number, or null. A plugin that assigns the build number sets it in `OnPreBuild`, as Build Number does; a variant rule's `{BuildNumber}` and the manifest's `buildNumber` read it. |

@@ -11,7 +11,8 @@ namespace BuildForge.Editor.Core
 {
     /// <summary>
     /// A single project-wide variant selects its BUILD_VARIANT define and optional
-    /// rules for development mode, aliases and product marking. Builds resolve
+    /// rules for development mode, aliases and product marking. Once a project has
+    /// variants every build names one of them; without variants none does. Builds resolve
     /// these before plugin hooks and restore temporary settings in finally.
     /// Editor Apply persists the selected variant's defines for iteration, never
     /// its development flags; the per-user ledger records only what it changed,
@@ -22,50 +23,29 @@ namespace BuildForge.Editor.Core
     {
         public const string Prefix = "BUILD_VARIANT_";
 
-        /// <summary>How the UI shows the default build (no variant); angle brackets are rejected in variant names so it cannot collide.</summary>
-        public const string DefaultLabel = "<default>";
-
-        /// <summary>Reserved name (case-insensitive): on the command line it means the default build; it cannot be a variant.</summary>
-        public const string DefaultName = "default";
-
-        /// <summary>
-        /// The define the default build gets once any variant exists, so code can
-        /// address it directly rather than by the absence of every other variant.
-        /// With no variants configured no BUILD_VARIANT_ define is set at all.
-        /// </summary>
-        public const string DefaultDefine = Prefix + "DEFAULT";
-
-        /// <summary>The default build's name where a variant name is needed (output path, manifest) once variants exist.</summary>
-        public const string DefaultVariantName = "Default";
-
-        /// <summary>
-        /// The variant name a build is known by: the variant itself, "Default"
-        /// for the default build once any variant exists (so default and variant
-        /// builds are siblings, not parent and child, in the output tree), or
-        /// null when variants are not in use.
-        /// </summary>
         /// <summary>
         /// The build window's variant selection after a (re)load. The window
         /// remembers the selection for the editor session only; in a fresh editor
         /// nothing is stored and the selection follows what is applied, so the
         /// window never shows a pending variant switch the user did not ask for.
-        /// <paramref name="stored"/> is empty when nothing was remembered,
-        /// <see cref="DefaultLabel"/> for a remembered default build, else the name.
+        /// <paramref name="stored"/> is empty when nothing was remembered. Null when
+        /// neither names a variant: nothing is picked, and Apply and the Build buttons
+        /// wait for a pick, since once a project has variants every build names one.
         /// </summary>
         public static string RestoreSelection(string stored, string appliedVariant)
         {
-            if (string.IsNullOrEmpty(stored))
-                return string.IsNullOrEmpty(appliedVariant) ? null : appliedVariant;
-            return stored == DefaultLabel ? null : stored;
+            if (!string.IsNullOrEmpty(stored))
+                return stored;
+            return string.IsNullOrEmpty(appliedVariant) ? null : appliedVariant;
         }
 
         /// <summary>The value the window stores for a selection; the inverse of <see cref="RestoreSelection"/>.</summary>
         public static string StoreSelection(string variant)
-            => variant ?? DefaultLabel;
+            => variant ?? "";
 
         internal static BuildVariantRule RuleFor(string variant)
-            => ForgeSettings.instance.VariantRules.FirstOrDefault(r => r != null &&
-                string.Equals(r.Variant, variant ?? DefaultVariantName, StringComparison.Ordinal));
+            => variant == null ? null : ForgeSettings.instance.VariantRules.FirstOrDefault(r => r != null &&
+                string.Equals(r.Variant, variant, StringComparison.Ordinal));
 
         internal static bool ShouldMark(string variant)
         {
@@ -106,9 +86,9 @@ namespace BuildForge.Editor.Core
             foreach (var rule in rules ?? Array.Empty<BuildVariantRule>())
             {
                 if (rule == null || string.IsNullOrWhiteSpace(rule.Variant))
-                    return "A Variant Rule has an empty name. Choose a configured variant or Default.";
-                if (rule.Variant != DefaultVariantName && !(variants?.Contains(rule.Variant) ?? false))
-                    return $"Variant Rule '{rule.Variant}' does not match a configured variant. Update the rule after renaming or removing a variant, or use Default.";
+                    return "A Variant Rule has an empty name. Choose a configured variant.";
+                if (!(variants?.Contains(rule.Variant) ?? false))
+                    return $"Variant Rule '{rule.Variant}' does not match a configured variant. Update the rule after renaming or removing a variant.";
                 if (!names.Add(rule.Variant))
                     return $"Variant Rule '{rule.Variant}' is listed more than once. Keep one rule per variant.";
                 if (!Enum.IsDefined(typeof(VariantOverride), rule.DevelopmentBuild)
@@ -229,13 +209,13 @@ namespace BuildForge.Editor.Core
 
         internal static string AllowedVariantsError(IReadOnlyList<string> allowed, IReadOnlyList<string> variants)
         {
+            if ((allowed == null || allowed.Count == 0) && variants != null && variants.Count > 0)
+                return "Restrict Variants is on, but Allowed Variants is empty, so the profile builds no variant. Allow at least one.";
             var names = new HashSet<string>(StringComparer.Ordinal);
             foreach (var name in allowed ?? Array.Empty<string>())
             {
                 if (string.IsNullOrWhiteSpace(name))
                     return "Allowed Variants contains an empty name. Remove it or enter a configured variant.";
-                if (IsDefaultName(name))
-                    return "Default is always allowed. Remove it from Allowed Variants.";
                 if (!(variants?.Contains(name) ?? false))
                     return $"Allowed Variants contains unknown variant '{name}'. Update the profile after renaming or removing a variant.";
                 if (!names.Add(name))
@@ -245,46 +225,34 @@ namespace BuildForge.Editor.Core
         }
 
         internal static string[] WithRuleDefines(IReadOnlyList<string> existing, string variant,
-            IReadOnlyList<BuildVariantRule> rules, bool variantsConfigured)
+            IReadOnlyList<BuildVariantRule> rules)
         {
             var owned = new HashSet<string>((rules ?? Array.Empty<BuildVariantRule>())
                 .Where(r => r != null).SelectMany(r => r.ScriptingDefines ?? new List<string>()));
             var filtered = (existing ?? Array.Empty<string>()).Where(d => !owned.Contains(d)).ToArray();
-            var result = WithVariantDefine(filtered, variant, variantsConfigured, out _).ToList();
-            var rule = rules?.FirstOrDefault(r => r != null && r.Variant == (variant ?? DefaultVariantName));
+            var result = WithVariantDefine(filtered, variant, out _).ToList();
+            var rule = variant == null ? null : rules?.FirstOrDefault(r => r != null && r.Variant == variant);
             if (rule?.ScriptingDefines != null)
                 result.AddRange(rule.ScriptingDefines.Where(d => !string.IsNullOrWhiteSpace(d) && !result.Contains(d)));
             return result.ToArray();
         }
 
-        public static string EffectiveName(string variant, bool variantsConfigured)
-        {
-            if (!string.IsNullOrEmpty(variant))
-                return variant;
-            return variantsConfigured ? DefaultVariantName : null;
-        }
-
         /// <summary>
         /// The product name a build gets: "Game (Internal)" for a variant build
-        /// when marking is on, so an internal build is recognizable on the device,
-        /// in the window title and in the file name ({ProjectName} follows the
-        /// product name). The default build is never marked: it is the build you
-        /// ship and must look like one from a project without variants.
+        /// when marking is on for it, so an internal build is recognizable on the
+        /// device, in the window title and in the file name ({ProjectName} follows
+        /// the product name). The variant you ship turns marking off in its rule.
         /// </summary>
         public static string MarkedProductName(string productName, string variant, bool markVariantBuilds)
         {
-            if (!markVariantBuilds || string.IsNullOrEmpty(variant) || variant == DefaultVariantName)
+            if (!markVariantBuilds || string.IsNullOrEmpty(variant))
                 return productName;
             return $"{productName} ({variant})";
         }
 
-        /// <summary>The define a build with <paramref name="variant"/> carries, or null when variants are not in use.</summary>
-        public static string ExpectedDefine(string variant, bool variantsConfigured)
-        {
-            if (!string.IsNullOrEmpty(variant))
-                return DefineFor(variant);
-            return variantsConfigured ? DefaultDefine : null;
-        }
+        /// <summary>The define a build with <paramref name="variant"/> carries, or null without a variant.</summary>
+        public static string ExpectedDefine(string variant)
+            => string.IsNullOrEmpty(variant) ? null : DefineFor(variant);
 
         /// <summary>The define for a variant name, sanitized like the profile define.</summary>
         public static string DefineFor(string variant) => BuildProfileDefines.MakeDefine(Prefix, variant);
@@ -325,7 +293,8 @@ namespace BuildForge.Editor.Core
         /// variant state this machine did not write, or null. Its defines compile
         /// into the editor here; builds recompute them. A Development Build flag
         /// that came with it (Apply wrote the rule's flags until it stopped, pre-1.0)
-        /// would reach a Default build, so a flag the variant's rule sets is named too.
+        /// would reach the builds of variants that leave it to the profile, so a flag
+        /// the variant's rule sets is named too.
         /// </summary>
         internal static string StrayWarning(ForgeProfile profile, bool appliedHere)
         {
@@ -340,53 +309,58 @@ namespace BuildForge.Editor.Core
             var owned = new HashSet<string>(rules.SelectMany(r => r.ScriptingDefines ?? new List<string>()));
             var compiled = defines.Where(d => IsVariantDefine(d) || owned.Contains(d)).Distinct();
             var variants = string.Join(" and ", names.Select((n, i) =>
-                n == null ? $"a variant that no longer exists ({stray[i]})"
-                : n == DefaultVariantName ? "the default variant" : $"variant '{n}'"));
+                n == null ? $"a variant that no longer exists ({stray[i]})" : $"variant '{n}'"));
             var text = $"Unity Build Profile '{buildProfile.name}' carries {string.Join(", ", stray)}, but no variant is applied to it " +
                        $"on this machine: it was saved while {variants} was applied, most likely on another machine and committed. " +
                        $"Its defines {string.Join(", ", compiled)} compile into the editor here; builds recompute them.";
-            var defaultRule = RuleFor(null);
-            if ((defaultRule == null || defaultRule.DevelopmentBuild == VariantOverride.Inherit)
+            var inheriting = Configured.Where(v => (RuleFor(v)?.DevelopmentBuild ?? VariantOverride.Inherit) == VariantOverride.Inherit).ToList();
+            if (inheriting.Count > 0
                 && rules.Any(r => r.DevelopmentBuild != VariantOverride.Inherit) && VariantBuildSettings.IsDevelopment(buildProfile))
-                text += " Development Build is on and the variant's rule sets it: unless that is the profile's own setting, a Default build is a development build.";
+                text += " Development Build is on and the variant's rule sets it: unless that is the profile's own setting, builds of " +
+                        string.Join(", ", inheriting.Select(v => $"'{v}'")) + " are development builds.";
             return text + " Revert to Baseline where it was applied and commit the Build Profile, or restore it from version control; " +
                    "Activate removes the defines here.";
         }
 
-        /// <summary>The configured variant a define belongs to ("Default" for BUILD_VARIANT_DEFAULT), or null.</summary>
+        /// <summary>The configured variant a define belongs to, or null.</summary>
         static string VariantNameFor(string define)
-            => define == DefaultDefine ? DefaultVariantName : Configured.FirstOrDefault(v => DefineFor(v) == define);
+            => Configured.FirstOrDefault(v => DefineFor(v) == define);
 
         /// <summary>
-        /// The variant a build should use: null for none (a null or empty name),
-        /// the exact configured name, or null with <paramref name="error"/> set
-        /// when the name is not in the list. Never a silent pick.
+        /// The variant a build uses: the exact configured name. Once a project has
+        /// variants every build names one, and without variants none does; anything
+        /// else sets <paramref name="error"/>. Never a silent pick.
         /// </summary>
         public static string Resolve(string name, IReadOnlyList<string> variants, out string error)
         {
             error = ListWarning(variants);
             if (error != null) return null;
-            if (string.IsNullOrWhiteSpace(name) || IsDefaultName(name))
+            var hasVariants = variants != null && variants.Count > 0;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                if (hasVariants)
+                    error = $"No build variant given. This project has build variants, so every build names one ({Defined(variants)}).";
                 return null;
-            var match = variants?.FirstOrDefault(v => v == name.Trim());
+            }
+            if (!hasVariants)
+            {
+                error = $"Unknown build variant '{name.Trim()}': this project has no build variants " +
+                        "(Project Settings > Build Forge > Build Variants).";
+                return null;
+            }
+            var match = variants.FirstOrDefault(v => v == name.Trim());
             if (match != null)
                 return match;
-            var available = variants == null || variants.Count == 0
-                ? "no variants are defined"
-                : "defined variants: " + string.Join(", ", variants.Select(v => $"'{v}'"));
-            error = $"Unknown build variant '{name.Trim()}' ({available}; Project Settings > Build Forge > Build Variants).";
+            error = $"Unknown build variant '{name.Trim()}' ({Defined(variants)}; Project Settings > Build Forge > Build Variants).";
             return null;
         }
 
-        static bool IsDefaultName(string name)
-        {
-            var trimmed = name.Trim();
-            return string.Equals(trimmed, DefaultName, StringComparison.OrdinalIgnoreCase) || trimmed == DefaultLabel;
-        }
+        static string Defined(IReadOnlyList<string> variants)
+            => "defined variants: " + string.Join(", ", variants.Select(v => $"'{v}'"));
 
         /// <summary>
-        /// Problems in the variant list: empty or reserved names, duplicates, and
-        /// two names that sanitize to the same define. Null when the list is fine.
+        /// Problems in the variant list: empty names, duplicates, and two names
+        /// that sanitize to the same define. Null when the list is fine.
         /// </summary>
         public static string ListWarning(IReadOnlyList<string> variants)
         {
@@ -394,12 +368,6 @@ namespace BuildForge.Editor.Core
                 return null;
             if (variants.Any(string.IsNullOrWhiteSpace))
                 return "A variant has an empty name.";
-            var bracketed = variants.FirstOrDefault(v => v.Contains("<") || v.Contains(">"));
-            if (bracketed != null)
-                return $"Variant '{bracketed}' must not contain '<' or '>' (reserved for the '{DefaultLabel}' entry).";
-            var reserved = variants.FirstOrDefault(IsDefaultName);
-            if (reserved != null)
-                return $"'{reserved}' is reserved for the default build (it gets {DefaultDefine}); pick another name.";
             var padded = variants.FirstOrDefault(v => v != v.Trim());
             if (padded != null)
                 return $"Variant '{padded}' has leading or trailing whitespace. Remove the whitespace from its name.";
@@ -418,14 +386,12 @@ namespace BuildForge.Editor.Core
 
         /// <summary>
         /// The defines list with every variant define removed and the one for
-        /// <paramref name="variant"/> appended: the variant's own define, or
-        /// BUILD_VARIANT_DEFAULT for the default build when
-        /// <paramref name="variantsConfigured"/>, or nothing.
+        /// <paramref name="variant"/> appended, or none without a variant.
         /// </summary>
-        public static string[] WithVariantDefine(IReadOnlyList<string> existing, string variant, bool variantsConfigured, out bool changed)
+        public static string[] WithVariantDefine(IReadOnlyList<string> existing, string variant, out bool changed)
         {
             var result = (existing ?? Array.Empty<string>()).Where(d => !IsVariantDefine(d)).ToList();
-            var expected = ExpectedDefine(variant, variantsConfigured);
+            var expected = ExpectedDefine(variant);
             if (expected != null)
                 result.Add(expected);
             changed = existing == null || !result.SequenceEqual(existing);
@@ -433,19 +399,18 @@ namespace BuildForge.Editor.Core
         }
 
         /// <summary>True when the profile carries exactly the define a build with <paramref name="variant"/> expects.</summary>
-        public static bool HasExpectedDefine(BuildProfile buildProfile, string variant, bool variantsConfigured)
+        public static bool HasExpectedDefine(BuildProfile buildProfile, string variant)
         {
             if (buildProfile == null)
                 return false;
             var defines = buildProfile.scriptingDefines ?? Array.Empty<string>();
-            var expected = WithRuleDefines(defines, variant, ForgeSettings.instance.VariantRules, variantsConfigured);
+            var expected = WithRuleDefines(defines, variant, ForgeSettings.instance.VariantRules);
             return defines.SequenceEqual(expected);
         }
 
         /// <summary>
         /// Editor iteration: puts the define for <paramref name="variant"/> on the
-        /// Build Profile (BUILD_VARIANT_DEFAULT for the default build while
-        /// variants are configured) and the rule's aliases, and saves it,
+        /// Build Profile, with the rule's aliases, and saves it,
         /// requesting a script compilation when the profile is active so the
         /// editor domain follows. The rule's development flags are left to builds.
         /// Returns true when the asset changed.
@@ -479,9 +444,8 @@ namespace BuildForge.Editor.Core
             // Only the defines are written. The rule's development flags never
             // reach editor compilation (the editor gets no DEVELOPMENT_BUILD), and
             // on a committed profile they would reach every machine without this
-            // ledger, where a Default build inherits them. Builds apply the rule.
-            var variantsConfigured = Configured.Count > 0;
-            var defines = WithRuleDefines(userDefines, variant, ForgeSettings.instance.VariantRules, variantsConfigured);
+            // ledger, where builds of other variants inherit them. Builds apply the rule.
+            var defines = WithRuleDefines(userDefines, variant, ForgeSettings.instance.VariantRules);
             ledger.Record(buildProfile, userDefines, null, defines, null);
 
             buildProfile.scriptingDefines = defines;
@@ -492,7 +456,7 @@ namespace BuildForge.Editor.Core
             // changes nothing and must not trigger a recompile.
             if (defines.SequenceEqual(definesBefore))
                 return false;
-            var expected = ExpectedDefine(variant, variantsConfigured);
+            var expected = ExpectedDefine(variant);
             Debug.Log(expected == null
                 ? $"[Build Forge] Removed the variant define from Unity Build Profile '{buildProfile.name}'."
                 : $"[Build Forge] Scripting define '{expected}' written to Unity Build Profile '{buildProfile.name}'.");
@@ -545,7 +509,7 @@ namespace BuildForge.Editor.Core
         {
             var previous = buildProfile.scriptingDefines;
             buildProfile.scriptingDefines = WithRuleDefines(VariantDefineLedger.instance.UserDefines(buildProfile), variant,
-                ForgeSettings.instance.VariantRules, Configured.Count > 0);
+                ForgeSettings.instance.VariantRules);
             return previous;
         }
 

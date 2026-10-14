@@ -69,7 +69,7 @@ The package also ships two samples, importable from the Package Manager: **Manif
 | Build Forge settings | The Build Forge section stored inside a Unity Build Profile asset (the `ForgeProfile` type in the API). |
 | Platform profile | One of Unity's built-in per-platform profiles in the Build Profiles window's Platforms list. They live in `Library/` and cannot hold Build Forge settings. |
 | Plugin | A class that takes part in builds of every profile it applies to. Ten are bundled; projects can add their own. |
-| Variant | A project-wide build choice such as `Internal`, picked per build. The build without a variant is the default build. |
+| Variant | A project-wide build choice such as `Release` or `Internal`, picked per build. Once a project has variants, every build names one. |
 | Active | Unity's state: the Build Profile Unity currently uses. |
 | Applied | Build Forge's state: the profile whose plugin settings are currently written to the editor. |
 | Baseline | The editor settings as they were before Build Forge applied a profile. |

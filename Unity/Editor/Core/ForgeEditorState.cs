@@ -648,11 +648,11 @@ namespace BuildForge.Editor.Core
             if (force || cachedDrift == null || now - cachedDriftTime > DriftCacheSeconds)
             {
                 cachedDrift = new List<string>(EditorStateApplier.Drift(ForgeEditorStateStore.instance.EditorState, ResolvePlugin));
-                // The applied variant's define (or BUILD_VARIANT_DEFAULT) is expected
-                // on the Unity profile; a hand edit that removes it is drift
-                // (Re-apply restores it).
+                // The applied variant's define is expected on the Unity profile; a
+                // hand edit that removes it is drift (Re-apply restores it), and so
+                // is an Apply without a variant once the project has variants.
                 if (ForgeSettings.instance.BuildVariants.Count > 0 &&
-                    !BuildVariants.HasExpectedDefine(AppliedBuildProfile, AppliedVariant, true))
+                    (AppliedVariant == null || !BuildVariants.HasExpectedDefine(AppliedBuildProfile, AppliedVariant)))
                     cachedDrift.Add(VariantDriftKey);
                 cachedDriftTime = now;
             }

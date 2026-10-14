@@ -14,7 +14,7 @@ namespace BuildForge.Tests.Editor
     public class VariantEditorIterationTests
     {
         [Test]
-        public void DevelopmentToDefaultToRevert_RestoresUserDefinesAndLeavesNativeFlags()
+        public void DevelopmentToReleaseToRevert_RestoresUserDefinesAndLeavesNativeFlags()
         {
             var previousSettings = EditorJsonUtility.ToJson(ForgeSettings.instance);
             var path = "Assets/ForgeVariantTest_" + Guid.NewGuid().ToString("N") + ".asset";
@@ -25,13 +25,14 @@ namespace BuildForge.Tests.Editor
             try
             {
                 var settings = new SerializedObject(ForgeSettings.instance);
-                var names = settings.FindProperty("buildVariants"); names.arraySize = 1;
-                names.GetArrayElementAtIndex(0).stringValue = "Development";
+                var names = settings.FindProperty("buildVariants"); names.arraySize = 2;
+                names.GetArrayElementAtIndex(0).stringValue = "Release";
+                names.GetArrayElementAtIndex(1).stringValue = "Development";
                 var rules = settings.FindProperty("variantRules"); rules.arraySize = 2;
                 for (var i = 0; i < 2; i++)
                 {
                     var rule = rules.GetArrayElementAtIndex(i);
-                    rule.FindPropertyRelative("variant").stringValue = i == 0 ? "Default" : "Development";
+                    rule.FindPropertyRelative("variant").stringValue = i == 0 ? "Release" : "Development";
                     rule.FindPropertyRelative("developmentBuild").enumValueIndex = i == 0 ? 1 : 2;
                     rule.FindPropertyRelative("markProductName").enumValueIndex = i == 0 ? 1 : 2;
                     var aliases = rule.FindPropertyRelative("scriptingDefines"); aliases.arraySize = i;
@@ -48,10 +49,10 @@ namespace BuildForge.Tests.Editor
                 Assert.That(VariantBuildSettings.Capture(profile), Is.EqualTo(before), "Apply writes defines only; builds apply the rule's flags");
                 Assert.That(profile.scriptingDefines, Does.Contain("DEVELOPMENT"));
                 Assert.That(BuildVariants.ShouldMark("Development"), Is.True);
-                BuildVariants.ApplyOnProfile(profile, null);
+                BuildVariants.ApplyOnProfile(profile, "Release");
                 Assert.That(VariantBuildSettings.Capture(profile), Is.EqualTo(before));
                 Assert.That(profile.scriptingDefines, Does.Not.Contain("DEVELOPMENT"));
-                Assert.That(File.ReadAllText(path), Does.Contain("BUILD_VARIANT_DEFAULT"));
+                Assert.That(File.ReadAllText(path), Does.Contain("BUILD_VARIANT_RELEASE"));
                 BuildVariants.StripFromProfile(profile);
                 CollectionAssert.AreEqual(new[] { "USER_SYMBOL", "DEVELOPMENT" }, profile.scriptingDefines);
                 Assert.That(VariantBuildSettings.Capture(profile), Is.EqualTo(before));
@@ -79,8 +80,9 @@ namespace BuildForge.Tests.Editor
             try
             {
                 var settings = new SerializedObject(ForgeSettings.instance);
-                var names = settings.FindProperty("buildVariants"); names.arraySize = 1;
-                names.GetArrayElementAtIndex(0).stringValue = "Development";
+                var names = settings.FindProperty("buildVariants"); names.arraySize = 2;
+                names.GetArrayElementAtIndex(0).stringValue = "Release";
+                names.GetArrayElementAtIndex(1).stringValue = "Development";
                 var rules = settings.FindProperty("variantRules"); rules.arraySize = 1;
                 var rule = rules.GetArrayElementAtIndex(0);
                 rule.FindPropertyRelative("variant").stringValue = "Development";
@@ -102,13 +104,13 @@ namespace BuildForge.Tests.Editor
                 profile.scriptingDefines = profile.scriptingDefines.Concat(new[] { "ENABLE_LOGS" }).ToArray();
                 SetFlag(profile, "m_AllowDebugging", true);
 
-                // A Default build starts from the user's values, edits included.
+                // A Release build starts from the user's values, edits included.
                 var defines = profile.scriptingDefines;
                 var flags = VariantBuildSettings.Capture(profile);
-                BuildVariants.BeginBuild(profile, null);
+                BuildVariants.BeginBuild(profile, "Release");
                 VariantDefineLedger.instance.UndoBuildSettings(profile);
-                CollectionAssert.AreEquivalent(new[] { "USER_SYMBOL", "ENABLE_LOGS", "BUILD_VARIANT_DEFAULT" }, profile.scriptingDefines);
-                Assert.That(GetFlag(profile, "m_Development"), Is.False, "the applied variant's flag must not leak into a Default build");
+                CollectionAssert.AreEquivalent(new[] { "USER_SYMBOL", "ENABLE_LOGS", "BUILD_VARIANT_RELEASE" }, profile.scriptingDefines);
+                Assert.That(GetFlag(profile, "m_Development"), Is.False, "the applied variant's flag must not leak into a Release build");
                 Assert.That(GetFlag(profile, "m_AllowDebugging"), Is.True);
                 BuildVariants.EndBuild(profile, defines);
                 VariantBuildSettings.Restore(profile, flags);
@@ -186,8 +188,9 @@ namespace BuildForge.Tests.Editor
             try
             {
                 var settings = new SerializedObject(ForgeSettings.instance);
-                var names = settings.FindProperty("buildVariants"); names.arraySize = 1;
-                names.GetArrayElementAtIndex(0).stringValue = "Development";
+                var names = settings.FindProperty("buildVariants"); names.arraySize = 2;
+                names.GetArrayElementAtIndex(0).stringValue = "Release";
+                names.GetArrayElementAtIndex(1).stringValue = "Development";
                 var rules = settings.FindProperty("variantRules"); rules.arraySize = 1;
                 var rule = rules.GetArrayElementAtIndex(0);
                 rule.FindPropertyRelative("variant").stringValue = "Development";
@@ -209,7 +212,7 @@ namespace BuildForge.Tests.Editor
                 StringAssert.Contains("carries BUILD_VARIANT_DEVELOPMENT", warning);
                 StringAssert.Contains("variant 'Development' was applied", warning);
                 StringAssert.Contains("Its defines BUILD_VARIANT_DEVELOPMENT, DEVELOPMENT compile into the editor", warning);
-                StringAssert.Contains("a Default build is a development build", warning);
+                StringAssert.Contains("builds of 'Release' are development builds", warning);
                 Assert.IsNull(BuildVariants.StrayWarning(forge, appliedHere: true), "expected state where it is applied");
 
                 BuildVariants.StripFromProfile(profile);

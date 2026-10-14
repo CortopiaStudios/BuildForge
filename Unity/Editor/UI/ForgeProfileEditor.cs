@@ -165,7 +165,7 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.HelpBox(
                 "Output path supports {ProjectName}, {ProfileName} (the Unity Build Profile's name), {Target} and {Variant} " +
-                "(the variant name; Default for the default build once variants exist, collapsed when none are configured) placeholders. " +
+                "(the variant name; collapsed when none are configured) placeholders. " +
                 "Leave it at the default to follow future changes of the package default. " +
                 "Use a dedicated directory per profile and variant.",
                 MessageType.None);

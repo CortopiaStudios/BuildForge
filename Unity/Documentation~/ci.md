@@ -20,7 +20,7 @@ The standalone Unity CLI reads `ProjectSettings/ProjectVersion.txt`, starts the 
 | `-cacheServerWaitForUploadCompletion` | Waits for pending Unity Accelerator uploads before the editor exits. |
 | `-executeMethod BuildForge.CommandLine.Build` | Build Forge's entry point. |
 | `-activeBuildProfile "<path>"` | Unity's own argument: makes the Unity Build Profile active at startup, before scripts compile, so its defines and settings apply to the compilation. With Unity 6000.3.23, activate first across a platform change; see [Changing platform](#changing-platform). |
-| `-forgeVariant "<name>"` | Optional. The variant; leave it out, or pass `Default`, for the default build. |
+| `-forgeVariant "<name>"` | The variant. Required once the project has variants; leave it out in a project without them. |
 
 The CLI itself supplies `-batchmode`, `-projectPath` and `-quit`; do not pass them after `--`, the CLI rejects reserved flags. Build Forge's entry point finishes the build and all cleanup, then exits the editor itself with the result.
 
@@ -55,7 +55,7 @@ A step has also stalled on an agent that runs one build at a time, with no secon
 
 | Argument | Value | Effect |
 |---|---|---|
-| `-forgeVariant` | A variant name, or `Default` | Builds that variant. Names must match a configured variant exactly, including case; `Default` matches in any casing. |
+| `-forgeVariant` | A variant name | Builds that variant. Required once the project has variants: without it the build fails and lists them rather than picking one. Names must match a configured variant exactly, including case. |
 | `-forgeVersion` | For example `1.2.3` | Sets `PlayerSettings.bundleVersion` for this build. |
 | `-forgeVersionCode` | An integer | Sets the Android version code for this build. |
 | `-forgeCI` | `true` or `false` (also `1`/`0`, `yes`/`no`) | Overrides [CI detection](#ci-detection). Without a value it means true. |
@@ -283,7 +283,7 @@ using UnityEditor.Build.Profile;
 
 var buildProfile = BuildProfile.GetActiveBuildProfile();
 var forgeProfile = buildProfile != null ? buildProfile.GetComponent<ForgeProfile>() : null;
-var report = ForgeBuildRunner.RunBuild(forgeProfile, "Internal"); // or RunBuild(forgeProfile) for the default build
+var report = ForgeBuildRunner.RunBuild(forgeProfile, "Internal"); // RunBuild(forgeProfile) in a project without variants
 var command = ForgeBuildRunner.GetCICommand(forgeProfile, "Internal");
 ```
 

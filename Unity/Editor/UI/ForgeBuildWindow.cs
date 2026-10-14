@@ -24,7 +24,7 @@ namespace BuildForge.Editor.UI
         static GUIStyle cachedNoticeTextStyle;
         Vector2 listScroll;
         Vector2 detailsScroll;
-        string selectedVariant; // null = default build; remembered for the editor session, seeded from the applied variant in a fresh editor
+        string selectedVariant; // null until one is picked; remembered for the editor session, seeded from the applied variant in a fresh editor
         const string SelectedVariantKey = "BuildForge.SelectedVariant";
 
         const float LeftPaneWidth = 220f;
@@ -61,7 +61,7 @@ namespace BuildForge.Editor.UI
             RefreshProfiles();
         }
 
-        /// <summary>The selected variant if it is still configured, else none.</summary>
+        /// <summary>The selected variant if it is still configured, else none: Apply and the Build buttons then wait for a pick.</summary>
         string CurrentVariant
         {
             get
@@ -71,6 +71,11 @@ namespace BuildForge.Editor.UI
                 return null;
             }
         }
+
+        /// <summary>True when the project has variants and none is picked, so nothing can be applied or built yet.</summary>
+        static bool AwaitsVariant(string variant) => variant == null && ForgeSettings.instance.BuildVariants.Count > 0;
+
+        const string PickVariantReason = "Pick a variant in the details header first: once a project has variants, every build names one.";
 
         void SelectVariant(string variant)
         {
@@ -92,8 +97,8 @@ namespace BuildForge.Editor.UI
         /// The variant Apply and the Build buttons use, for callers without a window (the main
         /// toolbar's Build buttons): the selection stored for this editor session, which
         /// a window stores as it opens; until then, in a fresh editor, the applied
-        /// variant, as the window starts with; none, the default build, once it is no
-        /// longer configured.
+        /// variant, as the window starts with; none while neither names a configured
+        /// variant, and the Build buttons then wait for a pick.
         /// </summary>
         internal static string SessionVariant
         {
@@ -146,7 +151,7 @@ namespace BuildForge.Editor.UI
                 BuildProfileDefines.EnsureDeferred(profile.BuildProfile);
                 var warnings = new List<string>();
                 if (ForgeSettings.instance.BuildVariants.Count > 0 && !profile.OutputPath.Contains("{Variant}"))
-                    warnings.Add("The output path has no {Variant} placeholder, so a variant build overwrites the plain build.");
+                    warnings.Add("The output path has no {Variant} placeholder, so the variants' builds overwrite each other.");
                 if (ForgeSettings.instance.MaintainBuildProfileDefines)
                 {
                     var collision = BuildProfileDefines.CollisionWarning(profile, allProfiles);
@@ -501,10 +506,15 @@ namespace BuildForge.Editor.UI
             if (markedName != PlayerSettings.productName)
                 EditorGUILayout.LabelField(new GUIContent("Product Name"),
                     new GUIContent(markedName, "Variant builds are marked in the product name (Project Settings > Build Forge > Build Variants)."));
-            if (isActive)
+            if (isActive && !AwaitsVariant(variant))
             {
                 var resolved = profile.GetResolvedOutputPath(target, variant);
                 EditorGUILayout.LabelField(new GUIContent("Output"), new GUIContent(resolved, resolved));
+            }
+            else if (isActive)
+            {
+                EditorGUILayout.LabelField(new GUIContent("Output"),
+                    new GUIContent($"{profile.OutputPath}  (template, resolves once a variant is picked)", profile.OutputPath));
             }
             else
             {
@@ -517,7 +527,7 @@ namespace BuildForge.Editor.UI
             }
 
             var defines = ForgeSettings.instance.MaintainBuildProfileDefines ? BuildProfileDefines.DefineFor(buildProfile.name) : "";
-            var variantDefine = BuildVariants.ExpectedDefine(variant, ForgeSettings.instance.BuildVariants.Count > 0);
+            var variantDefine = BuildVariants.ExpectedDefine(variant);
             if (variantDefine != null)
                 defines += (defines.Length > 0 ? ", " : "") + variantDefine;
             if (defines.Length > 0)
@@ -529,7 +539,7 @@ namespace BuildForge.Editor.UI
                 // {Version} reads the active profile's Player Settings; {BuildNumber} is known only in the build.
                 var shown = isActive
                     ? versionRule.Replace("{Version}", PlayerSettings.bundleVersion)
-                        .Replace("{Variant}", BuildVariants.EffectiveName(variant, ForgeSettings.instance.BuildVariants.Count > 0) ?? "")
+                        .Replace("{Variant}", variant ?? "")
                     : versionRule;
                 EditorGUILayout.LabelField(new GUIContent("Version"), new GUIContent(shown, versionRule));
                 if (versionRule.Contains("{BuildNumber}") && !HasBuildNumber(profile, target))
@@ -563,7 +573,7 @@ namespace BuildForge.Editor.UI
                     : "plugin settings applied";
                 editorStatus = (ForgeEditorState.GetDrift().Count > 0 ? applied + ", drifted" : applied)
                                + (appliedVariant != null ? $" (variant {appliedVariant})"
-                                   : ForgeSettings.instance.BuildVariants.Count > 0 ? " (default variant)" : "");
+                                   : ForgeSettings.instance.BuildVariants.Count > 0 ? " (no variant)" : "");
             }
             else if (isActive)
                 editorStatus = "plugin settings not applied (Apply to make Play Mode match)";
@@ -578,12 +588,23 @@ namespace BuildForge.Editor.UI
             }
 
             EditorGUILayout.Space(6);
-            var variantError = BuildVariants.ProfileError(profile, variant);
-            if (variantError != null) EditorGUILayout.HelpBox(variantError, MessageType.Error);
-            DrawPluginRunList(profile, variant);
+            if (AwaitsVariant(variant))
+            {
+                // What a build does, and its command, depend on the variant it names.
+                var configurationError = BuildVariants.ConfigurationError(profile);
+                if (configurationError != null) EditorGUILayout.HelpBox(configurationError, MessageType.Error);
+                EditorGUILayout.HelpBox("Pick a variant in the header to see the plugins its build runs and its CI command, " +
+                                        "and to apply or build it. Once a project has variants, every build names one.", MessageType.Info);
+            }
+            else
+            {
+                var variantError = BuildVariants.ProfileError(profile, variant);
+                if (variantError != null) EditorGUILayout.HelpBox(variantError, MessageType.Error);
+                DrawPluginRunList(profile, variant);
 
-            EditorGUILayout.Space(6);
-            DrawCICommand();
+                EditorGUILayout.Space(6);
+                DrawCICommand();
+            }
 
             EditorGUILayout.EndVertical();
         }
@@ -951,6 +972,7 @@ namespace BuildForge.Editor.UI
                     string reason;
                     bool enabled;
                     if (!hasSomethingToApply) { reason = "This profile has no plugin settings to apply."; enabled = false; }
+                    else if (AwaitsVariant(variant)) { reason = PickVariantReason; enabled = false; }
                     else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
                     else if (!canMutate) { reason = mutateReason; enabled = false; }
                     else
@@ -974,7 +996,8 @@ namespace BuildForge.Editor.UI
                 {
                     string reason;
                     bool enabled;
-                    if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
+                    if (AwaitsVariant(variant)) { reason = PickVariantReason; enabled = false; }
+                    else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
                     else if (!canMutate) { reason = mutateReason; enabled = false; }
                     else { reason = null; enabled = true; }
 
@@ -1074,7 +1097,7 @@ namespace BuildForge.Editor.UI
         void DrawVariantDropdown(string variant, IReadOnlyList<string> variants, bool canMutate, string mutateReason)
         {
             var style = EditorStyles.miniPullDown;
-            var label = $"Variant: {variant ?? BuildVariants.DefaultLabel}";
+            var label = variant != null ? $"Variant: {variant}" : "Pick a variant";
             var width = Mathf.Min(style.CalcSize(new GUIContent(label)).x, VariantDropdownMaxWidth);
             var caption = FitContent(label,
                 canMutate
@@ -1088,7 +1111,6 @@ namespace BuildForge.Editor.UI
                 if (EditorGUI.DropdownButton(rect, caption, FocusType.Passive, style))
                 {
                     var menu = new GenericMenu();
-                    menu.AddItem(new GUIContent(BuildVariants.DefaultLabel), variant == null, () => SelectVariant(null));
                     foreach (var entry in variants)
                     {
                         var captured = entry;

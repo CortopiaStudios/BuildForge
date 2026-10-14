@@ -92,18 +92,18 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void ApplyEntries_WithVariants_OfferTheDefaultThenEachVariant_ThenRevertWhileApplied()
+        public void ApplyEntries_WithVariants_OfferEachVariant_ThenRevertWhileApplied()
         {
             var entries = ForgeMainToolbar.ApplyEntries(true, new[] { "Internal", "China" },
                 v => v == "China" ? "Variant 'China' is not enabled for 'Quest'." : null,
                 applied: true, appliedVariant: "Internal", anythingApplied: true, canMutate: true);
 
-            CollectionAssert.AreEqual(new[] { "<default>", "Internal", "China (unavailable for this profile)", "Revert to Baseline" },
+            CollectionAssert.AreEqual(new[] { "Internal", "China (unavailable for this profile)", "Revert to Baseline" },
                 entries.Select(e => e.Label));
-            CollectionAssert.AreEqual(new[] { true, true, false, true }, entries.Select(e => e.Enabled));
-            CollectionAssert.AreEqual(new[] { false, true, false, false }, entries.Select(e => e.Checked));
-            CollectionAssert.AreEqual(new[] { false, false, false, true }, entries.Select(e => e.Revert));
-            CollectionAssert.AreEqual(new[] { null, "Internal", "China", null }, entries.Select(e => e.Variant));
+            CollectionAssert.AreEqual(new[] { true, false, true }, entries.Select(e => e.Enabled));
+            CollectionAssert.AreEqual(new[] { true, false, false }, entries.Select(e => e.Checked));
+            CollectionAssert.AreEqual(new[] { false, false, true }, entries.Select(e => e.Revert));
+            CollectionAssert.AreEqual(new[] { "Internal", "China", null }, entries.Select(e => e.Variant));
         }
 
         [Test]
@@ -127,10 +127,15 @@ namespace BuildForge.Tests.Editor
                 applied: false, appliedVariant: null, anythingApplied: false, canMutate: true);
             Assert.That(notApplied.All(e => !e.Checked && e.Enabled && !e.Revert));
 
-            var appliedDefault = ForgeMainToolbar.ApplyEntries(true, new[] { "Internal" }, _ => null,
-                applied: true, appliedVariant: null, anythingApplied: true, canMutate: false);
-            Assert.That(appliedDefault[0].Checked, "the default build is the applied variant");
-            Assert.That(appliedDefault.All(e => !e.Enabled), "Revert included");
+            var applied = ForgeMainToolbar.ApplyEntries(true, new[] { "Internal" }, _ => null,
+                applied: true, appliedVariant: "Internal", anythingApplied: true, canMutate: false);
+            Assert.That(applied[0].Checked, "the applied variant");
+            Assert.That(applied.All(e => !e.Enabled), "Revert included");
+
+            // Applied without a variant, before the project had variants: none is checked.
+            var withoutVariant = ForgeMainToolbar.ApplyEntries(true, new[] { "Internal" }, _ => null,
+                applied: true, appliedVariant: null, anythingApplied: true, canMutate: true);
+            Assert.That(withoutVariant.All(e => !e.Checked));
         }
 
         [Test]
@@ -139,7 +144,7 @@ namespace BuildForge.Tests.Editor
             // Unity switched to another Build Profile without Build Forge: apply the active one, or revert the other.
             var switched = ForgeMainToolbar.ApplyEntries(true, new[] { "Internal" }, _ => null,
                 applied: false, appliedVariant: "Internal", anythingApplied: true, canMutate: true);
-            CollectionAssert.AreEqual(new[] { "<default>", "Internal", "Revert to Baseline" }, switched.Select(e => e.Label));
+            CollectionAssert.AreEqual(new[] { "Internal", "Revert to Baseline" }, switched.Select(e => e.Label));
             Assert.That(switched.All(e => !e.Checked), "the applied variant belongs to the other profile");
 
             // A platform profile, or a Build Profile without a Build Forge Profile, is active: only the revert.
@@ -162,10 +167,10 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual("Build 'Quest' with variant 'Internal' through Build Forge. " +
                             "The variant is the build window's, which the apply menu also sets.", build.Tooltip);
 
-            var run = ForgeMainToolbar.BuildButtonFor(true, "Quest", null, null, true, null, true, null);
+            var run = ForgeMainToolbar.BuildButtonFor(true, "Quest", null, "Internal", true, null, true, null);
             Assert.That(run.Enabled);
             Assert.AreEqual("Build and Run", run.Label);
-            StringAssert.StartsWith("Build 'Quest' with the default variant through Build Forge, then run it.", run.Tooltip);
+            StringAssert.StartsWith("Build 'Quest' with variant 'Internal' through Build Forge, then run it.", run.Tooltip);
 
             // Without variants the tooltip doesn't mention them.
             var plain = ForgeMainToolbar.BuildButtonFor(false, "Quest", null, null, false, null, true, null);
@@ -188,6 +193,12 @@ namespace BuildForge.Tests.Editor
                 "Variant 'China' is not enabled for 'Quest'.", true, null);
             Assert.That(!variantRefused.Enabled);
             Assert.AreEqual("Variant 'China' is not enabled for 'Quest'.", variantRefused.Tooltip);
+
+            // Once the project has variants, nothing is built until one is picked or applied.
+            var unpicked = ForgeMainToolbar.BuildButtonFor(false, "Quest", null, null, true,
+                "No build variant given.", true, null);
+            Assert.That(!unpicked.Enabled);
+            Assert.AreEqual(ForgeMainToolbar.PickVariantReason, unpicked.Tooltip);
         }
 
         [Test]
@@ -195,13 +206,11 @@ namespace BuildForge.Tests.Editor
         {
             Assert.AreEqual("Quest", ForgeMainToolbar.ProfileText("Quest"));
             Assert.AreEqual("Platform profile", ForgeMainToolbar.ProfileText(null));
-            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(true, false, "Internal"));
-            Assert.AreEqual("<default>", ForgeMainToolbar.ApplyText(true, true, null));
-            Assert.AreEqual("Internal", ForgeMainToolbar.ApplyText(true, true, "Internal"));
-            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(false, false, null));
-            Assert.AreEqual("Applied", ForgeMainToolbar.ApplyText(false, true, null));
-            // A variant applied before the variant list was emptied is still named, as in the window.
-            Assert.AreEqual("Internal", ForgeMainToolbar.ApplyText(false, true, "Internal"));
+            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(false, "Internal"));
+            Assert.AreEqual("Not applied", ForgeMainToolbar.ApplyText(false, null));
+            Assert.AreEqual("Applied", ForgeMainToolbar.ApplyText(true, null));
+            // Also a variant applied before the variant list was emptied, as in the window.
+            Assert.AreEqual("Internal", ForgeMainToolbar.ApplyText(true, "Internal"));
         }
 
         [Test]

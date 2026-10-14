@@ -30,7 +30,7 @@ namespace BuildForge.Editor.Configuration
 
         [Tooltip("Output path for the build, relative to the project root. " +
                  "Supports {ProfileName} (the Unity Build Profile's name), {Target}, {ProjectName} and {Variant} " +
-                 "(the variant name, Default for the default build once variants exist, empty and collapsed when none are configured) placeholders. " +
+                 "(the variant name, empty and collapsed in a project without variants) placeholders. " +
                  "Leave it empty to follow the default template. With Remove Previous Build Output on, the files the previous build " +
                  "of this profile and variant left there are removed before each build; use a dedicated directory per profile and variant.")]
         // Stored only when customized; the getter supplies the default, so a
@@ -46,7 +46,7 @@ namespace BuildForge.Editor.Configuration
         [FormerlySerializedAs("pruneBuildDestination")]
         [SerializeField] bool removePreviousBuildOutput = true;
 
-        [Tooltip("Limit named variants on this profile. The default build is always available.")]
+        [Tooltip("Limit the variants this profile builds to the Allowed Variants, at least one.")]
         [SerializeField] bool restrictVariants;
         [SerializeField] List<string> allowedVariants = new();
         [Tooltip("Optional explanation shown when a variant is unavailable on this profile.")]
@@ -57,7 +57,6 @@ namespace BuildForge.Editor.Configuration
         internal IReadOnlyList<string> AllowedVariants => allowedVariants;
 
         public bool SupportsVariant(string variant) => string.IsNullOrEmpty(variant)
-            || string.Equals(variant, "Default", StringComparison.OrdinalIgnoreCase)
             || !restrictVariants || (allowedVariants?.Contains(variant) ?? false);
 
         [Tooltip("Per-plugin configuration objects keyed by plugin key, stored as managed references so they read as plain YAML.")]
@@ -151,18 +150,14 @@ namespace BuildForge.Editor.Configuration
         /// non-active profiles.
         /// </summary>
         public string GetResolvedOutputPath(BuildTarget target, string variant = null)
-            => GetResolvedOutputPath(target, variant, ForgeSettings.instance.BuildVariants.Count > 0,
+            => GetResolvedOutputPath(target, variant,
                 Core.BuildVariants.MarkedProductName(PlayerSettings.productName, variant, Core.BuildVariants.ShouldMark(variant)));
 
         /// <summary>
-        /// {Variant} is the variant name, "Default" for the default build once any
-        /// variant is configured (siblings in the output tree, not parent and
-        /// child), and empty (collapsed) when variants are not in use.
+        /// {Variant} is the variant name, and empty (collapsed) in a project
+        /// without variants.
         /// </summary>
-        internal string GetResolvedOutputPath(BuildTarget target, string variant, bool variantsConfigured)
-            => GetResolvedOutputPath(target, variant, variantsConfigured, PlayerSettings.productName);
-
-        internal string GetResolvedOutputPath(BuildTarget target, string variant, bool variantsConfigured, string rawProductName)
+        internal string GetResolvedOutputPath(BuildTarget target, string variant, string rawProductName)
         {
             var productName = ForgeSettings.instance.MangleProductName
                 ? ForgeSettings.MangleForFilename(rawProductName)
@@ -172,7 +167,7 @@ namespace BuildForge.Editor.Configuration
                 .Replace("{ProjectName}", productName)
                 .Replace("{ProfileName}", DisplayName)
                 .Replace("{Target}", target.ToString())
-                .Replace("{Variant}", Core.BuildVariants.EffectiveName(variant, variantsConfigured) ?? "");
+                .Replace("{Variant}", variant ?? "");
             path = CollapseEmptySegments(path);
 
             var extension = GetRequiredExtension(target);

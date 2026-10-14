@@ -35,15 +35,15 @@ namespace BuildForge.Editor.Configuration
         [Tooltip("When enabled, applying a profile for another platform also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders, Initialize XR on Startup and OpenXR feature states. Revert to Baseline puts Standalone back.")]
         [SerializeField] bool playModeFollowsAppliedProfile = true;
 
-        [Tooltip("Project-wide variant names. Each selects BUILD_VARIANT_<NAME> and any configured rules for development mode, extra defines, product marking and plugins. Once variants exist, the default build gets BUILD_VARIANT_DEFAULT.")]
+        [Tooltip("Project-wide variant names. Each selects BUILD_VARIANT_<NAME> and any configured rules for development mode, extra defines, product marking and plugins. Once variants exist, every build names one.")]
         [SerializeField] List<string> buildVariants = new();
 
-        [Tooltip("Optional rules for a named variant or Default. Unconfigured variants keep the profile's build settings.")]
+        [Tooltip("Optional rules, one per variant. Variants without a rule keep the profile's build settings.")]
         [SerializeField] List<BuildVariantRule> variantRules = new();
 
         internal IReadOnlyList<BuildVariantRule> VariantRules => variantRules;
 
-        [Tooltip("When enabled, a variant build's product name (and so its file name and app display name) is suffixed with the variant, e.g. \"Game (Internal)\", so an internal build is hard to distribute by mistake. The default build is never suffixed.")]
+        [Tooltip("When enabled, a variant build's product name (and so its file name and app display name) is suffixed with the variant, e.g. \"Game (Internal)\", so an internal build is hard to distribute by mistake. Turn it off for the variant you release with its rule's Mark Product Name.")]
         [SerializeField] bool markVariantBuilds = true;
 
         [Tooltip("Plugins disabled globally. Uses the full type name of the plugin class.")]
@@ -176,7 +176,7 @@ namespace BuildForge.Editor.Configuration
         /// <summary>Project-wide build variant names; see BuildVariants.</summary>
         public IReadOnlyList<string> BuildVariants => buildVariants;
 
-        /// <summary>Suffix variant builds' product name with the variant ("Game (Internal)"); the default build is never suffixed. Default on.</summary>
+        /// <summary>Suffix variant builds' product name with the variant ("Game (Internal)") unless the variant's rule decides otherwise. Default on.</summary>
         public bool MarkVariantBuilds
         {
             get => markVariantBuilds;

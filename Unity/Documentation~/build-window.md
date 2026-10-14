@@ -31,7 +31,7 @@ So Revert to Baseline is always in the notices, whichever profile is selected.
 | Item | Shows |
 |---|---|
 | Header | The platform icon, the profile's name, the **Variant** dropdown once variants exist, and **Open in Inspector**, which selects the Unity Build Profile: the Inspector shows Unity's settings and the Build Forge section. |
-| Variant | The variant the details below and the CI Command show, for any selected profile, and the one Apply, Build and Build and Run use, as do the main toolbar's Build buttons: `<default>` or a configured name. Variants the selected profile does not allow are listed as unavailable. A long name ends in "…"; the tooltip then starts with the whole label. |
+| Variant | The variant the details below and the CI Command show, for any selected profile, and the one Apply, Build and Build and Run use, as do the main toolbar's Build buttons. In a new editor session it starts at the applied variant. Until a variant is applied or picked it reads **Pick a variant**, the details leave out the plugins and the CI Command, and Apply, Build and Build and Run are disabled. Variants the selected profile does not allow are listed as unavailable. A long name ends in "…"; the tooltip then starts with the whole label. |
 | Unity Build Profile | The asset, marked "(active)" when it is; click to show it in the Project window. |
 | Build Forge Settings | Click to edit them in the Inspector, in the Unity Build Profile's Build Forge section. |
 | Platform | The profile's platform, and the build target it builds for when that has another name: `Meta Quest (Android)`, `Windows (StandaloneWindows64)`. |
@@ -77,13 +77,12 @@ Its icon and label say what is applied to the active profile. Only the variant i
 | Not applied | Nothing of the active profile is applied. |
 | A check mark and **Applied** | Applied, in a project without variants. |
 | A check mark and **Internal** | Applied with the `Internal` variant. |
-| A check mark and **\<default\>** | Applied with the default build, in a project with variants. |
 | The warning icon | Applied, and editor settings changed since; the tooltip names them. |
 | Not applied, with the warning icon | Another profile's settings are applied underneath the active one, after Unity switched profiles without Build Forge, or the applied profile no longer exists; the tooltip has the build window's warning and its fixes. |
 
 The menu:
 
-- with variants: `<default>` and each variant, the applied one checked. Picking one applies the active profile with it, picking the checked one re-applies it, and the build window then selects that variant too;
+- with variants: each variant, the applied one checked. Picking one applies the active profile with it, picking the checked one re-applies it, and the build window then selects that variant too;
 - without variants: **Apply**, or **Re-apply** once applied;
 - **Revert to Baseline** whenever anything is applied, also another profile's settings left applied when Unity switched profiles on its own. The tooltip then carries the build window's warning.
 

@@ -23,7 +23,7 @@ namespace BuildForge.Editor.Addressables
         internal AddressablesStripperConfig ForVariant(string variant)
         {
             var result = new AddressablesStripperConfig();
-            var extra = variantExclusions.FirstOrDefault(v => v.variant == (variant ?? "Default"));
+            var extra = variant == null ? null : variantExclusions.FirstOrDefault(v => v.variant == variant);
             result.excludedGroups.AddRange(excludedGroups.Concat(extra?.groups ?? new List<string>()).Distinct());
             result.excludedLabels.AddRange(excludedLabels.Concat(extra?.labels ?? new List<string>()).Distinct());
             return result;
@@ -36,13 +36,13 @@ namespace BuildForge.Editor.Addressables
         /// or removed.
         /// </summary>
         internal List<VariantAddressablesExclusions> UnknownVariantExclusions(IReadOnlyList<string> variants) =>
-            variantExclusions.Where(v => v.variant != "Default" && !(variants?.Contains(v.variant) ?? false)).ToList();
+            variantExclusions.Where(v => !(variants?.Contains(v.variant) ?? false)).ToList();
     }
 
     [Serializable]
     internal sealed class VariantAddressablesExclusions
     {
-        public string variant = "Default";
+        public string variant = "";
         public List<string> groups = new();
         public List<string> labels = new();
     }

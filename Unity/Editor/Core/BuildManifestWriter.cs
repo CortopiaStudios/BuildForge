@@ -43,7 +43,7 @@ namespace BuildForge.Editor.Core
                 ProductVersion = PlayerSettings.bundleVersion,
                 BuildNumber = BuildNumberFor(context),
                 BuildProfile = forgeProfile.DisplayName,
-                BuildVariant = BuildVariants.EffectiveName(context.Variant, BuildVariants.Configured.Count > 0) ?? "",
+                BuildVariant = context.Variant ?? "",
                 BuildTarget = context.BuildTarget.ToString(),
                 BuildTargetGroup = context.BuildTargetGroup.ToString(),
                 // Both follow the active Build Profile like the rest of the static API.

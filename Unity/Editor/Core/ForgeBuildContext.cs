@@ -19,10 +19,10 @@ namespace BuildForge.Editor.Core
         /// <summary>The effective native development mode, resolved before any build plugin runs.</summary>
         public bool DevelopmentBuild { get; internal set; }
 
-        /// <summary>The build variant (Project Settings > Build Forge > Build Variants), or null for the plain build.</summary>
+        /// <summary>The build variant (Project Settings > Build Forge > Build Variants), or null in a project without variants.</summary>
         public string Variant { get; }
 
-        /// <summary>The variant's scripting define (BUILD_VARIANT_&lt;NAME&gt;), or null for the plain build.</summary>
+        /// <summary>The variant's scripting define (BUILD_VARIANT_&lt;NAME&gt;), or null in a project without variants.</summary>
         public string VariantDefine => Variant != null ? BuildVariants.DefineFor(Variant) : null;
 
         /// <summary>

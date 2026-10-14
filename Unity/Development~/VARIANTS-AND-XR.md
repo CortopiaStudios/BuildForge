@@ -1,17 +1,18 @@
 # Variants and XR loader selection
 
 Configure project-wide names in **Project Settings > Build Forge > Build Variants**.
-The selector and `-forgeVariant` still choose exactly one name. `Default` is the
-unnamed build, not a second selector or an independent dimension.
+The selector and `-forgeVariant` still choose exactly one name. Once a project has
+variants every build names one; there is no unnamed build beside them, and the
+command line fails without `-forgeVariant` rather than picking one.
 
-Optional **Variant Rules** match a configured name or `Default`. Development Build
+Optional **Variant Rules** match a configured name. Development Build
 and Mark Product Name each support Inherit, Disabled and Enabled. Additional
 Scripting Defines are aliases owned by the rules: changing variant removes aliases
 from the other rules while retaining unrelated symbols. Put variant-owned aliases
 in these rules rather than global Player Settings. Without rules, existing variant
 behavior is unchanged.
 
-Rule names must exactly match a configured variant or `Default`. Duplicate rules,
+Rule names must exactly match a configured variant. Duplicate rules,
 unknown or empty names, duplicate aliases within a rule, and invalid scripting
 defines are errors. Each alias must be one C# preprocessor identifier;
 `BUILD_VARIANT_` and `BUILD_PROFILE_` prefixes belong to Build Forge. Different
@@ -29,14 +30,14 @@ serialized maps, so ProjectSettings.asset is unchanged afterwards. Resolution ha
 before plugins, content generation and manifest creation. Native profile flags and
 `BuildPlayerWithProfileOptions.options` both receive the effective mode.
 
-Restrict Variants in a profile's Build Forge settings limits named variants. Default is always
-available. An optional restriction explanation appears with invalid selections.
+Restrict Variants in a profile's Build Forge settings limits the variants, to at least
+one. An optional restriction explanation appears with invalid selections.
 Builds and editor Apply reject unsupported combinations before plugin changes.
 
 Editor Apply writes the variant's defines to the native profile for Play Mode and
 script compilation, never its development flags: those do not reach editor
 compilation, and on a committed profile they would reach every machine without the
-committer's ledger, where a Default build inherits them. Build Forge records only
+committer's ledger, where builds that leave them to the profile inherit them. Build Forge records only
 what it changed, per user under UserSettings. Revert to Baseline, a variant switch
 and builds undo exactly that change on the profile's current values, so edits made
 in Unity's Build Profiles window after Apply are kept; a define the user changed

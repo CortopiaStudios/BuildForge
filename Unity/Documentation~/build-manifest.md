@@ -27,7 +27,7 @@ The fields come in three groups, in this order in the file: the product, what wa
 | Property | JSON key | Value |
 |---|---|---|
 | `BuildProfile` | `buildProfile` | The name of the Unity Build Profile the build was made from. |
-| `BuildVariant` | `buildVariant` | The variant, `Default` for the default build once the project has variants, empty when it has none. |
+| `BuildVariant` | `buildVariant` | The variant, empty when the project has none. |
 | `BuildTarget` | `buildTarget` | Unity's build target, for example `Android`. |
 | `BuildTargetGroup` | `buildTargetGroup` | Its target group, for example `Android` or `Standalone`. |
 | `DevelopmentBuild` | `developmentBuild` | Whether the player is a development build, after the variant's rule. See [Development build and managed code variant](#development-build-and-managed-code-variant). |

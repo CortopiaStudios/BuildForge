@@ -348,9 +348,12 @@ namespace BuildForge.Editor.Addressables
                 }
             }
 
-            EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("Additional Exclusions by Variant", EditorStyles.boldLabel);
-            foreach (var variant in new[] { "Default" }.Concat(ForgeSettings.instance.BuildVariants))
+            if (ForgeSettings.instance.BuildVariants.Count > 0)
+            {
+                EditorGUILayout.Space(8);
+                EditorGUILayout.LabelField("Additional Exclusions by Variant", EditorStyles.boldLabel);
+            }
+            foreach (var variant in ForgeSettings.instance.BuildVariants)
             {
                 var extra = config.VariantExclusions.FirstOrDefault(v => v.variant == variant);
                 var enabled = extra != null;
@@ -376,7 +379,7 @@ namespace BuildForge.Editor.Addressables
             if (unknown.Count > 0)
             {
                 EditorGUILayout.HelpBox(UnknownVariantsError(config, ForgeSettings.instance.BuildVariants), MessageType.Error);
-                var targets = new[] { "Default" }.Concat(ForgeSettings.instance.BuildVariants)
+                var targets = ForgeSettings.instance.BuildVariants
                     .Where(name => config.VariantExclusions.All(v => v.variant != name)).ToArray();
                 foreach (var entry in unknown)
                 {

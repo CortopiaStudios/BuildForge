@@ -13,10 +13,11 @@ namespace BuildForge.Tests.Editor
     public class VariantBuildConfigurationTests
     {
         const string Prefix = "m_PlatformBuildProfile.";
+        static readonly string[] Variants = { "Release" };
 
         static BuildVariantRule Rule(VariantOverride development, Action<VariantBuildConfiguration> configure)
         {
-            var rule = new BuildVariantRule { Variant = "Default", DevelopmentBuild = development };
+            var rule = new BuildVariantRule { Variant = "Release", DevelopmentBuild = development };
             configure(rule.BuildConfiguration);
             return rule;
         }
@@ -45,19 +46,19 @@ namespace BuildForge.Tests.Editor
         [Test] public void DevelopmentOptionsOnWithDevelopmentOff_AreRejected()
         {
             var rule = Rule(VariantOverride.Disabled, c => c.ScriptDebugging = VariantOverride.Enabled);
-            Assert.That(BuildVariants.RulesError(new[] { rule }, Array.Empty<string>()),
+            Assert.That(BuildVariants.RulesError(new[] { rule }, Variants),
                 Does.Contain("Development Build off").And.Contain("Script Debugging"));
             rule.DevelopmentBuild = VariantOverride.Inherit;
-            Assert.That(BuildVariants.RulesError(new[] { rule }, Array.Empty<string>()), Is.Null);
+            Assert.That(BuildVariants.RulesError(new[] { rule }, Variants), Is.Null);
             rule.BuildConfiguration.ScriptDebugging = VariantOverride.Disabled;
             rule.BuildConfiguration.WaitForManagedDebugger = VariantOverride.Enabled;
-            Assert.That(BuildVariants.RulesError(new[] { rule }, Array.Empty<string>()), Does.Contain("Wait For Managed Debugger"));
+            Assert.That(BuildVariants.RulesError(new[] { rule }, Variants), Does.Contain("Wait For Managed Debugger"));
         }
 
         [Test] public void InvalidBuildConfigurationValues_AreRejected()
         {
             var rule = Rule(VariantOverride.Inherit, c => c.Compression = (VariantCompression)42);
-            Assert.That(BuildVariants.RulesError(new[] { rule }, Array.Empty<string>()), Does.Contain("invalid override value"));
+            Assert.That(BuildVariants.RulesError(new[] { rule }, Variants), Does.Contain("invalid override value"));
         }
 
         [Test] public void BuildConfiguration_SetsTheProfilesSettings_AndRestoreReturnsThem()

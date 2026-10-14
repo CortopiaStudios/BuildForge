@@ -17,30 +17,33 @@ namespace BuildForge.Tests.Addressables
             var config = new AddressablesStripperConfig();
             config.ExcludedGroups.Add("Demo Only");
             config.ExcludedLabels.Add("Spoiler");
-            var release = new VariantAddressablesExclusions { variant = "Default" };
+            var release = new VariantAddressablesExclusions { variant = "Release" };
             release.groups.AddRange(new[] { "Debug", "Demo Only" });
             release.labels.Add("Development");
             config.VariantExclusions.Add(release);
-            var actual = config.ForVariant(null);
+            var actual = config.ForVariant("Release");
             CollectionAssert.AreEqual(new[] { "Demo Only", "Debug" }, actual.ExcludedGroups);
             CollectionAssert.AreEqual(new[] { "Spoiler", "Development" }, actual.ExcludedLabels);
             CollectionAssert.AreEqual(new[] { "Demo Only" }, config.ForVariant("Development").ExcludedGroups);
+            CollectionAssert.AreEqual(new[] { "Demo Only" }, config.ForVariant(null).ExcludedGroups,
+                "No variant, in a project without variants: the base exclusions only.");
             actual.ExcludedGroups.Clear();
             CollectionAssert.AreEqual(new[] { "Demo Only" }, config.ExcludedGroups);
             CollectionAssert.AreEqual(new[] { "Debug", "Demo Only" }, release.groups);
         }
 
         [Test]
-        public void ExclusionsForUnconfiguredVariants_AreReported_DefaultIsAlwaysConfigured()
+        public void ExclusionsForUnconfiguredVariants_AreReported()
         {
             var config = new AddressablesStripperConfig();
             foreach (var name in new[] { "Default", "Internal", "Demo" })
                 config.VariantExclusions.Add(new VariantAddressablesExclusions { variant = name });
-            CollectionAssert.AreEqual(new[] { "Demo" },
-                config.UnknownVariantExclusions(new[] { "Internal", "PublicDemo" }).Select(v => v.variant));
-            CollectionAssert.AreEqual(new[] { "Internal", "Demo" },
+            CollectionAssert.AreEqual(new[] { "Default", "Demo" },
+                config.UnknownVariantExclusions(new[] { "Internal", "PublicDemo" }).Select(v => v.variant),
+                "Default is an ordinary name.");
+            CollectionAssert.AreEqual(new[] { "Default", "Internal", "Demo" },
                 config.UnknownVariantExclusions(Array.Empty<string>()).Select(v => v.variant));
-            Assert.IsNull(AddressablesStripperPlugin.UnknownVariantsError(config, new[] { "Internal", "Demo" }));
+            Assert.IsNull(AddressablesStripperPlugin.UnknownVariantsError(config, new[] { "Default", "Internal", "Demo" }));
         }
     }
 
@@ -93,10 +96,9 @@ namespace BuildForge.Tests.Addressables
         }
 
         [Test]
-        public void ExclusionsForDefaultAndConfiguredVariants_DoNotStopTheBuild()
+        public void ExclusionsForConfiguredVariants_DoNotStopTheBuild()
         {
             var config = new AddressablesStripperConfig();
-            config.VariantExclusions.Add(new VariantAddressablesExclusions { variant = "Default" });
             config.VariantExclusions.Add(new VariantAddressablesExclusions { variant = "PublicDemo" });
             profile.SetPluginConfig(AddressablesStripperPlugin.ConfigKey, config);
 

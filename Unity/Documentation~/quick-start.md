@@ -66,7 +66,7 @@ Run it from the repository root on a machine with the standalone Unity CLI and t
 
 ## Next steps
 
-- Add a variant, for example an `Internal` build with debug tools: [Build variants](variants.md). The build window then shows a variant selector, and the output gets `Default` and `Internal` folders side by side.
+- Add variants, for example `Release` for the store build and `Internal` with debug tools: [Build variants](variants.md). The build window then shows a variant selector, every build names a variant (the CI command gets `-forgeVariant`), and the output gets `Release` and `Internal` folders side by side.
 - Configure plugins: [OpenXR features per profile](plugins/openxr.md), [build numbers](plugins/build-number.md), [Android signing for CI](plugins/android-keystore-env.md).
 - Use the profile picker in Unity's main toolbar: [Build window and main toolbar](build-window.md).
 - Moving an existing project with its own build scripts: [Integrating Build Forge into an existing project](integration-guide.md).

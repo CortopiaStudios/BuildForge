@@ -63,7 +63,7 @@ The Build Profile given to `-activeBuildProfile` has no Build Forge settings. Ad
 
 ### "Unknown argument", "needs a value", "Unknown build variant"
 
-Build Forge checks its arguments strictly; see [Build Forge's arguments](ci.md#build-forges-arguments). An argument that needs a value and gets none is usually an unset CI variable. Variant names must match exactly, including case; `Default` is the default build.
+Build Forge checks its arguments strictly; see [Build Forge's arguments](ci.md#build-forges-arguments). An argument that needs a value and gets none is usually an unset CI variable. Variant names must match exactly, including case, and once a project has variants every build needs `-forgeVariant`.
 
 ### The job fails with exit code 6
 

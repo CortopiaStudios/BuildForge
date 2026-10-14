@@ -897,10 +897,11 @@ namespace BuildForge.Editor.Core
 
         // ------------------------------------------------------------ liveness
 
-        // A record belongs to a Unity Build Profile that still exists and to the
-        // default build or a variant that is still configured.
+        // A record belongs to a Unity Build Profile that still exists and to a
+        // variant that is still configured, or to no variant in a project without
+        // variants.
         static bool IsLiveRecord(string buildProfileGuid, string variant)
             => !string.IsNullOrEmpty(AssetDatabase.GUIDToAssetPath(buildProfileGuid))
-               && (string.IsNullOrEmpty(variant) || BuildVariants.Configured.Contains(variant));
+               && (string.IsNullOrEmpty(variant) ? BuildVariants.Configured.Count == 0 : BuildVariants.Configured.Contains(variant));
     }
 }

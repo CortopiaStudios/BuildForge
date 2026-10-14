@@ -148,7 +148,7 @@ namespace BuildForge.Editor.UI
             }
             variantList.DoLayoutList();
             EditorGUILayout.PropertyField(serializedSettings.FindProperty("variantRules"),
-                new GUIContent("Variant Rules", "Optional development, scripting-define, product-name, version and build configuration rules. Use Default for the release build."), true);
+                new GUIContent("Variant Rules", "Optional development, scripting-define, product-name, version and build configuration rules, one per variant."), true);
             var variantWarning = BuildVariants.ConfigurationError();
             if (variantWarning != null)
                 EditorGUILayout.HelpBox(variantWarning, MessageType.Error);
@@ -159,9 +159,10 @@ namespace BuildForge.Editor.UI
                     new UnityEngine.GUIContent("Mark Variant Builds",
                         "Suffix a variant build's product name with the variant, e.g. \"Game (Internal)\", for the " +
                         "duration of the build: the app display name, window title, file name ({ProjectName}) and the " +
-                        "manifest's ProductName show it, so an internal build is hard to distribute by mistake. The " +
-                        "default build is never suffixed. The application identifier is not changed, so an internal " +
-                        "build replaces the installed public one on a device rather than sitting beside it."));
+                        "manifest's ProductName show it, so an internal build is hard to distribute by mistake. Turn " +
+                        "it off for the variant you release with its rule's Mark Product Name. The application " +
+                        "identifier is not changed, so an internal build replaces the installed public one on a " +
+                        "device rather than sitting beside it."));
             }
             EditorGUILayout.Space(8);
 

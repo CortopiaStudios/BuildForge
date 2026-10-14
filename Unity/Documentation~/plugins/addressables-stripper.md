@@ -10,7 +10,7 @@ Leaves Addressables groups and labelled entries out of a build, for example spoi
 |---|---|
 | Exclude Groups | A toggle per Addressables group. Read-only groups are not listed. |
 | Exclude Labels | A toggle per Addressables label. |
-| Additional Exclusions by Variant | A toggle for `Default` and each configured variant. A ticked one shows group and label toggles that are excluded in addition, for that variant's builds only. |
+| Additional Exclusions by Variant | A toggle for each configured variant, shown once variants exist. A ticked one shows group and label toggles that are excluded in addition, for that variant's builds only. |
 
 ## What a build does
 

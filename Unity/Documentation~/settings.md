@@ -23,7 +23,7 @@ Unity offers no public way for packages outside the Unity registry to add a sect
 | Field | Meaning |
 |---|---|
 | Restrict Variants | Limit which named variants this profile can be built with. Off: every variant is available. |
-| Allowed Variants | With Restrict Variants on: the variants this profile allows. The default build is always allowed and must not be listed. |
+| Allowed Variants | With Restrict Variants on: the variants this profile allows, at least one. |
 | Variant Restriction Reason | Optional text shown when someone picks a variant this profile does not allow. |
 | Output Path | Where builds go. See [Output path](#output-path). |
 | Remove Previous Build Output | Remove the previous build's files before each build. See [Remove Previous Build Output](#remove-previous-build-output). |
@@ -65,20 +65,20 @@ The output path is a template, relative to the Unity project folder unless it is
 | `{ProjectName}` | The product name from Player Settings, sanitized for file names (see below). A variant build uses the marked name, for example `My_Game_Internal`. |
 | `{ProfileName}` | The Unity Build Profile's name. |
 | `{Target}` | Unity's build target name, for example `Android`, `StandaloneWindows64` or `iOS`. |
-| `{Variant}` | The variant's name. Once any variant is configured, the default build gets `Default`. With no variants configured it is empty and the empty folder level collapses. |
+| `{Variant}` | The variant's name. With no variants configured it is empty and the empty folder level collapses. |
 
 The default template is `Builds/{Target}/{ProfileName}/{Variant}/{ProjectName}`. A profile stores a path only once you change it, so profiles that keep the default follow later changes of the package default; **Reset** returns to it, and typing the default back has the same effect.
 
 Build Forge appends the file extension a platform needs when the path lacks it: `.apk` or `.aab` for Android (following the profile's Build App Bundle option), `.exe` for Windows and `.app` for macOS. Other targets use the path as written.
 
-With variants configured, the default and the variant builds land side by side:
+With variants configured, the variants' builds land side by side:
 
 ```
-Builds/Android/Quest/Default/My_Game.apk
+Builds/Android/Quest/Release/My_Game.apk
 Builds/Android/Quest/Internal/My_Game_Internal.apk
 ```
 
-The build window warns when variants exist and a profile's output path has no `{Variant}`, because a variant build would then overwrite the default build.
+The build window warns when variants exist and a profile's output path has no `{Variant}`, because the variants' builds would then overwrite each other.
 
 The resolved path depends on the active profile: the product name and Android's Build App Bundle option follow it. The build window therefore shows the resolved path for the active profile and the template for the others.
 
@@ -152,7 +152,7 @@ Stored in `ProjectSettings/ForgeSettings.asset`; commit it.
 | | Maintain Build Profile Defines | On | Keeps the `BUILD_PROFILE_<NAME>` define in each profile. |
 | Play Mode | Play Mode Follows Applied Profile | On | Applying a profile of another platform than Standalone also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders, Initialize XR on Startup and OpenXR feature states. See [Apply](concepts.md#apply-and-re-apply). |
 | Build Variants | (list) | Empty | Project-wide variant names. See [Build variants](variants.md). |
-| | Variant Rules | Empty | Optional rules per variant or `Default`. |
+| | Variant Rules | Empty | Optional rules per variant. |
 | | Mark Variant Builds | On | Shown once variants exist. Suffixes a variant build's product name with the variant. |
 | Installed Plugins | One toggle per plugin | On | Off disables the plugin for every profile: it is hidden from the Build Forge section and skipped in builds. Some plugins show global settings under their toggle. |
 | Available Plugins | Install | | Shown while a bundled plugin's Unity package is missing. Adds the package. |

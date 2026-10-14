@@ -6,11 +6,11 @@ namespace BuildForge.Editor.Configuration
 {
     internal enum VariantOverride { Inherit, Disabled, Enabled }
 
-    /// <summary>Optional behavior for one existing variant name; "Default" addresses the plain build.</summary>
+    /// <summary>Optional behavior for one configured variant.</summary>
     [Serializable]
     internal sealed class BuildVariantRule
     {
-        [SerializeField] string variant = "Default";
+        [SerializeField] string variant = "";
         [SerializeField] VariantOverride developmentBuild;
         [SerializeField] VariantOverride markProductName;
         [Tooltip("Defines managed by variants, in addition to BUILD_VARIANT_<NAME>.")]

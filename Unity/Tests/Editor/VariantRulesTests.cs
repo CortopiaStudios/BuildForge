@@ -30,7 +30,7 @@ namespace BuildForge.Tests.Editor
             => EditorJsonUtility.FromJsonOverwrite(previousSettings, ForgeSettings.instance);
 
         [TestCase(null)] [TestCase("")] [TestCase("Developmnt")]
-        [TestCase("Development ")] [TestCase("development")] [TestCase("default")]
+        [TestCase("Development ")] [TestCase("development")] [TestCase("Default")]
         public void InvalidRuleNamesAreRejectedEvenForAnotherSelectedVariant(string name)
         {
             var rules = new[] { Rule(name, VariantOverride.Inherit) };
@@ -49,8 +49,8 @@ namespace BuildForge.Tests.Editor
         [TestCase("BUILD_PROFILE_OTHER")] [TestCase("BUILD_VARIANT_OTHER")]
         public void InvalidOrGeneratedDefinesAreRejected(string define)
         {
-            var rules = new[] { Rule("Default", VariantOverride.Inherit, define) };
-            Assert.That(BuildVariants.RulesError(rules, Array.Empty<string>()), Is.Not.Null);
+            var rules = new[] { Rule("Development", VariantOverride.Inherit, define) };
+            Assert.That(BuildVariants.RulesError(rules, new[] { "Development" }), Is.Not.Null);
         }
 
         [Test] public void DuplicateDefinesInOneRuleAreRejectedButSharedAliasesAreAllowed()
@@ -66,11 +66,11 @@ namespace BuildForge.Tests.Editor
         [TestCase("{Build}")] [TestCase("{version}")] [TestCase("{Version}.{Commit}")]
         public void UnknownVersionPlaceholdersAreRejected(string template)
         {
-            var rule = Rule("Default", VariantOverride.Inherit);
+            var rule = Rule("Development", VariantOverride.Inherit);
             rule.Version = "{Version}.{BuildNumber}d-{Variant}";
-            Assert.That(BuildVariants.RulesError(new[] { rule }, Array.Empty<string>()), Is.Null);
+            Assert.That(BuildVariants.RulesError(new[] { rule }, new[] { "Development" }), Is.Null);
             rule.Version = template;
-            Assert.That(BuildVariants.RulesError(new[] { rule }, Array.Empty<string>()), Does.Contain("unknown placeholder"));
+            Assert.That(BuildVariants.RulesError(new[] { rule }, new[] { "Development" }), Does.Contain("unknown placeholder"));
         }
 
         [Test] public void FormatVersion_FillsThePlaceholders_AndNeedsANumberForBuildNumber()
@@ -80,7 +80,7 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual("1.4.0-cn", BuildVariants.FormatVersion("{Version}-cn", "1.4.0", "", "China", out error));
             Assert.AreEqual("1.4.0 Development", BuildVariants.FormatVersion("{Version} {Variant}", "1.4.0", null, "Development", out error));
 
-            Assert.IsNull(BuildVariants.FormatVersion("{Version}.{BuildNumber}", "1.4.0", "", "Default", out error));
+            Assert.IsNull(BuildVariants.FormatVersion("{Version}.{BuildNumber}", "1.4.0", "", "Release", out error));
             StringAssert.Contains("no build number", error);
             Assert.IsNull(BuildVariants.FormatVersion("{Variant}", "1.4.0", "1", null, out error), "No variants, no name.");
             StringAssert.Contains("empty version", error);
@@ -98,11 +98,14 @@ namespace BuildForge.Tests.Editor
         public void InvalidAllowedVariantsAreRejected(string name)
             => Assert.That(BuildVariants.AllowedVariantsError(new[] { name }, new[] { "Development" }), Is.Not.Null);
 
-        [Test] public void AllowedVariantsRejectDuplicatesButAllowDefaultOnlyProfiles()
+        [Test] public void AllowedVariantsRejectDuplicates_AndAnEmptyListOnceVariantsExist()
         {
             Assert.That(BuildVariants.AllowedVariantsError(new[] { "Development", "Development" }, new[] { "Development" }),
                 Does.Contain("more than once"));
-            Assert.That(BuildVariants.AllowedVariantsError(Array.Empty<string>(), Array.Empty<string>()), Is.Null);
+            Assert.That(BuildVariants.AllowedVariantsError(Array.Empty<string>(), new[] { "Development" }),
+                Does.Contain("at least one"));
+            Assert.That(BuildVariants.AllowedVariantsError(Array.Empty<string>(), Array.Empty<string>()), Is.Null,
+                "Without variants the profile builds without one.");
         }
 
         [Test] public void InvalidRulesStopBuildAndApplyBeforeSettingsOrLedgerChanges()
@@ -123,10 +126,13 @@ namespace BuildForge.Tests.Editor
                 var ledger = EditorJsonUtility.ToJson(ForgeEditorStateStore.instance);
                 var aliases = EditorJsonUtility.ToJson(VariantDefineLedger.instance);
                 var product = PlayerSettings.productName;
-                Assert.That(BuildVariants.ProfileError(forge, null), Does.Contain("RemovedVariant"));
-                Assert.Throws<InvalidOperationException>(() => ForgeBuildRunner.RunBuild(forge));
-                Assert.Throws<InvalidOperationException>(() => ForgeEditorState.Apply(forge));
-                Assert.Throws<InvalidOperationException>(() => BuildVariants.ApplyOnProfile(native, null));
+                Assert.That(BuildVariants.ProfileError(forge, "Development"), Does.Contain("RemovedVariant"));
+                StringAssert.Contains("RemovedVariant",
+                    Assert.Throws<InvalidOperationException>(() => ForgeBuildRunner.RunBuild(forge, "Development")).Message);
+                StringAssert.Contains("RemovedVariant",
+                    Assert.Throws<InvalidOperationException>(() => ForgeEditorState.Apply(forge, "Development")).Message);
+                StringAssert.Contains("RemovedVariant",
+                    Assert.Throws<InvalidOperationException>(() => BuildVariants.ApplyOnProfile(native, "Development")).Message);
                 Assert.That(EditorJsonUtility.ToJson(native), Is.EqualTo(before));
                 Assert.That(EditorJsonUtility.ToJson(ForgeEditorStateStore.instance), Is.EqualTo(ledger));
                 Assert.That(EditorJsonUtility.ToJson(VariantDefineLedger.instance), Is.EqualTo(aliases));
@@ -144,7 +150,7 @@ namespace BuildForge.Tests.Editor
             var native = ScriptableObject.CreateInstance<BuildProfile>();
             try
             {
-                Assert.That(VariantBuildSettings.ValidationError(native, Rule("Default", VariantOverride.Disabled)),
+                Assert.That(VariantBuildSettings.ValidationError(native, Rule("Release", VariantOverride.Disabled)),
                     Does.Contain("native development build setting"));
                 Assert.That(VariantBuildSettings.ValidationError(native, Rule("Internal", VariantOverride.Inherit)), Is.Null);
             }
@@ -175,28 +181,30 @@ namespace BuildForge.Tests.Editor
         public void NamedCombinations_RemoveOtherVariantsAliases_AndKeepUnownedDefines()
         {
             var rules = new[] {
-                Rule("Default", VariantOverride.Disabled),
+                Rule("Release", VariantOverride.Disabled),
                 Rule("Development", VariantOverride.Enabled, "DEVELOPMENT"),
                 Rule("China", VariantOverride.Disabled, "REGION_CHINA"),
                 Rule("ChinaDevelopment", VariantOverride.Enabled, "DEVELOPMENT", "REGION_CHINA")
             };
-            var chinaDev = BuildVariants.WithRuleDefines(new[] { "MY_SYMBOL" }, "ChinaDevelopment", rules, true);
+            var chinaDev = BuildVariants.WithRuleDefines(new[] { "MY_SYMBOL" }, "ChinaDevelopment", rules);
             CollectionAssert.AreEquivalent(new[] { "MY_SYMBOL", "BUILD_VARIANT_CHINADEVELOPMENT", "DEVELOPMENT", "REGION_CHINA" }, chinaDev);
-            var release = BuildVariants.WithRuleDefines(chinaDev, null, rules, true);
-            CollectionAssert.AreEquivalent(new[] { "MY_SYMBOL", "BUILD_VARIANT_DEFAULT" }, release);
-            var dev = BuildVariants.WithRuleDefines(chinaDev, "Development", rules, true);
+            var release = BuildVariants.WithRuleDefines(chinaDev, "Release", rules);
+            CollectionAssert.AreEquivalent(new[] { "MY_SYMBOL", "BUILD_VARIANT_RELEASE" }, release);
+            var dev = BuildVariants.WithRuleDefines(chinaDev, "Development", rules);
             Assert.That(dev, Does.Not.Contain("REGION_CHINA"));
+            CollectionAssert.AreEquivalent(new[] { "MY_SYMBOL" }, BuildVariants.WithRuleDefines(chinaDev, null, rules),
+                "No variant, in a project without variants: no variant state at all.");
         }
 
         [Test]
         public void UnconfiguredRules_PreserveExistingDefines()
         {
-            var actual = BuildVariants.WithRuleDefines(new[] { "DEVELOPMENT", "EXTERNAL" }, "Internal", Array.Empty<BuildVariantRule>(), true);
+            var actual = BuildVariants.WithRuleDefines(new[] { "DEVELOPMENT", "EXTERNAL" }, "Internal", Array.Empty<BuildVariantRule>());
             CollectionAssert.AreEquivalent(new[] { "DEVELOPMENT", "EXTERNAL", "BUILD_VARIANT_INTERNAL" }, actual);
         }
 
         [Test]
-        public void ProfileRestrictions_AlwaysAllowDefault_AndRejectOtherRegions()
+        public void ProfileRestrictions_AllowTheListedVariants_AndRejectOthers()
         {
             var profile = ScriptableObject.CreateInstance<ForgeProfile>();
             try
@@ -206,9 +214,10 @@ namespace BuildForge.Tests.Editor
                 var allowed = so.FindProperty("allowedVariants");
                 allowed.arraySize = 1; allowed.GetArrayElementAtIndex(0).stringValue = "Development";
                 so.ApplyModifiedPropertiesWithoutUndo();
-                Assert.IsTrue(profile.SupportsVariant(null));
+                Assert.IsTrue(profile.SupportsVariant(null), "No variant, in a project without variants.");
                 Assert.IsTrue(profile.SupportsVariant("Development"));
                 Assert.IsFalse(profile.SupportsVariant("China"));
+                Assert.IsFalse(profile.SupportsVariant("Default"), "Default is an ordinary name.");
                 StringAssert.Contains("China", BuildVariants.ProfileError(profile, "China"));
             }
             finally { UnityEngine.Object.DestroyImmediate(profile); }
@@ -233,7 +242,7 @@ namespace BuildForge.Tests.Editor
                     so.FindProperty("m_PlatformBuildProfile." + field).boolValue = true;
                 so.ApplyModifiedPropertiesWithoutUndo();
                 var before = VariantBuildSettings.Capture(profile);
-                VariantBuildSettings.Apply(profile, Rule("Default", VariantOverride.Disabled));
+                VariantBuildSettings.Apply(profile, Rule("Release", VariantOverride.Disabled));
                 so.Update();
                 foreach (var field in VariantBuildSettings.Fields)
                     Assert.IsFalse(so.FindProperty("m_PlatformBuildProfile." + field).boolValue, field);

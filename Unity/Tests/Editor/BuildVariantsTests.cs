@@ -14,8 +14,7 @@ namespace BuildForge.Tests.Editor
         static readonly List<string> Variants = new() { "Internal", "QA Build" };
 
         // The window remembers its selection per editor session; a fresh editor
-        // has nothing stored and must start on the applied variant (a stored
-        // default must not be mistaken for "nothing stored").
+        // has nothing stored and must start on the applied variant.
         [Test]
         public void RestoreSelection_NothingStored_FollowsAppliedVariant()
         {
@@ -27,7 +26,6 @@ namespace BuildForge.Tests.Editor
         [Test]
         public void RestoreSelection_StoredValueWins()
         {
-            Assert.IsNull(BuildVariants.RestoreSelection(BuildVariants.DefaultLabel, "Internal"));
             Assert.AreEqual("QA Build", BuildVariants.RestoreSelection("QA Build", "Internal"));
         }
 
@@ -35,7 +33,8 @@ namespace BuildForge.Tests.Editor
         public void StoreSelection_RoundTrips()
         {
             Assert.AreEqual("Internal", BuildVariants.RestoreSelection(BuildVariants.StoreSelection("Internal"), null));
-            Assert.IsNull(BuildVariants.RestoreSelection(BuildVariants.StoreSelection(null), "Internal"));
+            Assert.AreEqual("Internal", BuildVariants.RestoreSelection(BuildVariants.StoreSelection(null), "Internal"),
+                "Nothing selected follows the applied variant.");
         }
 
         [TestCase("Internal", "BUILD_VARIANT_INTERNAL")]
@@ -47,12 +46,24 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void Resolve_NoName_IsNoVariant_NoError()
+        public void Resolve_NoName_WithoutVariants_IsNoVariant_NoError()
+        {
+            Assert.IsNull(BuildVariants.Resolve(null, new List<string>(), out var e1));
+            Assert.IsNull(e1);
+            Assert.IsNull(BuildVariants.Resolve("  ", null, out var e2));
+            Assert.IsNull(e2);
+        }
+
+        // Once variants exist every build names one; nothing is picked for it.
+        [Test]
+        public void Resolve_NoName_WithVariants_IsAnError_ListingTheVariants()
         {
             Assert.IsNull(BuildVariants.Resolve(null, Variants, out var e1));
-            Assert.IsNull(e1);
+            StringAssert.Contains("No build variant given", e1);
+            StringAssert.Contains("'Internal'", e1);
+            StringAssert.Contains("'QA Build'", e1);
             Assert.IsNull(BuildVariants.Resolve("  ", Variants, out var e2));
-            Assert.IsNull(e2);
+            Assert.AreEqual(e1, e2);
         }
 
         [Test]
@@ -63,39 +74,32 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void Resolve_DefaultName_IsTheDefaultBuild_NoError()
+        public void Resolve_Default_IsAnOrdinaryName()
         {
-            Assert.IsNull(BuildVariants.Resolve("default", Variants, out var e1));
-            Assert.IsNull(e1);
-            Assert.IsNull(BuildVariants.Resolve("Default", Variants, out var e2));
-            Assert.IsNull(e2);
-            Assert.IsNull(BuildVariants.Resolve("<default>", Variants, out var e3));
-            Assert.IsNull(e3);
+            Assert.IsNull(BuildVariants.Resolve("Default", Variants, out var unknown));
+            StringAssert.Contains("Unknown build variant 'Default'", unknown);
+            var withDefault = new List<string> { "Default", "Internal" };
+            Assert.AreEqual("Default", BuildVariants.Resolve("Default", withDefault, out var error));
+            Assert.IsNull(error);
+            Assert.IsNull(BuildVariants.Resolve("default", withDefault, out var casing), "Names match exactly, including case.");
+            Assert.IsNotNull(casing);
         }
 
         [Test]
-        public void EffectiveName_DefaultBuild_IsDefault_OnlyWhenVariantsAreConfigured()
-        {
-            Assert.AreEqual("Internal", BuildVariants.EffectiveName("Internal", true));
-            Assert.AreEqual("Default", BuildVariants.EffectiveName(null, true));
-            Assert.IsNull(BuildVariants.EffectiveName(null, false));
-        }
-
-        [Test]
-        public void MarkedProductName_SuffixesVariantBuilds_NeverTheDefault()
+        public void MarkedProductName_SuffixesVariantBuilds()
         {
             Assert.AreEqual("Game (Internal)", BuildVariants.MarkedProductName("Game", "Internal", true));
-            Assert.AreEqual("Game", BuildVariants.MarkedProductName("Game", null, true), "Default build (no variant).");
-            Assert.AreEqual("Game", BuildVariants.MarkedProductName("Game", "Default", true), "Default build (by name).");
+            Assert.AreEqual("Game (Default)", BuildVariants.MarkedProductName("Game", "Default", true), "Default is an ordinary variant.");
+            Assert.AreEqual("Game", BuildVariants.MarkedProductName("Game", null, true), "No variant, in a project without variants.");
             Assert.AreEqual("Game", BuildVariants.MarkedProductName("Game", "Internal", false), "Marking off.");
         }
 
         [Test]
-        public void ExpectedDefine_DefaultBuild_OnlyWhenVariantsAreConfigured()
+        public void ExpectedDefine_IsTheVariantsDefine_NoneWithoutAVariant()
         {
-            Assert.AreEqual("BUILD_VARIANT_INTERNAL", BuildVariants.ExpectedDefine("Internal", true));
-            Assert.AreEqual("BUILD_VARIANT_DEFAULT", BuildVariants.ExpectedDefine(null, true));
-            Assert.IsNull(BuildVariants.ExpectedDefine(null, false));
+            Assert.AreEqual("BUILD_VARIANT_INTERNAL", BuildVariants.ExpectedDefine("Internal"));
+            Assert.AreEqual("BUILD_VARIANT_DEFAULT", BuildVariants.ExpectedDefine("Default"));
+            Assert.IsNull(BuildVariants.ExpectedDefine(null));
         }
 
         [Test]
@@ -108,10 +112,10 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void Resolve_UnknownName_WithNoVariantsDefined_SaysSo()
+        public void Resolve_AName_WithNoVariantsDefined_SaysSo()
         {
             Assert.IsNull(BuildVariants.Resolve("Internal", new List<string>(), out var error));
-            StringAssert.Contains("no variants are defined", error);
+            StringAssert.Contains("no build variants", error);
         }
 
         [Test]
@@ -119,57 +123,41 @@ namespace BuildForge.Tests.Editor
         {
             Assert.IsNull(BuildVariants.ListWarning(null));
             Assert.IsNull(BuildVariants.ListWarning(Variants));
+            Assert.IsNull(BuildVariants.ListWarning(new List<string> { "Default", "Internal" }), "Default is an ordinary name.");
             StringAssert.Contains("empty", BuildVariants.ListWarning(new List<string> { "Internal", " " }));
             StringAssert.Contains("more than once", BuildVariants.ListWarning(new List<string> { "Internal", "Internal" }));
             var collision = BuildVariants.ListWarning(new List<string> { "QA Build", "QA-Build" });
             StringAssert.Contains("BUILD_VARIANT_QA_BUILD", collision);
-            StringAssert.Contains("'<'", BuildVariants.ListWarning(new List<string> { "<default>" }));
-            StringAssert.Contains("reserved", BuildVariants.ListWarning(new List<string> { "Default" }));
-            StringAssert.Contains("reserved", BuildVariants.ListWarning(new List<string> { " default " }));
             StringAssert.Contains("no letters or digits", BuildVariants.ListWarning(new List<string> { "!!!" }));
         }
 
         [Test]
         public void WithVariantDefine_Adds_Replaces_Removes_KeepsOtherDefines()
         {
-            var added = BuildVariants.WithVariantDefine(new[] { "USER", "BUILD_PROFILE_QUEST" }, "Internal", true, out var c1);
+            var added = BuildVariants.WithVariantDefine(new[] { "USER", "BUILD_PROFILE_QUEST" }, "Internal", out var c1);
             Assert.IsTrue(c1);
             CollectionAssert.AreEqual(new[] { "USER", "BUILD_PROFILE_QUEST", "BUILD_VARIANT_INTERNAL" }, added);
 
-            var replaced = BuildVariants.WithVariantDefine(added, "QA Build", true, out var c2);
+            var replaced = BuildVariants.WithVariantDefine(added, "QA Build", out var c2);
             Assert.IsTrue(c2);
             CollectionAssert.AreEqual(new[] { "USER", "BUILD_PROFILE_QUEST", "BUILD_VARIANT_QA_BUILD" }, replaced);
 
-            var stripped = BuildVariants.WithVariantDefine(replaced, null, false, out var c3);
+            var stripped = BuildVariants.WithVariantDefine(replaced, null, out var c3);
             Assert.IsTrue(c3);
             CollectionAssert.AreEqual(new[] { "USER", "BUILD_PROFILE_QUEST" }, stripped);
 
-            BuildVariants.WithVariantDefine(stripped, null, false, out var c4);
+            BuildVariants.WithVariantDefine(stripped, null, out var c4);
             Assert.IsFalse(c4, "Nothing to strip means no change.");
-            BuildVariants.WithVariantDefine(added, "Internal", true, out var c5);
+            BuildVariants.WithVariantDefine(added, "Internal", out var c5);
             Assert.IsFalse(c5, "Already present means no change.");
-        }
-
-        [Test]
-        public void WithVariantDefine_DefaultBuild_GetsTheDefaultDefine_OnlyWithVariantsConfigured()
-        {
-            var withVariants = BuildVariants.WithVariantDefine(new[] { "USER", "BUILD_VARIANT_INTERNAL" }, null, true, out var c1);
-            Assert.IsTrue(c1);
-            CollectionAssert.AreEqual(new[] { "USER", "BUILD_VARIANT_DEFAULT" }, withVariants);
-
-            var none = BuildVariants.WithVariantDefine(new[] { "USER", "BUILD_VARIANT_DEFAULT" }, null, false, out var c2);
-            Assert.IsTrue(c2);
-            CollectionAssert.AreEqual(new[] { "USER" }, none);
         }
 
         [Test]
         public void WithVariantDefine_NullList_IsJustTheDefine()
         {
             CollectionAssert.AreEqual(new[] { "BUILD_VARIANT_INTERNAL" },
-                BuildVariants.WithVariantDefine(null, "Internal", true, out _));
-            CollectionAssert.AreEqual(new[] { "BUILD_VARIANT_DEFAULT" },
-                BuildVariants.WithVariantDefine(null, null, true, out _));
-            CollectionAssert.IsEmpty(BuildVariants.WithVariantDefine(null, null, false, out _));
+                BuildVariants.WithVariantDefine(null, "Internal", out _));
+            CollectionAssert.IsEmpty(BuildVariants.WithVariantDefine(null, null, out _));
         }
 
         // A variant define on a profile this machine has not applied was saved

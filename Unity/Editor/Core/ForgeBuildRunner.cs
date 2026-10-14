@@ -41,15 +41,17 @@ namespace BuildForge.Editor.Core
         /// Executes a build of the Unity Build Profile that stores the given Build Forge settings.
         /// Uses BuildPlayerWithProfileOptions so the Build Profile handles
         /// scenes, scripting defines, player settings, and build options natively.
+        /// A build without a variant, for a project without variants.
         /// </summary>
         public static BuildReport RunBuild(ForgeProfile forgeProfile)
             => RunBuild(forgeProfile, null, out _);
 
         /// <summary>
         /// Builds the profile with the selected variant's define and optional
-        /// development, alias, product-name and plugin rules. Null or empty
-        /// selects Default. Invalid rules or unsupported selections throw before
-        /// settings are changed.
+        /// development, alias, product-name and plugin rules. Once the project has
+        /// variants the build names one; null or empty is for a project without
+        /// them. Invalid rules or unsupported selections throw before settings are
+        /// changed.
         /// </summary>
         public static BuildReport RunBuild(ForgeProfile forgeProfile, string variant)
             => RunBuild(forgeProfile, variant, out _);
@@ -443,9 +445,7 @@ namespace BuildForge.Editor.Core
                 var value = i + 1 < args.Count ? args[i + 1] : null;
                 if (string.IsNullOrWhiteSpace(value) || value.StartsWith("-"))
                 {
-                    error = $"{name} needs a value" + (name == VariantArg
-                        ? $"; for the default build pass {VariantArg} {BuildVariants.DefaultVariantName} or leave the argument out."
-                        : ".");
+                    error = $"{name} needs a value.";
                     return null;
                 }
                 values[name] = value;
@@ -497,8 +497,11 @@ namespace BuildForge.Editor.Core
                 return;
             }
 
-            // Strict like the profile: an unknown variant never silently builds the plain profile.
+            // Strict like the profile: a build names its variant exactly, or none in a
+            // project without variants; nothing is picked for it.
             var resolvedVariant = BuildVariants.Resolve(variant, ForgeSettings.instance.BuildVariants, out var variantError);
+            if (variantError != null && variant == null)
+                variantError += $" Pass {VariantArg} \"<name>\".";
             variantError ??= BuildVariants.ProfileError(profile, resolvedVariant);
             if (variantError != null)
             {
@@ -585,7 +588,8 @@ namespace BuildForge.Editor.Core
         }
 
         /// <summary>
-        /// Returns the CI command line string to build the given profile.
+        /// Returns the CI command line string to build the given profile. In a
+        /// project with variants, pass the variant: a command without one fails there.
         /// </summary>
         public static string GetCICommand(ForgeProfile profile, string variant = null)
         {
@@ -713,7 +717,7 @@ namespace BuildForge.Editor.Core
                 return null;
             var current = PlayerSettings.bundleVersion;
             var version = BuildVariants.FormatVersion(template, current, BuildManifestWriter.BuildNumberFor(context),
-                BuildVariants.EffectiveName(variant, BuildVariants.Configured.Count > 0), out var error);
+                variant, out var error);
             if (error != null)
             {
                 Debug.LogWarning($"[Build Forge] {error} The build keeps version {current}.");

@@ -60,7 +60,7 @@ namespace BuildForge.Runtime
             set => buildProfile = value;
         }
 
-        /// <summary>The Build Forge build variant the player was built with: "Internal", …, or "Default" once the project defines variants; empty when it defines none.</summary>
+        /// <summary>The Build Forge build variant the player was built with, such as "Internal"; empty when the project defines none.</summary>
         public string BuildVariant
         {
             get => buildVariant;

@@ -148,15 +148,15 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void Variant_Placeholder_IsDefaultOrVariant_WhenVariantsAreConfigured()
+        public void Variant_Placeholder_IsTheVariantsName()
         {
             profile.name = "Quest";
             SetOutputPath("Builds/{ProfileName}/{Variant}/Game");
 
-            var defaultBuild = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, null, variantsConfigured: true);
-            var internalBuild = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, "Internal", variantsConfigured: true);
+            var release = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, "Release", "Game");
+            var internalBuild = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, "Internal", "Game");
 
-            StringAssert.StartsWith("Builds/Quest/Default/Game", defaultBuild, "Default and variant builds are siblings.");
+            StringAssert.StartsWith("Builds/Quest/Release/Game", release, "The variants' builds are siblings.");
             StringAssert.StartsWith("Builds/Quest/Internal/Game", internalBuild);
         }
 
@@ -169,7 +169,7 @@ namespace BuildForge.Tests.Editor
             try
             {
                 ForgeSettings.instance.MangleProductName = true;
-                var path = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, "Internal", true, "Game (Internal)");
+                var path = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, "Internal", "Game (Internal)");
                 StringAssert.StartsWith("Builds/Internal/Game_Internal", path);
             }
             finally
@@ -179,12 +179,12 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void Variant_Placeholder_Collapses_WhenNoVariantsAreConfigured()
+        public void Variant_Placeholder_Collapses_WithoutAVariant()
         {
             profile.name = "Quest";
             SetOutputPath("Builds/{ProfileName}/{Variant}/Game");
 
-            var plain = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, null, variantsConfigured: false);
+            var plain = profile.GetResolvedOutputPath(BuildTarget.StandaloneWindows64, null, "Game");
 
             StringAssert.StartsWith("Builds/Quest/Game", plain);
             StringAssert.DoesNotContain("//", plain);
