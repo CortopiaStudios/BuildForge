@@ -545,7 +545,7 @@ A lightweight local CI layer that manages builds outside the Unity process. Sinc
 
 ## License
 
-MIT — see [LICENSE.md](LICENSE.md) for details.
+MIT — see [LICENSE.md](../LICENSE.md) for details.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for design decisions, technical pitfalls, and how the system works internally. See [Development~/LEARNINGS.md](Development~/LEARNINGS.md) for approaches that were tried and abandoned during development.
 
