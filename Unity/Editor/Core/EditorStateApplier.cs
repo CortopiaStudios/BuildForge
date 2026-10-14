@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BuildForge.Editor.Configuration;
 using UnityEditor;
 using UnityEngine;
@@ -42,6 +43,22 @@ namespace BuildForge.Editor.Core
         }
     }
 
+    /// <summary>A plugin's capture or apply that failed and so stopped an Apply.</summary>
+    internal sealed class EditorStateApplyException : InvalidOperationException
+    {
+        /// <summary>The ledger key (plugin type name and target group).</summary>
+        public string Key { get; }
+        /// <summary>The plugin's own message.</summary>
+        public string Reason { get; }
+
+        public EditorStateApplyException(string key, string what, Exception inner)
+            : base($"{key}: {what}. {inner.Message}", inner)
+        {
+            Key = key;
+            Reason = inner.Message;
+        }
+    }
+
     /// <summary>
     /// Pure orchestration of the editor-state invariant: applied state is always
     /// baseline + one profile's deltas, never stacked on a previous profile.
@@ -81,7 +98,12 @@ namespace BuildForge.Editor.Core
         /// applies the profile, captures the expected state, and records an entry.
         /// <paramref name="saveCheckpoint"/> is invoked after the revert (previous
         /// entries gone, list empty), after each baseline is recorded (before the
-        /// plugin writes anything), and after the last pair.
+        /// plugin writes anything), and after the last pair. A capture or apply that
+        /// throws stops the Apply, as a failing plugin stops a build: what it wrote
+        /// so far is restored and an <see cref="EditorStateApplyException"/> names
+        /// the pair. An entry that cannot be restored stays for a retry; the
+        /// exception is then an <see cref="AggregateException"/> that also holds
+        /// those restore failures.
         /// </summary>
         public static void Apply(
             List<EditorStateEntry> entries,
@@ -105,8 +127,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"{LogPrefix} {key}: capture failed, skipping. {e.Message}");
-                    continue;
+                    throw Stop(entries, resolve, saveCheckpoint, new EditorStateApplyException(key, "capture failed", e));
                 }
 
                 if (baseline == null)
@@ -125,7 +146,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"{LogPrefix} {key}: apply failed. {e.Message}");
+                    throw Stop(entries, resolve, saveCheckpoint, new EditorStateApplyException(key, "apply failed", e));
                 }
 
                 var expected = TryCapture(pair.Plugin, pair.Group, key) ?? baseline;
@@ -133,6 +154,40 @@ namespace BuildForge.Editor.Core
             }
 
             saveCheckpoint?.Invoke();
+        }
+
+        /// <summary>
+        /// Ends an Apply that a plugin stopped: restores what the Apply wrote, newest
+        /// first, and returns the exception to throw. An entry that cannot be
+        /// restored stays recorded with its baseline, and the result then also holds
+        /// its restore failure.
+        /// </summary>
+        static Exception Stop(List<EditorStateEntry> entries, Func<string, IForgeEditorApplicable> resolve,
+            Action saveCheckpoint, EditorStateApplyException failure)
+        {
+            Debug.LogError($"{LogPrefix} {failure.Message}");
+            try
+            {
+                RevertAll(entries, resolve);
+                return failure;
+            }
+            catch (AggregateException notRestored)
+            {
+                return new AggregateException(failure.Message,
+                    new Exception[] { failure }.Concat(notRestored.InnerExceptions));
+            }
+            finally
+            {
+                saveCheckpoint?.Invoke();
+            }
+        }
+
+        /// <summary>True when a plugin's failure stopped an Apply; <paramref name="stopped"/> is that failure.</summary>
+        public static bool StoppedByPlugin(Exception e, out EditorStateApplyException stopped)
+        {
+            stopped = e as EditorStateApplyException
+                ?? (e as AggregateException)?.InnerExceptions.OfType<EditorStateApplyException>().FirstOrDefault();
+            return stopped != null;
         }
 
         /// <summary>

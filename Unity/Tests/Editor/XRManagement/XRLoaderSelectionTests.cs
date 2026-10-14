@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using BuildForge.Editor.XRManagement;
@@ -10,6 +11,7 @@ using UnityEditor;
 using UnityEditor.Build.Profile;
 using UnityEditor.XR.Management;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.XR.Management;
 
 namespace BuildForge.Tests.XRManagement
@@ -137,6 +139,30 @@ namespace BuildForge.Tests.XRManagement
             Assert.IsEmpty(result.Failures);
             CollectionAssert.AreEqual(new XRLoader[] { first, second }, manager.activeLoaders);
             Assert.AreEqual(entries.Single().baselineJson, entries.Single().expectedJson);
+        }
+        // Loaders selected for a platform without XR Management settings stop Apply,
+        // as they stop builds, instead of the plugin being skipped.
+        [Test]
+        public void MissingSettings_StopApply()
+        {
+            Select(second);
+            general.Manager = null;
+            var entries = new List<EditorStateEntry>();
+            var pair = new EditorStatePair { PluginTypeName = typeof(XRLoaderSelectionPlugin).FullName, Group = Group, Plugin = plugin };
+            IForgeEditorApplicable Resolve(string name) => name == pair.PluginTypeName ? plugin : null;
+            LogAssert.Expect(LogType.Error, new Regex("XR Management settings are missing"));
+
+            var e = Assert.Throws<EditorStateApplyException>(() =>
+                EditorStateApplier.Apply(entries, new[] { pair }, profile, Resolve, null));
+
+            StringAssert.Contains("XR Management settings are missing", e.Reason);
+            Assert.IsEmpty(entries);
+        }
+        [Test]
+        public void RestoringTheNoSettingsSnapshot_WritesNothing()
+        {
+            plugin.RestoreEditorState(Group, XRLoaderSelectionPlugin.NoSettingsSnapshot);
+            CollectionAssert.AreEqual(new XRLoader[] { first, second }, manager.activeLoaders);
         }
         [Test]
         public void IntendedLoadersAreReportedBeforeApply()

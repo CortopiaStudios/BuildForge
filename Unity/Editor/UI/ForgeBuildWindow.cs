@@ -749,18 +749,7 @@ namespace BuildForge.Editor.UI
         }
 
         /// <summary>"OpenXR (Android)" for a ledger key, falling back to the raw key.</summary>
-        internal static string DescribeDriftKey(string key)
-        {
-            if (key == ForgeEditorState.VariantDriftKey)
-                return "variant define";
-            if (!EditorStateLedger.TryParseKey(key, out var typeName, out var group))
-                return key;
-            var mirror = ForgeEditorState.PlayModeMirrors().FirstOrDefault(m => m.GetType().FullName == typeName);
-            if (mirror != null)
-                return mirror.DisplayName;
-            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == typeName);
-            return $"{(plugin != null ? plugin.DisplayName : typeName)} ({group})";
-        }
+        internal static string DescribeDriftKey(string key) => ForgeEditorState.DescribeKey(key);
 
         /// <summary>
         /// The build plan for the selected profile: every discovered plugin in
@@ -1151,6 +1140,8 @@ namespace BuildForge.Editor.UI
                 catch (System.Exception e)
                 {
                     Debug.LogError($"[Build Forge] Applying '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    // The reverts that are part of Apply can fail like Revert to Baseline.
+                    OfferToStopTracking(e);
                 }
                 if (this != null)
                 {
@@ -1174,7 +1165,7 @@ namespace BuildForge.Editor.UI
                 return;
             var lines = string.Join("\n", unrestored.Select(u => $"\u2022 {DescribeDriftKey(u.Key)}: {u.Reason}"));
             if (!EditorUtility.DisplayDialog("Build Forge could not restore some settings",
-                    $"Revert to Baseline could not restore:\n\n{lines}\n\n" +
+                    $"These settings could not be restored:\n\n{lines}\n\n" +
                     "While Build Forge tracks them, Apply, Activate, Revert to Baseline and builds stop here. " +
                     "If the cause can be fixed, for example by reinstalling a removed package, keep tracking them " +
                     "and revert again. Otherwise stop tracking them: they keep their current values, and Build " +

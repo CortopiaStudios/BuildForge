@@ -29,6 +29,10 @@ namespace BuildForge.Editor.XRManagement
         internal const string Key = "XRLoaders";
         const string SnapshotKey = "BuildForge.XRLoaders.Snapshot";
         [Serializable] sealed class Snapshot { public List<string> loaderGuids = new(); }
+        // The state of a platform without XR Management settings. Not null, which
+        // would skip the plugin: Apply then reaches ApplyToEditor and stops on the
+        // missing settings, as builds do. Restoring it writes nothing.
+        internal const string NoSettingsSnapshot = "{\"noXRManagementSettings\":true}";
 
         public string DisplayName => "XR Loaders";
         public string Description => "Select the ordered XR provider list for this profile; an empty list disables XR.";
@@ -69,7 +73,7 @@ namespace BuildForge.Editor.XRManagement
         public string CaptureEditorState(BuildTargetGroup group)
         {
             var manager = Manager(group);
-            if (manager == null) return null;
+            if (manager == null) return NoSettingsSnapshot;
             var snapshot = new Snapshot();
             foreach (var loader in manager.activeLoaders)
             {
@@ -95,7 +99,7 @@ namespace BuildForge.Editor.XRManagement
 
         public void RestoreEditorState(BuildTargetGroup group, string json)
         {
-            if (string.IsNullOrEmpty(json)) return;
+            if (string.IsNullOrEmpty(json) || json == NoSettingsSnapshot) return;
             var snapshot = JsonUtility.FromJson<Snapshot>(json);
             var loaders = snapshot.loaderGuids.Select(g => AssetDatabase.LoadAssetAtPath<XRLoader>(AssetDatabase.GUIDToAssetPath(g))).ToList();
             if (loaders.Any(l => l == null)) throw new InvalidOperationException("An XR loader required to restore the baseline is missing.");

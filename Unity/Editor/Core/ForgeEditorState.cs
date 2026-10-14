@@ -81,6 +81,23 @@ namespace BuildForge.Editor.Core
         /// <summary>Pseudo drift key reported when the applied variant's define is missing from the Unity Build Profile.</summary>
         public const string VariantDriftKey = "Variant";
 
+        /// <summary>
+        /// A ledger or drift key as the UI names it: the plugin and its target group,
+        /// for example "OpenXR (Android)", a Play Mode mirror's name, or "variant define".
+        /// </summary>
+        internal static string DescribeKey(string key)
+        {
+            if (key == VariantDriftKey)
+                return "variant define";
+            if (!EditorStateLedger.TryParseKey(key, out var typeName, out var group))
+                return key;
+            var mirror = PlayModeMirrors().FirstOrDefault(m => m.GetType().FullName == typeName);
+            if (mirror != null)
+                return mirror.DisplayName;
+            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == typeName);
+            return $"{(plugin != null ? plugin.DisplayName : typeName)} ({group})";
+        }
+
         public static bool IsApplied(ForgeProfile profile)
         {
             if (profile == null || profile.BuildProfile == null || !HasAppliedGuid)
@@ -293,6 +310,23 @@ namespace BuildForge.Editor.Core
                     settings.AppliedVariant = resolvedVariant ?? "";
                     settings.SaveState();
                 }, resolvedVariant);
+            }
+            catch (Exception e) when (EditorStateApplier.StoppedByPlugin(e, out var stopped))
+            {
+                // A plugin failed, so like a failed build nothing of the Apply is kept:
+                // what it wrote is back at its baseline, and so is what the previously
+                // applied profile wrote, which was reverted first.
+                if (previouslyApplied != null && previouslyApplied != profile.BuildProfile)
+                    BuildVariants.StripFromProfile(previouslyApplied);
+                var message = $"'{profile.DisplayName}' was not applied: {DescribeKey(stopped.Key)} could not " +
+                              $"apply its settings. {stopped.Reason}";
+                if (settings.EditorState.Count > 0)
+                    // Its own writes could not all be restored: they stay tracked, so
+                    // Revert to Baseline can retry them or stop tracking them.
+                    throw new AggregateException(message + " Some settings could not be restored either; " +
+                                                 "Revert to Baseline retries them.", ((AggregateException)e).InnerExceptions);
+                RevertCore();
+                throw new InvalidOperationException(message + " Nothing is applied now.", e);
             }
             finally
             {

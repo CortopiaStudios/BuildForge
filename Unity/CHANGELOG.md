@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The main toolbar's apply dropdown shows the state as an icon, a check mark while applied and the warning icon once drifted, and only the applied variant as text ("Internal" instead of "Applied (Internal)"), so it fits Unity 6.6's 120 px label limit
 
 ### Fixed
+- Apply stops when a plugin cannot capture or apply its settings, as a build does and as the manual says. Build Forge restores what the Apply wrote, nothing stays applied, also not the profile that was applied before, and the console names the plugin. Apply used to log the failure, apply the other plugins and mark the profile applied. XR Loaders now stops Apply on a platform without XR Plug-in Management settings, as it stops builds, instead of being skipped without a message. A revert that fails during Apply offers Stop Tracking, as Revert to Baseline does
 - In a narrow build window, the details pane no longer scrolls sideways and hides the header's buttons: the Build Forge Settings row measured the Build Forge anvil at its full 256 px
 - A dedicated server build's manifest records the server's Managed Code Variant, not the Standalone player's
 - An error that stops a build started from the build window, such as an unsafe output directory, is logged as a Build Forge error instead of escaping from the editor's update loop, where it also dropped other callbacks queued with the build

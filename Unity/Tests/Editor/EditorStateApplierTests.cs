@@ -175,17 +175,69 @@ namespace BuildForge.Tests.Editor
             Assert.IsFalse(plugin.Calls.Contains("apply:A:Standalone"));
         }
 
+        // As a throwing plugin stops a build, it stops Apply, and nothing of the
+        // Apply is kept: a partly applied profile would look applied.
         [Test]
-        public void Apply_PluginThrows_OtherPairsStillAppliedAndEntryRecorded()
+        public void Apply_PluginThrows_StopsAndRestoresWhatItWrote()
         {
-            plugin.ThrowOnApply = true;
-            LogAssert.Expect(LogType.Error, new Regex("apply failed"));
-            LogAssert.Expect(LogType.Error, new Regex("apply failed"));
+            plugin.ThrowOnApplyGroup = BuildTargetGroup.Standalone;
+            LogAssert.Expect(LogType.Error, new Regex(@"Fake\|Standalone: apply failed\. boom"));
 
-            Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone);
+            var e = Assert.Throws<EditorStateApplyException>(() =>
+                Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone));
 
-            Assert.AreEqual(2, entries.Count);
-            Assert.AreEqual("base", entries[0].expectedJson, "Expected reflects the actual (unchanged) state.");
+            Assert.AreEqual("Fake|Standalone", e.Key);
+            Assert.AreEqual("boom", e.Reason);
+            Assert.IsEmpty(entries);
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android], "The pair applied before the failure is restored.");
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Standalone]);
+        }
+
+        [Test]
+        public void Apply_CaptureThrows_StopsAndRestoresWhatItWrote()
+        {
+            plugin.ThrowOnCaptureGroup = BuildTargetGroup.Standalone;
+            LogAssert.Expect(LogType.Error, new Regex(@"Fake\|Standalone: capture failed\. capture boom"));
+
+            Assert.Throws<EditorStateApplyException>(() =>
+                Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone));
+
+            Assert.IsEmpty(entries);
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
+            Assert.IsFalse(plugin.Calls.Contains("apply:A:Standalone"));
+        }
+
+        [Test]
+        public void Apply_PluginThrows_AndARestoreFails_KeepsThatEntryForARetry()
+        {
+            plugin.ThrowOnApplyGroup = BuildTargetGroup.Standalone;
+            plugin.ThrowOnRestoreGroup = BuildTargetGroup.Android;
+            LogAssert.Expect(LogType.Error, new Regex(@"Fake\|Standalone: apply failed"));
+            LogAssert.Expect(LogType.Error, new Regex(@"Fake\|Android: restore failed"));
+
+            var e = Assert.Throws<AggregateException>(() =>
+                Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone));
+
+            Assert.IsTrue(EditorStateApplier.StoppedByPlugin(e, out var stopped));
+            Assert.AreEqual("Fake|Standalone", stopped.Key);
+            Assert.AreEqual("Fake|Android", e.InnerExceptions.OfType<EditorStateRestoreException>().Single().Key);
+            Assert.AreEqual("Fake|Android", entries.Single().key);
+            Assert.AreEqual("base", entries.Single().baselineJson);
+        }
+
+        // The caller keeps the previous profile applied when its revert fails, but
+        // forgets everything when a plugin stopped the Apply; the two must differ.
+        [Test]
+        public void Apply_PreviousProfileFailsToRevert_IsNotStoppedByPlugin()
+        {
+            Apply(profileA, BuildTargetGroup.Android);
+            plugin.ThrowOnRestoreGroup = BuildTargetGroup.Android;
+            LogAssert.Expect(LogType.Error, new Regex(@"Fake\|Android: restore failed"));
+
+            var e = Assert.Throws<AggregateException>(() => Apply(profileB, BuildTargetGroup.Android));
+
+            Assert.IsFalse(EditorStateApplier.StoppedByPlugin(e, out _));
+            Assert.AreEqual("base+A", entries.Single().expectedJson);
         }
 
         [Test]

@@ -18,6 +18,10 @@ namespace BuildForge.Editor.Core
     /// - Snapshots must be <c>JsonUtility</c>-compatible and deterministic (sort
     ///   lists): Build Forge detects drift by comparing snapshot strings.
     /// - Do not keep references to the profile between calls.
+    /// - Throw from <see cref="CaptureEditorState"/> or <c>ApplyToEditor</c> for a
+    ///   problem that must stop Apply, as from <c>OnPreBuild</c> for one that must
+    ///   stop a build: Build Forge then restores what the Apply wrote, and nothing
+    ///   stays applied.
     /// </summary>
     public interface IForgeEditorApplicable
     {

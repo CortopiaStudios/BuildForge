@@ -236,7 +236,7 @@ Implement `IForgeEditorApplicable` when a plugin's settings are worth having in 
 | `void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group)` and the overload with `string variant` | Writes the profile's settings for the group and saves them. |
 | `void RestoreEditorState(BuildTargetGroup group, string json)` | Writes a snapshot back and saves it. |
 
-On Apply, Build Forge calls `CaptureEditorState` for the baseline, saves it, calls `ApplyToEditor`, and captures again for drift detection. Revert to Baseline calls `RestoreEditorState` with the baseline.
+On Apply, Build Forge calls `CaptureEditorState` for the baseline, saves it, calls `ApplyToEditor`, and captures again for drift detection. Revert to Baseline calls `RestoreEditorState` with the baseline. Throw from `CaptureEditorState` or `ApplyToEditor` for a problem that must stop Apply, as from `OnPreBuild` for one that must stop a build: Build Forge then restores what the Apply wrote, and nothing stays applied.
 
 Build Forge can call these while another Build Profile is active: Apply writes the settings before it activates the profile, and Activate reverts another profile's settings before switching. The static Player Settings API may then point at another profile, so use APIs that take the build target group or a `NamedBuildTarget`. Do not keep references to the profile between calls.
 

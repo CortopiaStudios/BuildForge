@@ -82,6 +82,8 @@ Build-only plugin work, such as build numbers, signing, crash reporting and Addr
 
 Apply first reverts whatever is applied, then records each setting's current value as its **baseline** before writing it. The baselines are saved to `UserSettings/ForgeEditorState.asset` before a plugin writes anything, so applying never stacks one profile on top of another, and a crash in the middle of an Apply can still be reverted.
 
+A plugin that cannot apply its settings stops the Apply, as it would stop a build, for example XR Loaders on a platform without XR Plug-in Management settings. Build Forge then restores what the Apply wrote, nothing is applied afterwards, not even the profile that was applied before, and the console names the plugin and the reason.
+
 Once a profile is applied, the button reads **Re-apply**. Use it after editing the profile's plugin settings: Re-apply goes back to the baseline and applies the profile as it is now, so removed overrides disappear too.
 
 Apply is available for the active profile when it has something to apply: a plugin with editor settings, Play Mode XR to copy, or any configured variant. Apply, Activate and Revert to Baseline are disabled in Play Mode, while scripts compile or assets import, and during builds.

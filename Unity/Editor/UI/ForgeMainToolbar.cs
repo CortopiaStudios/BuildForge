@@ -486,6 +486,8 @@ namespace BuildForge.Editor.UI
                 catch (Exception e)
                 {
                     Debug.LogError($"[Build Forge] Applying '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    // Same recovery as the window's Apply.
+                    ForgeBuildWindow.OfferToStopTracking(e);
                 }
                 s_StateKey = null;
             };
