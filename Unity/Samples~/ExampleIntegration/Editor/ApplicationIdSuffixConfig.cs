@@ -19,7 +19,7 @@ namespace BuildForge.Samples.ExampleIntegration
         /// <summary>Appended to the Android application identifier, for example ".internal".</summary>
         public string suffix = ".internal";
 
-        /// <summary>The variants whose builds get the suffix. The default build never does.</summary>
+        /// <summary>The variants whose builds get the suffix.</summary>
         public List<string> variants = new List<string>();
     }
 }

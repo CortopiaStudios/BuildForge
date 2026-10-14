@@ -28,7 +28,8 @@
     The Unity Build Profile asset, relative to the Unity project folder.
 
 .PARAMETER Variant
-    A variant from Project Settings > Build Forge > Build Variants, or Default.
+    A variant from Project Settings > Build Forge > Build Variants. Required once the
+    project has variants; leave it out in a project without them.
 
 .PARAMETER ProjectPath
     The Unity project folder relative to the current directory: './Client' for a
@@ -70,7 +71,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)][string]$BuildProfile,
-    [string]$Variant = 'Default',
+    [string]$Variant,
     [string]$ProjectPath = '.',
     [switch]$Local,
     [switch]$SharedWorkspace,
@@ -85,9 +86,11 @@ if (-not (Test-Path -LiteralPath $profileFile)) {
     throw "Build Profile not found: $profileFile. Run the script from the repository root, or pass -ProjectPath."
 }
 
-# Build Forge's part of the command. -forgeVariant Default is the default build.
-$forgeArguments = @('-executeMethod', 'BuildForge.CommandLine.Build',
-    '-activeBuildProfile', $BuildProfile, '-forgeVariant', $Variant)
+# Build Forge's part of the command.
+$forgeArguments = @('-executeMethod', 'BuildForge.CommandLine.Build', '-activeBuildProfile', $BuildProfile)
+if ($Variant) {
+    $forgeArguments += @('-forgeVariant', $Variant)
+}
 if ($Local) {
     $forgeArguments += @('-forgeCI', 'false')
 }

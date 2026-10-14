@@ -16,8 +16,8 @@ namespace BuildForge.Samples.ExampleIntegration
     /// Example Build Forge plugin. While a build of one of the selected variants
     /// runs, it appends a suffix to the Android application identifier, so that
     /// build installs next to the store build instead of replacing it:
-    /// com.example.mygame becomes com.example.mygame.internal. The default build
-    /// is never changed.
+    /// com.example.mygame becomes com.example.mygame.internal. Other variants'
+    /// builds keep the identifier.
     ///
     /// Build Forge marks a variant build's product name ("My Game (Internal)") but
     /// keeps the application identifier; this plugin adds the other half. It only
@@ -101,7 +101,7 @@ namespace BuildForge.Samples.ExampleIntegration
             if (AppliesTo(config, variant))
                 return $"append '{config.suffix}' to the application identifier";
             return string.IsNullOrEmpty(variant)
-                ? "application identifier unchanged (default build)"
+                ? "application identifier unchanged"
                 : $"application identifier unchanged for {variant}";
         }
 

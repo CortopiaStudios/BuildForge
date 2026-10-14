@@ -22,8 +22,8 @@ pipeline {
         // Unity Build Profile asset names in Assets/Settings/Build Profiles.
         choice(name: 'PROFILE_NAME', choices: ['Quest', 'Steam Frame', 'Windows'],
                description: 'Unity Build Profile to build')
-        string(name: 'VARIANT_NAME', defaultValue: 'Default',
-               description: 'Build Forge variant (Project Settings > Build Forge > Build Variants), or Default')
+        string(name: 'VARIANT_NAME', defaultValue: '',
+               description: 'Build Forge variant (Project Settings > Build Forge > Build Variants); required once the project has variants')
     }
 
     options {
@@ -103,7 +103,8 @@ pipeline {
                             Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
                             Start-Sleep -Seconds 5
                         }
-                        unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset" -forgeVariant $env:VARIANT_NAME
+                        $variant = if ($env:VARIANT_NAME) { @('-forgeVariant', $env:VARIANT_NAME) } else { @() }
+                        unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset" @variant
                         exit $LASTEXITCODE
                     '''
                 }

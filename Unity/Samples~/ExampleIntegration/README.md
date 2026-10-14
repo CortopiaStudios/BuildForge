@@ -31,7 +31,7 @@ The sample does not create Build Profiles: Unity has no public API for creating 
 
 1. In Unity's Build Profiles window, add an **Android** Build Profile and name it, for example, **Quest**.
 2. In its **Build Forge** section, click **Add Build Forge Settings**.
-3. In **Project Settings > Build Forge > Build Variants**, add **Internal**. Optionally add a Variant Rule for `Internal` with Development Build **Enabled**.
+3. In **Project Settings > Build Forge > Build Variants**, add **Release** and **Internal**. Once a project has variants every build names one, so Release stands for the store build: add a Variant Rule for `Release` with Mark Product Name **Disabled**, so its builds keep the product name. Optionally add one for `Internal` with Development Build **Enabled**.
 4. Make sure Player Settings has an Android package name, for example `com.example.mygame`.
 
 ## 3. Configure the plugin
@@ -56,7 +56,7 @@ The details pane lists the plugin under **Plugins for this build** as `append '.
 [Application ID Suffix] Restored application identifier 'com.example.mygame'.
 ```
 
-The APK is at `Builds/Android/Quest/Internal/My_Game_Internal.apk`. Build Forge marks the variant's product name, so the app is called `My Game (Internal)` on the device, and the plugin gave it its own package name. Player Settings still say `com.example.mygame` after the build, and a default build is not changed.
+The APK is at `Builds/Android/Quest/Internal/My_Game_Internal.apk`. Build Forge marks the variant's product name, so the app is called `My Game (Internal)` on the device, and the plugin gave it its own package name. Player Settings still say `com.example.mygame` after the build, and a Release build keeps the identifier.
 
 Install it next to the store build:
 
@@ -142,7 +142,7 @@ bash build-player.sh --project ./Client --profile "Assets/Settings/Build Profile
 | PowerShell | bash | Meaning |
 |---|---|---|
 | `-BuildProfile` | `--profile` | The Unity Build Profile asset, relative to the project. Required. |
-| `-Variant` | `--variant` | A variant, or `Default` (the default). |
+| `-Variant` | `--variant` | The variant. Required once the project has variants; leave it out in a project without them. |
 | `-ProjectPath` | `--project` | The Unity project folder, `.` by default. |
 | `-Local` | `--local` | Passes `-forgeCI false`, so a batch build counts as a local build: Build Number with "Env Var on CI, Git Count Locally" takes the commit count, and Cloud Diagnostics with "CI only" turns crash reporting off. |
 | `-SharedWorkspace` | `--shared-workspace` | Activates the profile in a run of its own before the build, for a workspace that also builds profiles of other platforms. |

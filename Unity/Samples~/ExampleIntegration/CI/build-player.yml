@@ -27,9 +27,9 @@ on:
           - Windows
         default: Windows
       variant:
-        description: Build Forge variant, or Default
+        description: Build Forge variant; required once the project has variants
         type: string
-        default: Default
+        default: ''
 
 # One Unity process per checkout: queue runs instead of running two at once.
 concurrency:
@@ -119,7 +119,8 @@ jobs:
             Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
             Start-Sleep -Seconds 5
           }
-          unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset" -forgeVariant $env:VARIANT_NAME
+          $variant = if ($env:VARIANT_NAME) { @('-forgeVariant', $env:VARIANT_NAME) } else { @() }
+          unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset" @variant
           exit $LASTEXITCODE
 
       # Runs only after a successful build; a failed build can leave partial output.

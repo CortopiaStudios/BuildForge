@@ -19,7 +19,7 @@
 #
 # Options:
 #   --profile <path>     Unity Build Profile asset, relative to the Unity project (required)
-#   --variant <name>     Build Forge variant, or Default (default: Default)
+#   --variant <name>     Build Forge variant; required once the project has variants
 #   --project <path>     Unity project folder, relative to the current directory (default: .)
 #   --local              count the build as local (-forgeCI false) although it runs in batch mode
 #   --shared-workspace   activate the profile first, in a run of its own, for a workspace that
@@ -54,7 +54,7 @@ need_value() {
 }
 
 profile=""
-variant="Default"
+variant=""
 project="."
 local_build=false
 shared_workspace=false
@@ -87,8 +87,11 @@ if [ ! -f "$project/$profile" ]; then
   exit 2
 fi
 
-# Build Forge's part of the command. -forgeVariant Default is the default build.
-forge_args=(-executeMethod BuildForge.CommandLine.Build -activeBuildProfile "$profile" -forgeVariant "$variant")
+# Build Forge's part of the command.
+forge_args=(-executeMethod BuildForge.CommandLine.Build -activeBuildProfile "$profile")
+if [ -n "$variant" ]; then
+  forge_args+=(-forgeVariant "$variant")
+fi
 if [ "$local_build" = true ]; then
   forge_args+=(-forgeCI false)
 fi
