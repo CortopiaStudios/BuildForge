@@ -36,6 +36,8 @@ Activating makes the profile Unity's active Build Profile, like Unity's own Swit
 
 Once the profile is active, the action bar shows its actions on the right instead: **Apply**, with **Revert to Baseline** in its ▾ menu, then **Build** and **Build and Run**. Apply writes a profile's plugin settings, such as OpenXR features, to the editor so Play Mode matches the profile. In a project without OpenXR, XR Plug-in Management or variants, this profile has nothing to apply, so **Apply** stays disabled with that reason as its tooltip. See [Concepts](concepts.md#apply-and-re-apply).
 
+Apply changes files you commit: the OpenXR and XR Management settings under `Assets/XR/`, and the variant's defines on the Build Profile. Before committing those files, use **Revert to Baseline**: it removes what Apply wrote and keeps your own edits to the Build Profile. Apply again after the commit. See [Commit settings while nothing is applied](concepts.md#commit-settings-while-nothing-is-applied).
+
 ## 5. Build
 
 Click **Build**. Build Forge:
