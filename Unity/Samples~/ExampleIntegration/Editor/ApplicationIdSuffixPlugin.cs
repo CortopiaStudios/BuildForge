@@ -248,18 +248,10 @@ namespace BuildForge.Samples.ExampleIntegration
             return null;
         }
 
-        // Unity 6000.3 has no public property for a Build Profile's platform, and
-        // IsApplicable is also asked about profiles that are not active. Build
-        // Forge itself reads the serialized m_BuildTarget field the same way. If the
-        // field cannot be read, the plugin counts as applicable and OnPreBuild
-        // checks the build's actual target.
+        // IsApplicable is also asked about profiles that are not active, and Unity has
+        // no public property for a Build Profile's platform; Build Forge's
+        // BuildProfileUtility reads it.
         static bool IsAndroid(BuildProfile profile)
-        {
-            using (var serialized = new SerializedObject(profile))
-            {
-                var target = serialized.FindProperty("m_BuildTarget");
-                return target == null || target.intValue == (int)BuildTarget.Android;
-            }
-        }
+            => BuildProfileUtility.GetBuildTarget(profile) == BuildTarget.Android;
     }
 }

@@ -4,6 +4,12 @@
   "references": [
     "BuildForge.Runtime",
     "BuildForge.Editor",
+    "BuildForge.Editor.BuildNumber",
+    "BuildForge.Editor.GitMetadata",
+    "BuildForge.Editor.CloudDiagnostics",
+    "BuildForge.Editor.AndroidKeystoreEnv",
+    "BuildForge.Editor.AndroidManifest",
+    "BuildForge.Editor.XRVendorFilter",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],

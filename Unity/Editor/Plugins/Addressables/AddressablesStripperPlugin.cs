@@ -73,10 +73,7 @@ namespace BuildForge.Editor.Addressables
                 AddressableAssetSettings.PlayerBuildOption.BuildWithPlayer)
                 return true;
 
-            var rebuildDisabled = ForgeSettings.instance.IsPluginDisabledWithDefault(
-                typeof(AddressablesRebuildPlugin).FullName,
-                ForgePluginRegistry.IsSafeToDefaultEnable(typeof(AddressablesRebuildPlugin)));
-            if (rebuildDisabled)
+            if (!ForgeSettings.instance.IsPluginEnabled(typeof(AddressablesRebuildPlugin)))
                 return false;
 
             var rebuildConfig = forgeProfile.GetPluginConfig<AddressablesRebuildConfig>(AddressablesRebuildPlugin.ConfigKey);

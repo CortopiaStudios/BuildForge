@@ -4,7 +4,7 @@ using System.Globalization;
 using UnityEditor;
 using UnityEngine;
 
-namespace BuildForge.Editor.Core
+namespace BuildForge.Editor.OpenXR
 {
     /// <summary>One serialized leaf: a SerializedProperty path and its culture-invariant string value.</summary>
     [Serializable]

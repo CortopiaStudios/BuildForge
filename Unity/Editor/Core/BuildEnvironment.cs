@@ -10,11 +10,16 @@ namespace BuildForge.Editor.Core
     /// environment variable overrides it for the cases where the two differ
     /// (local scripted builds, interactive CI agents).
     /// </summary>
-    internal static class BuildEnvironment
+    public static class BuildEnvironment
     {
-        public const string CommandLineArg = "-forgeCI";
-        public const string EnvVarName = "FORGE_CI";
+        internal const string CommandLineArg = "-forgeCI";
+        internal const string EnvVarName = "FORGE_CI";
 
+        /// <summary>
+        /// Whether a build started now counts as a CI build: the CI detection
+        /// <see cref="ForgeBuildContext.IsCI"/> gives during a build, for plugins
+        /// that need it outside one, in their warnings or descriptions.
+        /// </summary>
         public static bool IsCI => ResolveIsCI(
             Environment.GetCommandLineArgs(),
             Environment.GetEnvironmentVariable(EnvVarName),
@@ -25,7 +30,7 @@ namespace BuildForge.Editor.Core
         /// variable, then batch mode. A bare -forgeCI (no value, or followed by
         /// another -flag) means true.
         /// </summary>
-        public static bool ResolveIsCI(string[] args, string envValue, bool isBatchMode)
+        internal static bool ResolveIsCI(string[] args, string envValue, bool isBatchMode)
         {
             if (args != null)
             {
@@ -53,7 +58,7 @@ namespace BuildForge.Editor.Core
         /// ignores an unrecognized FORGE_CI, so a mistyped "false" would count as
         /// CI; the CLI build fails on both instead. An empty FORGE_CI counts as unset.
         /// </summary>
-        public static string ValueError(string[] args, string envValue)
+        internal static string ValueError(string[] args, string envValue)
         {
             for (int i = 0; args != null && i + 1 < args.Length; i++)
             {

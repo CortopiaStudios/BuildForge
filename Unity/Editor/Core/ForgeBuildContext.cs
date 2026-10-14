@@ -40,8 +40,12 @@ namespace BuildForge.Editor.Core
         /// </summary>
         internal List<string> PostBuildFailures { get; } = new();
 
-        /// <summary>The number the Build Number plugin set for this build, on every platform; null without it.</summary>
-        internal int? BuildNumber { get; set; }
+        /// <summary>
+        /// This build's number, on every platform: set in OnPreBuild by the plugin
+        /// that assigns it (Build Number does), and read by a variant rule's
+        /// {BuildNumber} and the manifest's buildNumber. Null when no plugin set one.
+        /// </summary>
+        public int? BuildNumber { get; set; }
 
         readonly Dictionary<string, object> properties = new();
 

@@ -76,7 +76,7 @@ public sealed class BundleVersionSuffixPlugin : IForgePlugin
 
 Put plugins in an editor assembly: an assembly definition with **Editor** as its only platform that references `BuildForge.Editor`, and `BuildForge.Runtime` if the plugin contributes to the manifest. An `Editor` folder without an assembly definition works too, since Build Forge's assemblies are auto-referenced.
 
-The package targets C# 9. Plugins can use only Build Forge's public API, listed below; the bundled plugins' internal helpers are not available outside the package. Unity's own public API is available as usual; where it lacks something, as the build target of a Build Profile that is not active, the sample shows the workaround Build Forge itself uses.
+The package targets C# 9. Plugins can use only Build Forge's public API, listed below. That is all the bundled plugins use too: each of them has an assembly of its own, built like yours. Where Unity's own API lacks something, such as the build target of a Build Profile that is not active, `BuildProfileUtility` has it.
 
 ## How plugins are found
 
@@ -154,7 +154,8 @@ Plugins receive the context; they cannot create one.
 | `Variant` | The variant name, or null for the default build. |
 | `VariantDefine` | `BUILD_VARIANT_<NAME>` for a variant, null for the default build. |
 | `DevelopmentBuild` | Whether this is a development build, after the variant's rule. |
-| `IsCI` | Whether the build counts as a CI build; see [CI detection](ci.md#ci-detection). |
+| `IsCI` | Whether the build counts as a CI build; see [CI detection](ci.md#ci-detection). Outside a build, `BuildEnvironment.IsCI` gives the same answer, for warnings and descriptions. |
+| `BuildNumber` | The build's number, or null. A plugin that assigns the build number sets it in `OnPreBuild`, as Build Number does; a variant rule's `{BuildNumber}` and the manifest's `buildNumber` read it. |
 | `Succeeded` | In `OnPostBuild`: whether the player build succeeded. |
 | `SetProperty(key, value)`, `GetProperty<T>(key, default)` | Values kept for the duration of one build, shared by all plugins. Prefix keys with your plugin's name. |
 
@@ -257,6 +258,8 @@ var settings = active != null ? active.GetComponent<ForgeProfile>() : null;
 
 For any Build Profile asset, `buildProfile.GetComponent<ForgeProfile>()` does the same. Searching with `AssetDatabase.FindAssets("t:ForgeProfile")` and `LoadAssetAtPath<ForgeProfile>` finds nothing; search for `t:BuildProfile` and ask each for its component instead.
 
+`ForgeSettings.instance.IsPluginEnabled(typeof(SomePlugin))` tells whether a plugin is on in **Project Settings > Build Forge > Installed Plugins**; the plugin's own `IsEnabled` decides per profile.
+
 Unity build callbacks, such as `IPostGenerateGradleAndroidProject` for changes to the generated Android project, run inside Build Forge's build with the built profile active, so they can read the profile's settings this way. `ForgeBuildRunner.IsForgeBuildInProgress` tells them whether the build is Build Forge's.
 
 ## Public API
@@ -265,6 +268,7 @@ Unity build callbacks, such as `IPostGenerateGradleAndroidProject` for changes t
 |---|---|
 | Plugin contract | `IForgePlugin`, `IForgeManifestContributor`, `IForgeEditorApplicable`, `IForgeGradleProcessor`, `ForgePluginAttribute`, `ForgeBuildContext` |
 | Configuration | `ForgeProfile`, `ForgeSettings` |
+| Utilities | `BuildProfileUtility` (a Build Profile's build target, whether it is a Dedicated Server), `BuildEnvironment` (`IsCI`), `GitHelper` (runs git in the project) |
 | Builds | `ForgeBuildRunner` (`RunBuild`, `GetCICommand`, `IsForgeBuildInProgress`), `BuildForge.CommandLine` (the `-executeMethod` entry point) |
 | Runtime | `BuildManifest`, `ManifestSection`, `ManifestEntry`, `BuildManifestLoader` |
 

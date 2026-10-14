@@ -54,8 +54,8 @@ namespace BuildForge.Editor.XRManagement
         internal static IReadOnlyList<XRLoader> EffectiveLoaders(ForgeProfile profile, BuildTargetGroup group)
         {
             var config = Config(profile);
-            var disabled = ForgeSettings.instance.IsPluginDisabledWithDefault(typeof(XRLoaderSelectionPlugin).FullName, true);
-            return config.enabled && !disabled ? config.loaders : Manager(group)?.activeLoaders ?? Array.Empty<XRLoader>();
+            var pluginOn = ForgeSettings.instance.IsPluginEnabled(typeof(XRLoaderSelectionPlugin));
+            return config.enabled && pluginOn ? config.loaders : Manager(group)?.activeLoaders ?? Array.Empty<XRLoader>();
         }
 
         public IReadOnlyList<string> Validate(ForgeProfile profile)

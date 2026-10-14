@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
-using BuildForge.Editor.Core;
+using BuildForge.Editor.OpenXR;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 
-namespace BuildForge.Tests.Editor
+namespace BuildForge.Tests.OpenXR
 {
     public class SerializedPropertySnapshotTests
     {

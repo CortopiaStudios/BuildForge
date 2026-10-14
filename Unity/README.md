@@ -401,12 +401,12 @@ Editor/
     ForgeBuildInterceptor.cs               # Blocks non-Build Forge builds
     ForgeBuildContext.cs                   # Context passed to plugins (incl. IsCI)
     BuildEnvironment.cs                    # CI detection (-forgeCI / FORGE_CI / batch mode)
+    GitHelper.cs                           # Runs git for plugins (Git Metadata, Build Number) and the core
     BuildManifestWriter.cs                 # Writes/cleans up manifest
     BuildProfilePlatform.cs                # A Build Profile's own platform name and icon, via Unity internals
     UnityYamlParser.cs                    # Line-based YAML parser for Unity assets
     PlayerSettingsDiffComputer.cs          # Computes diffs between profile and platform YAML
     PlayerSettingsMatrix.cs                # All profiles' differences side by side, per platform
-    SerializedPropertySnapshot.cs          # Property-path capture/apply (OpenXR feature pins)
     ForgeProfileLookup.cs                  # 1:1 Build Forge settings <-> Unity Build Profile rule
     ForgeEditorState.cs                    # Profile switch entry point (baseline, drift, revert)
     EditorStateApplier.cs                  # Pure apply/revert/drift logic over the ledger
@@ -424,8 +424,7 @@ Editor/
     ForgeEditorStateStore.cs               # Per-user applied state, keyed on the Unity Build Profile (UserSettings/)
     ForgeUserPreferences.cs                # Per-user preferences for this project, e.g. the main toolbar (UserSettings/)
     DiffEntry.cs                           # Diff data model
-  Plugins/                                 # One folder per plugin, its config beside it
-    GitHelper.cs                           # Shared git process runner (Git Metadata, Build Number)
+  Plugins/                                 # One folder and assembly per plugin, its config beside it
     GitMetadata/
       GitMetadataPlugin.cs                 # Git branch/commit/describe/tag in manifest
       GitMetadataConfig.cs                 # Per-profile git metadata config
@@ -453,6 +452,7 @@ Editor/
       OpenXRSettingsState.cs               # Shared capture/apply/restore core (build + editor)
       PlayModeOpenXRFeatures.cs            # Play Mode mirror: OpenXR feature on/off states to Standalone
       OpenXREditorStateSnapshot.cs         # Baseline/expected snapshot for profile switching
+      SerializedPropertySnapshot.cs        # Property-path capture/apply (OpenXR feature pins)
     Addressables/                          # Conditional on com.unity.addressables
       AddressablesStripperPlugin.cs        # Strip groups/labels from builds
       AddressablesStripperConfig.cs        # Per-profile stripper config
@@ -513,7 +513,7 @@ Tests/
     PluginConfigStorageTests.cs            # Config storage contract + YAML round trips
     PluginRegistryTests.cs                 # Plugin discovery tests
     PublicApiSurfaceTests.cs               # Locks the public API surface
-    SerializedPropertySnapshotTests.cs     # Property capture/apply round trips
+    OpenXR/SerializedPropertySnapshotTests.cs # Property capture/apply round trips (with the OpenXR tests)
     UnityYamlParserTests.cs               # YAML parser tests with real fixture
 ```
 

@@ -1,15 +1,18 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using BuildForge.Runtime;
-using UnityEditor;
-using UnityEditor.Build;
 using UnityEditor.Build.Profile;
 using UnityEditor.Build.Reporting;
+using UnityEditor.Build;
+using UnityEditor;
 using UnityEngine;
+
+[assembly: InternalsVisibleTo("BuildForge.Tests.Editor")]
 
 namespace BuildForge.Editor.Plugins
 {
@@ -309,7 +312,8 @@ namespace BuildForge.Editor.Plugins
     /// </summary>
     internal sealed class XRVendorFilterPreprocess : IPreprocessBuildWithReport
     {
-        public int callbackOrder => ForgeGradleCallback.CallbackOrder;
+        // After the vendors' own pre-build steps; Build Forge's Gradle step uses the same order.
+        public int callbackOrder => 1000000;
 
         public void OnPreprocessBuild(BuildReport report)
         {

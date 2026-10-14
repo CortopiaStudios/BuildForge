@@ -1,11 +1,14 @@
-using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using BuildForge.Runtime;
-using UnityEditor;
 using UnityEditor.Build.Profile;
+using UnityEditor;
 using UnityEngine;
+
+[assembly: InternalsVisibleTo("BuildForge.Tests.Editor")]
 
 namespace BuildForge.Editor.Plugins
 {

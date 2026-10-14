@@ -197,6 +197,14 @@ namespace BuildForge.Editor.Configuration
             return name;
         }
 
+        /// <summary>
+        /// Whether the plugin is on in Project Settings > Build Forge > Installed
+        /// Plugins, which every plugin is unless its [ForgePlugin] says otherwise or
+        /// the user turned it off. A profile's own switch is the plugin's IsEnabled.
+        /// </summary>
+        public bool IsPluginEnabled(System.Type pluginType)
+            => !IsPluginDisabledWithDefault(pluginType.FullName, Core.ForgePluginRegistry.IsSafeToDefaultEnable(pluginType));
+
         internal bool IsPluginDisabledWithDefault(string pluginTypeName, bool safeToDefaultEnable)
             => PluginEnableState.IsDisabled(disabledPlugins, enabledPlugins, pluginTypeName, safeToDefaultEnable);
 

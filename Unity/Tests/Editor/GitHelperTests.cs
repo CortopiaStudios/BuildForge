@@ -1,4 +1,4 @@
-using BuildForge.Editor.Plugins;
+using BuildForge.Editor.Core;
 using NUnit.Framework;
 
 namespace BuildForge.Tests.Editor

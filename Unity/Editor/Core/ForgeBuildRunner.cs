@@ -657,7 +657,7 @@ namespace BuildForge.Editor.Core
             if (!projectPathForCIResolved)
             {
                 var projectDir = System.IO.Path.GetDirectoryName(Application.dataPath);
-                var repoRoot = Plugins.GitHelper.Run("rev-parse --show-toplevel");
+                var repoRoot = GitHelper.Run("rev-parse --show-toplevel");
                 projectPathForCI = RelativeProjectPath(projectDir, repoRoot);
                 projectPathForCIResolved = true;
             }
@@ -785,8 +785,13 @@ namespace BuildForge.Editor.Core
     /// <summary>
     /// Utility to extract build target from a BuildProfile.
     /// </summary>
-    internal static class BuildProfileUtility
+    /// <summary>
+    /// What a Unity Build Profile builds, which Unity's own API does not say, for
+    /// plugins that apply to some platforms only.
+    /// </summary>
+    public static class BuildProfileUtility
     {
+        /// <summary>The build target the Build Profile builds for; the active one when it cannot be read.</summary>
         public static BuildTarget GetBuildTarget(BuildProfile profile)
         {
             var so = new SerializedObject(profile);

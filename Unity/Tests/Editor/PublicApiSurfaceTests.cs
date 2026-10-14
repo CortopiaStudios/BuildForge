@@ -20,9 +20,12 @@ namespace BuildForge.Tests.Editor
             "BuildForge.CommandLine",
             "BuildForge.Editor.Configuration.ForgeProfile",
             "BuildForge.Editor.Configuration.ForgeSettings",
+            "BuildForge.Editor.Core.BuildEnvironment",
+            "BuildForge.Editor.Core.BuildProfileUtility",
             "BuildForge.Editor.Core.ForgeBuildContext",
             "BuildForge.Editor.Core.ForgeBuildRunner",
             "BuildForge.Editor.Core.ForgePluginAttribute",
+            "BuildForge.Editor.Core.GitHelper",
             "BuildForge.Editor.Core.IForgeEditorApplicable",
             "BuildForge.Editor.Core.IForgeGradleProcessor",
             "BuildForge.Editor.Core.IForgeManifestContributor",
@@ -59,17 +62,18 @@ namespace BuildForge.Tests.Editor
         [Test]
         public void BundledPluginAssemblies_ExposeNoPublicTypes()
         {
-            // The OpenXR/Addressables/XR Management assemblies only exist when
-            // their Unity package is installed; assert emptiness for whichever
-            // are loaded.
+            // Every bundled plugin has an assembly of its own. The OpenXR,
+            // Addressables and XR Management ones exist only when their Unity
+            // package is installed; assert emptiness for whichever are loaded.
+            var names = new[]
+            {
+                "BuildForge.Editor.BuildNumber", "BuildForge.Editor.GitMetadata", "BuildForge.Editor.CloudDiagnostics",
+                "BuildForge.Editor.AndroidKeystoreEnv", "BuildForge.Editor.AndroidManifest", "BuildForge.Editor.XRVendorFilter",
+                "BuildForge.Editor.OpenXR", "BuildForge.Editor.Addressables", "BuildForge.Editor.XRManagement",
+            };
             var pluginAssemblies = AppDomain.CurrentDomain.GetAssemblies()
-                .Where(a =>
-                {
-                    var name = a.GetName().Name;
-                    return name == "BuildForge.Editor.OpenXR"
-                        || name == "BuildForge.Editor.Addressables"
-                        || name == "BuildForge.Editor.XRManagement";
-                });
+                .Where(a => names.Contains(a.GetName().Name)).ToList();
+            Assert.That(pluginAssemblies.Count, Is.GreaterThanOrEqualTo(6), "The six package-free plugin assemblies are loaded.");
 
             foreach (var assembly in pluginAssemblies)
             {

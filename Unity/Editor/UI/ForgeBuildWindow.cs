@@ -747,7 +747,7 @@ namespace BuildForge.Editor.UI
         {
             if (target == BuildTarget.Android || target == BuildTarget.iOS)
                 return true;
-            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p is BuildForge.Editor.Plugins.BuildNumberPlugin);
+            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == "BuildForge.Editor.Plugins.BuildNumberPlugin");
             return plugin != null
                    && !ForgeSettings.instance.IsPluginDisabledWithDefault(plugin.GetType().FullName, ForgePluginRegistry.IsSafeToDefaultEnable(plugin))
                    && plugin.IsApplicable(profile.BuildProfile)

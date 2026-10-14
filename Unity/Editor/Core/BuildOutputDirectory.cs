@@ -74,7 +74,7 @@ namespace BuildForge.Editor.Core
             public static Roots Current() => new Roots
             {
                 Project = Path.GetDirectoryName(Application.dataPath),
-                Repository = Plugins.GitHelper.Run("rev-parse --show-toplevel"),
+                Repository = GitHelper.Run("rev-parse --show-toplevel"),
                 Package = PackageInfo.FindForAssembly(typeof(BuildOutputDirectory).Assembly)?.resolvedPath,
                 Editor = EditorInstallation(),
             };
