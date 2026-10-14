@@ -680,13 +680,19 @@ namespace BuildForge.Editor.UI
                 (GUIContent content, bool enabled, System.Action onClick) dismiss = (new GUIContent("Dismiss Drift",
                     canMutate
                         ? "Stop reporting the current settings as drift. The profile is unchanged, and the " +
-                          "next Apply or build rewrites the settings from it."
+                          "next Apply or build rewrites the settings from it." +
+                          (drift.Contains(ForgeEditorState.VariantDriftKey)
+                              ? " The missing variant define stays reported; Re-apply restores it."
+                              : "")
                         : reason), canMutate, () => EditorApplication.delayCall += () =>
                     {
                         ForgeEditorState.DismissDrift();
                         if (this != null) Repaint();
                     });
-                DrawWarningBoxWithButtons(text, dismiss, revert);
+                if (OffersDismissDrift(drift))
+                    DrawWarningBoxWithButtons(text, dismiss, revert);
+                else
+                    DrawWarningBoxWithButtons(text, revert);
             }
             else
             {
@@ -750,6 +756,14 @@ namespace BuildForge.Editor.UI
 
         /// <summary>"OpenXR (Android)" for a ledger key, falling back to the raw key.</summary>
         internal static string DescribeDriftKey(string key) => ForgeEditorState.DescribeKey(key);
+
+        /// <summary>
+        /// Whether the drift notice offers Dismiss Drift: only while plugin settings
+        /// have drifted, which it accepts. A missing variant define stays reported
+        /// until Re-apply or Revert to Baseline.
+        /// </summary>
+        internal static bool OffersDismissDrift(IReadOnlyList<string> drift)
+            => drift.Any(key => key != ForgeEditorState.VariantDriftKey);
 
         /// <summary>
         /// The build plan for the selected profile: every discovered plugin in

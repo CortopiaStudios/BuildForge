@@ -102,7 +102,7 @@ The build window lists drifted settings, for example `OpenXR (Android)`, with **
 
 - **Re-apply** writes the profile's settings again.
 - **Revert to Baseline** undoes the Apply.
-- **Dismiss Drift** accepts the current state as the applied one, for legitimate changes such as a package upgrade rewriting its settings. Baselines and the profile are unchanged, and the next Apply or build writes the profile's settings again.
+- **Dismiss Drift** accepts the current state as the applied one, for legitimate changes such as a package upgrade rewriting its settings. Baselines and the profile are unchanged, and the next Apply or build writes the profile's settings again. It covers plugin settings only: a missing variant define stays reported until Re-apply or Revert to Baseline, so the build window offers Dismiss Drift only while plugin settings have drifted.
 
 Drift is checked at most every two seconds.
 

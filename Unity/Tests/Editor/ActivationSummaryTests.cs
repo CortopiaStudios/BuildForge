@@ -1,4 +1,5 @@
 using BuildForge.Editor.Core;
+using BuildForge.Editor.UI;
 using NUnit.Framework;
 
 namespace BuildForge.Tests.Editor
@@ -7,10 +8,22 @@ namespace BuildForge.Tests.Editor
     /// The line Activate logs after the domain reload (parked in SessionState
     /// across the reload, because a Console set to "Clear on Recompile" drops
     /// everything logged before it), and the warnings for a Build Profile or a
-    /// platform profile that became active behind an applied profile.
+    /// platform profile that became active behind an applied profile, and when the
+    /// drift notice offers Dismiss Drift.
     /// </summary>
     public class ActivationSummaryTests
     {
+        // Dismiss Drift accepts plugin settings only; a missing variant define needs
+        // Re-apply or Revert to Baseline.
+        [Test]
+        public void DismissDrift_IsOfferedOnlyWhilePluginSettingsHaveDrifted()
+        {
+            const string openXR = "BuildForge.Editor.OpenXR.OpenXRPlugin|Android";
+            Assert.IsFalse(ForgeBuildWindow.OffersDismissDrift(new[] { ForgeEditorState.VariantDriftKey }));
+            Assert.IsTrue(ForgeBuildWindow.OffersDismissDrift(new[] { openXR }));
+            Assert.IsTrue(ForgeBuildWindow.OffersDismissDrift(new[] { openXR, ForgeEditorState.VariantDriftKey }));
+        }
+
         // A deleted Library/ or -buildTarget leaves a platform profile active,
         // which no Build Forge profile can reference.
         [Test]

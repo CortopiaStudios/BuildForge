@@ -93,7 +93,7 @@ Unity changed the active profile without Build Forge, and the previous profile's
 
 ### Drift is reported
 
-An applied setting changed after the Apply. Re-apply, Revert to Baseline, or Dismiss Drift when the change is legitimate. See [Drift](concepts.md#drift).
+An applied setting changed after the Apply. Re-apply, Revert to Baseline, or Dismiss Drift when the change is legitimate. A missing variant define can only be fixed with Re-apply or Revert to Baseline. See [Drift](concepts.md#drift).
 
 ### "Build Forge could not restore some settings"
 
