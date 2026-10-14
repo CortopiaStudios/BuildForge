@@ -79,6 +79,7 @@ Its icon and label say what is applied to the active profile. Only the variant i
 | A check mark and **Internal** | Applied with the `Internal` variant. |
 | A check mark and **\<default\>** | Applied with the default build, in a project with variants. |
 | The warning icon | Applied, and editor settings changed since; the tooltip names them. |
+| Not applied, with the warning icon | Another profile's settings are applied underneath the active one, after Unity switched profiles without Build Forge, or the applied profile no longer exists; the tooltip has the build window's warning and its fixes. |
 
 The menu:
 

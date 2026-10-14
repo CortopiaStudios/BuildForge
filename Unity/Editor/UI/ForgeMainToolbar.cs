@@ -211,7 +211,7 @@ namespace BuildForge.Editor.UI
                     ? "Pick a variant to apply the profile with it: its defines and the profile's plugin settings, so Play Mode matches."
                     : "Apply the profile's plugin settings (such as OpenXR features), so Play Mode matches.";
             var text = ApplyText(variantsConfigured, state.Applied, appliedVariant);
-            var icon = ApplyIcon(state.Applied, drift.Count > 0);
+            var icon = ApplyIcon(state.Applied, drift.Count > 0, state.AnythingApplied);
             return icon != null
                 ? new MainToolbarContent(text, EditorGUIUtility.IconContent(icon).image as Texture2D, tooltip)
                 : new MainToolbarContent(text, tooltip);
@@ -240,9 +240,15 @@ namespace BuildForge.Editor.UI
             return appliedVariant ?? (variantsConfigured ? BuildVariants.DefaultLabel : "Applied");
         }
 
-        /// <summary>The apply dropdown's icon: none while nothing is applied, a check mark while applied, Unity's warning icon once drifted.</summary>
-        internal static string ApplyIcon(bool applied, bool drifted)
-            => !applied ? null : drifted ? "console.warnicon.sml" : "GreenCheckmark";
+        /// <summary>
+        /// The apply dropdown's icon: a check mark while the active profile is applied,
+        /// Unity's warning icon once it has drifted, and also while another profile's
+        /// settings are applied underneath it ("Not applied" for the active profile,
+        /// after Unity switched profiles without Build Forge); none while nothing is applied.
+        /// </summary>
+        internal static string ApplyIcon(bool applied, bool drifted, bool anythingApplied)
+            => applied ? (drifted ? "console.warnicon.sml" : "GreenCheckmark")
+                : anythingApplied ? "console.warnicon.sml" : null;
 
         internal readonly struct ProfileEntry
         {

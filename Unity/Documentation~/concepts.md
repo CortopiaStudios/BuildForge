@@ -110,7 +110,7 @@ Drift is checked at most every two seconds.
 
 Unity can change the active profile without Build Forge: its own Switch Profile button, a platform in its Platforms list, `-activeBuildProfile` or `-buildTarget` on the command line, or a deleted `Library/` folder, which leaves Unity on a platform profile. The previous profile's plugin settings are then still applied underneath the new active profile.
 
-The build window and the main toolbar warn about that and name the fixes: Apply the active profile to replace the settings with its own, activate the applied profile again to keep them, or Revert to Baseline. Building stays possible and correct in that state, because every build starts from the baseline.
+The build window and the main toolbar warn about that, the toolbar with the warning icon next to **Not applied**, and name the fixes: Apply the active profile to replace the settings with its own, activate the applied profile again to keep them, or Revert to Baseline. Building stays possible and correct in that state, because every build starts from the baseline.
 
 ## Builds while a profile is applied
 

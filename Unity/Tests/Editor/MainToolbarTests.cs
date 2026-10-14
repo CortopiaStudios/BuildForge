@@ -205,11 +205,14 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void ApplyIcon_ShowsTheState_CheckMarkWhileApplied_WarningOnceDrifted()
+        public void ApplyIcon_ShowsTheState_CheckMarkWhileApplied_WarningOnceDriftedOrWithAnotherProfileApplied()
         {
-            Assert.IsNull(ForgeMainToolbar.ApplyIcon(applied: false, drifted: false));
-            Assert.AreEqual("GreenCheckmark", ForgeMainToolbar.ApplyIcon(applied: true, drifted: false));
-            Assert.AreEqual("console.warnicon.sml", ForgeMainToolbar.ApplyIcon(applied: true, drifted: true));
+            Assert.IsNull(ForgeMainToolbar.ApplyIcon(applied: false, drifted: false, anythingApplied: false));
+            Assert.AreEqual("GreenCheckmark", ForgeMainToolbar.ApplyIcon(applied: true, drifted: false, anythingApplied: true));
+            Assert.AreEqual("console.warnicon.sml", ForgeMainToolbar.ApplyIcon(applied: true, drifted: true, anythingApplied: true));
+            // Unity switched profiles without Build Forge: another profile's settings are
+            // still applied underneath the active one, which reads "Not applied".
+            Assert.AreEqual("console.warnicon.sml", ForgeMainToolbar.ApplyIcon(applied: false, drifted: false, anythingApplied: true));
             // Both icons exist in the editor.
             Assert.IsNotNull(EditorGUIUtility.FindTexture("GreenCheckmark"));
             Assert.IsNotNull(EditorGUIUtility.FindTexture("console.warnicon.sml"));
