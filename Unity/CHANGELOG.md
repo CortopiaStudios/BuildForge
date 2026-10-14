@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- The Package Manager links to the manual and to this changelog on GitHub (`documentationUrl`, `changelogUrl`)
 - **Build** and **Build and Run** in the main toolbar's Build Forge element, next to the profile and apply dropdowns. They build the active profile like the build window's Build, with the variant the window has selected, which picking a variant in the apply dropdown also sets; **Build and Run** then runs the build like Unity's Build And Run, without showing it in the file browser. Disabled when the window's Build would be, with the reason as their tooltip. They show the build window's icons: the Build Forge anvil on Build, Unity's Play icon on Build and Run
 - **Build and Run** in the build window's action bar, next to Build and green like it, with Unity's Play icon: builds the active profile like Build, then runs it like Unity's Build And Run, without showing it in the file browser
 

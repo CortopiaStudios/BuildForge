@@ -13,17 +13,13 @@ here — see ARCHITECTURE.md (decisions, pitfalls), Development~/LEARNINGS.md
    - Plugin authoring guide (namespaces, asmdef setup, InternalsVisibleTo
      is NOT available to third parties — public API only)
    - CI arguments doc completeness pass
-2. **Open decisions**:
-   - `package.json` `documentationUrl`/`changelogUrl` are empty — fill when
-     the repository is public, with the README and CHANGELOG under
-     `https://github.com/CortopiaStudios/BuildForge/blob/main/Unity/`.
-3. **CI** (agreed, after 1.0 structural work settles): GitHub Actions
+2. **CI** (agreed, after 1.0 structural work settles): GitHub Actions
    workflow reusing the `Tools~` scaffold recipe. License handled ONCE as a
    repo secret — either a `.ulf` (manual activation) or a Unity Cloud
    service-account key (`unity auth login --client-id/--client-secret`).
    Per-session sandbox activation was evaluated and rejected: ephemeral
    machines make it a recurring manual dance.
-4. **Never checked yet** (as last noted, 2026-10-06):
+3. **Never checked yet** (as last noted, 2026-10-06):
    - the OpenXR feature-group build error with a group ticked (needs Unity
      OpenXR Meta);
    - by eye: the Addressables Stripper's Move to…/Remove row for exclusions
