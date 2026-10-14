@@ -25,7 +25,7 @@ public static class VariantFailureProof
         var forge = AssetDatabase.LoadAssetAtPath<ForgeProfile>("Assets/ProofForge.asset");
         CheckFailure(forge, "Development");
         EditorState.GetMethod("Apply", Flags).Invoke(null, new object[] { forge, "Development" });
-        try { CheckFailure(forge, null); }
+        try { CheckFailure(forge, "Default"); }
         finally { EditorState.GetMethod("RevertCore", Flags).Invoke(null, null); }
         CheckPlayerFailure(forge);
         File.WriteAllText("failure-proof.json", "{\"developmentFailureRestored\":true,\"releaseFailureRestoredAppliedDevelopment\":true,\"cleanupRan\":true,\"playerFailurePreloadedAssetsRestored\":true}");

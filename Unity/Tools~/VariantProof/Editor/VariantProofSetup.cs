@@ -37,14 +37,14 @@ public static class VariantProofSetup
         fp.ApplyModifiedPropertiesWithoutUndo();
         var settings = new SerializedObject(ForgeSettings.instance);
         var names = settings.FindProperty("buildVariants");
-        names.arraySize = 3;
-        var variants = new[] { "Development", "China", "ChinaDevelopment" };
-        for (var i = 0; i < 3; i++) names.GetArrayElementAtIndex(i).stringValue = variants[i];
+        names.arraySize = 4;
+        var variants = new[] { "Default", "Development", "China", "ChinaDevelopment" };
+        for (var i = 0; i < 4; i++) names.GetArrayElementAtIndex(i).stringValue = variants[i];
         var rules = settings.FindProperty("variantRules"); rules.arraySize = 4;
         for (var i = 0; i < 4; i++)
         {
             var rule = rules.GetArrayElementAtIndex(i);
-            rule.FindPropertyRelative("variant").stringValue = i == 0 ? "Default" : variants[i - 1];
+            rule.FindPropertyRelative("variant").stringValue = variants[i];
             rule.FindPropertyRelative("developmentBuild").enumValueIndex = i == 1 || i == 3 ? 2 : 1;
             rule.FindPropertyRelative("markProductName").enumValueIndex = i == 1 || i == 3 ? 2 : 1;
             var defines = rule.FindPropertyRelative("scriptingDefines");
