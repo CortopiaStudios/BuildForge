@@ -56,12 +56,25 @@ namespace BuildForge.Editor.UI
 
             if (InspectorWindowType != null && InspectorElementEditor != null)
                 foreach (EditorWindow window in Resources.FindObjectsOfTypeAll(InspectorWindowType))
-                    EnsureIn(window.rootVisualElement, addButton =>
-                        ProfileOf(InspectorElementEditor.GetValue(addButton.GetFirstAncestorOfType<InspectorElement>()) as UnityEditor.Editor));
+                    EnsureIn(window.rootVisualElement, InspectorProfileOf);
         }
 
-        static BuildProfile ProfileOf(UnityEditor.Editor editor) =>
-            editor != null && editor.targets.Length == 1 ? editor.target as BuildProfile : null;
+        // The profile of the Inspector's InspectorElement that holds the "Add
+        // Settings" button; none for a button outside one, which has no editor.
+        internal static BuildProfile InspectorProfileOf(VisualElement addButton)
+        {
+            var inspector = addButton.GetFirstAncestorOfType<InspectorElement>();
+            return inspector != null ? ProfileOf(InspectorElementEditor?.GetValue(inspector) as UnityEditor.Editor) : null;
+        }
+
+        // The Build Profiles window's Scene List page shows an editor made with
+        // ScriptableObject.CreateInstance, whose targets are null (6000.3.0f1 to
+        // 6000.7.0b4): no profile there.
+        internal static BuildProfile ProfileOf(UnityEditor.Editor editor)
+        {
+            var targets = editor != null ? editor.targets : null;
+            return targets != null && targets.Length == 1 ? targets[0] as BuildProfile : null;
+        }
 
         static void EnsureIn(VisualElement root, Func<VisualElement, BuildProfile> resolve)
         {

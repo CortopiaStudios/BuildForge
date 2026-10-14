@@ -126,5 +126,52 @@ namespace BuildForge.Tests.Editor
             Assert.AreSame(madeInCode, BuildForge.Editor.UI.ForgeBuildWindow.InspectorTarget(madeInCode));
             Object.DestroyImmediate(madeInCode);
         }
+
+        // Editor.CreateEditor takes only a type derived from Editor.
+        sealed class PlainEditor : UnityEditor.Editor { }
+
+        // The Build Profiles window's Scene List page shows an editor made with
+        // ScriptableObject.CreateInstance, without targets; the Build Forge section,
+        // which looks a few times a second, threw for it.
+        [Test]
+        public void BuildProfileEditorSection_FindsNoProfile_InAnEditorWithoutTargets()
+        {
+            var withoutTargets = ScriptableObject.CreateInstance<PlainEditor>();
+            var buildProfile = CreateBuildProfileAsset("Quest");
+            var forProfile = UnityEditor.Editor.CreateEditor(buildProfile, typeof(PlainEditor));
+            try
+            {
+                Assert.IsNull(BuildForge.Editor.UI.BuildProfileEditorSection.ProfileOf(withoutTargets));
+                Assert.IsNull(BuildForge.Editor.UI.BuildProfileEditorSection.ProfileOf(null));
+                Assert.AreSame(buildProfile, BuildForge.Editor.UI.BuildProfileEditorSection.ProfileOf(forProfile));
+            }
+            finally
+            {
+                Object.DestroyImmediate(withoutTargets);
+                Object.DestroyImmediate(forProfile);
+            }
+        }
+
+        // In the Inspector the section asks the InspectorElement around Unity's "Add
+        // Settings" button for its editor; a button outside one has none to ask.
+        [Test]
+        public void BuildProfileEditorSection_InTheInspector_FindsTheProfile_OnlyInsideAnInspectorElement()
+        {
+            Assert.IsNull(BuildForge.Editor.UI.BuildProfileEditorSection.InspectorProfileOf(new UnityEngine.UIElements.Button()));
+
+            var buildProfile = CreateBuildProfileAsset("Quest");
+            var editor = UnityEditor.Editor.CreateEditor(buildProfile, typeof(PlainEditor));
+            try
+            {
+                var inspector = new UnityEditor.UIElements.InspectorElement(editor);
+                var addSettings = new UnityEngine.UIElements.Button();
+                inspector.Add(addSettings);
+                Assert.AreSame(buildProfile, BuildForge.Editor.UI.BuildProfileEditorSection.InspectorProfileOf(addSettings));
+            }
+            finally
+            {
+                Object.DestroyImmediate(editor);
+            }
+        }
     }
 }
