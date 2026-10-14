@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Build and Run** in the build window's action bar, next to Build and green like it, with Unity's Play icon: builds the active profile like Build, then runs it like Unity's Build And Run, without showing it in the file browser
 
 ### Changed
+- The Example Integration sample's CI recipes start Unity's licensing client right before each `unity run` on Windows, so a run cannot keep waiting after a finished build while a client the editor started holds its output; the bash script does so only on Windows (Git Bash). The manual's Command line and CI page has the step for your own pipelines
 - Build interception stops Unity's own Build and Build And Run before Unity asks for a location, instead of failing the build after the location was picked; other builds that bypass Build Forge still fail as they start. In an interactive editor that is not a CI build, a dialog now says so and offers to open the build window, since the console message was easy to miss
 - The build window's action buttons no longer repeat the profile's name, which the details pane shows, or the variant, which the details header shows: **Activate**, **Apply** or **Re-apply**, **Build**. A label that doesn't fit its slot, such as a long variant name, ends in "…" instead of being cut at both ends, and its tooltip starts with the whole label
 - The build window's Build button shows the Build Forge anvil instead of Unity's Play icon, which moved to Build and Run

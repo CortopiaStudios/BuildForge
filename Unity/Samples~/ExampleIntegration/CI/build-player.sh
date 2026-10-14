@@ -9,7 +9,10 @@
 # exits with the result. With --shared-workspace, it first runs the Shared
 # workspace command the window shows: BuildForge.CommandLine.Activate switches the
 # workspace to the profile in a run of its own. With --editor, the script starts
-# that Unity editor directly instead, for machines without the Unity CLI.
+# that Unity editor directly instead, for machines without the Unity CLI. On
+# Windows (Git Bash), it starts Unity's licensing client before each "unity run",
+# so that the run cannot keep waiting after the build; see the manual's Command
+# line and CI page.
 #
 # Run it from the repository root:
 #   bash build-player.sh --profile "Assets/Settings/Build Profiles/Quest.asset" [options]
@@ -105,6 +108,28 @@ if [ -z "$editor" ]; then
   fi
 fi
 
+# Starts Unity's licensing client the way the editor would, right before a "unity run",
+# so that the editor connects to it instead of starting its own. A client the editor
+# starts inherits the output that "unity run" waits on, and while another process of the
+# account, such as Unity Hub or a second editor, stays connected to it, "unity run" does
+# not return after the build. Checked on Windows only, so it does nothing elsewhere.
+start_licensing_client() {
+  case "$(uname -s)" in
+    MINGW*|MSYS*|CYGWIN*) ;;
+    *) return 0 ;;
+  esac
+  local version editor_folder client
+  version="$(sed -n 's/^m_EditorVersion: *//p' "$project/ProjectSettings/ProjectVersion.txt" | tr -d '\r')" || return 0
+  # Without the editor, "unity run" fails and says so.
+  editor_folder="$(unity editors path "$version" 2>/dev/null | tail -n 1 | tr -d '\r')" || return 0
+  [ -n "$editor_folder" ] || return 0
+  client="$editor_folder/Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe"
+  # PowerShell's Start-Process goes through ShellExecute, so the client inherits none of
+  # this script's handles. MSYS_NO_PATHCONV keeps Git Bash from rewriting the command.
+  MSYS_NO_PATHCONV=1 powershell.exe -NoProfile -Command \
+    "if (Test-Path -LiteralPath '$client') { Start-Process -FilePath '$client' -ArgumentList '--namedPipe', ('Unity-LicenseClient-' + \$env:USERNAME) -WindowStyle Hidden; Start-Sleep -Seconds 5 } else { Write-Warning 'Unity''s licensing client is not at $client; building without starting it first.' }"
+}
+
 # Runs one editor with Build Forge's arguments: run_unity <log> <arguments...>.
 # Its status is the editor's exit code.
 run_unity() {
@@ -115,6 +140,7 @@ run_unity() {
     "$editor" -batchmode -nographics -silent-crashes -logFile "$log_file" -cacheServerWaitForUploadCompletion \
       -projectPath "$project" "$@"
   else
+    start_licensing_client
     echo "unity ${cli_args[*]} -- -nographics -silent-crashes -logFile $log_file -cacheServerWaitForUploadCompletion $*"
     unity "${cli_args[@]}" -- -nographics -silent-crashes -logFile "$log_file" -cacheServerWaitForUploadCompletion "$@"
   fi

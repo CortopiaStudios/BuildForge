@@ -6,6 +6,12 @@
 # ProjectSettings/ProjectVersion.txt, with the platform modules your profiles use.
 #
 # Adjust PROJECT_DIR, the profile names and the secrets below.
+#
+# Each Unity step first starts Unity's licensing client, the way the editor would, so
+# that the editor connects to it instead of starting its own. A client the editor starts
+# inherits the output "unity run" waits on, and while another process of the runner's
+# account stays connected to it, the step does not return after the build. See the
+# Build Forge manual's Command line and CI page.
 
 name: Build player
 
@@ -85,6 +91,12 @@ jobs:
           PROFILE_NAME: ${{ inputs.profile }}
         run: |
           Remove-Item Env:UNITY_EDITOR_VERSION -ErrorAction SilentlyContinue
+          $version = (Get-Content "$env:PROJECT_DIR/ProjectSettings/ProjectVersion.txt" -TotalCount 1) -replace 'm_EditorVersion: ', ''
+          $client = Join-Path (unity editors path $version) 'Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe'
+          if (Test-Path -LiteralPath $client) {
+            Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
+            Start-Sleep -Seconds 5
+          }
           unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset"
           exit $LASTEXITCODE
 
@@ -101,6 +113,12 @@ jobs:
           VARIANT_NAME: ${{ inputs.variant }}
         run: |
           Remove-Item Env:UNITY_EDITOR_VERSION -ErrorAction SilentlyContinue
+          $version = (Get-Content "$env:PROJECT_DIR/ProjectSettings/ProjectVersion.txt" -TotalCount 1) -replace 'm_EditorVersion: ', ''
+          $client = Join-Path (unity editors path $version) 'Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe'
+          if (Test-Path -LiteralPath $client) {
+            Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
+            Start-Sleep -Seconds 5
+          }
           unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset" -forgeVariant $env:VARIANT_NAME
           exit $LASTEXITCODE
 

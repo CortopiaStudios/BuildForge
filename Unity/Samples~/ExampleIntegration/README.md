@@ -108,7 +108,7 @@ If the editor crashes during a build, the suffixed identifier can stay in Player
 
 ## 7. The CI recipes
 
-All four run the commands Build Forge's build window shows under **CI Command**, from the repository root. The pipeline and the workflow build any profile in one workspace, so they run the **Shared workspace** commands: Activate, then the build. A job per profile, in a workspace of its own, can drop the Activate step; see the manual's Command line and CI page, Changing platform. Adjust the project folder (`./Client` in the examples) and the Build Profile names to your project; the recipes assume Unity's default folder for Build Profiles, `Assets/Settings/Build Profiles/`.
+All four run the commands Build Forge's build window shows under **CI Command**, from the repository root. The pipeline and the workflow build any profile in one workspace, so they run the **Shared workspace** commands: Activate, then the build. A job per profile, in a workspace of its own, can drop the Activate step; see the manual's Command line and CI page, Changing platform. On Windows, each recipe starts Unity's licensing client right before every `unity run`, so that the run cannot keep waiting after the build; the bash script does so only on Windows (Git Bash), since macOS and Linux were not checked. See the manual's Command line and CI page, Start the licensing client before each build. Adjust the project folder (`./Client` in the examples) and the Build Profile names to your project; the recipes assume Unity's default folder for Build Profiles, `Assets/Settings/Build Profiles/`.
 
 | Variable | Read by |
 |---|---|

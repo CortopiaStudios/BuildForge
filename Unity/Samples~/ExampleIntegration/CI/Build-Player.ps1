@@ -15,6 +15,10 @@
     its own. With -Editor, the script starts that Unity editor directly instead, for
     machines without the Unity CLI.
 
+    On Windows, the script starts Unity's licensing client before each "unity run", so
+    that the run cannot keep waiting after the build; see the manual's Command line and
+    CI page.
+
     Run it from the repository root. Works with Windows PowerShell 5.1 and PowerShell 7.
 
     Exit code: 0 when the build and its cleanup succeeded. Anything else is a failure:
@@ -120,6 +124,30 @@ else {
     }
 }
 
+# Starts Unity's licensing client the way the editor would, right before a "unity run", so
+# that the editor connects to it instead of starting its own. A client the editor starts
+# inherits the output that "unity run" waits on, and while another process of the account,
+# such as Unity Hub or a second editor, stays connected to it, "unity run" does not return
+# after the build. Checked on Windows only.
+function Start-LicensingClient {
+    if ($env:OS -ne 'Windows_NT') { return }
+    $versionFile = Join-Path $ProjectPath 'ProjectSettings/ProjectVersion.txt'
+    $version = (Get-Content -LiteralPath $versionFile -TotalCount 1) -replace 'm_EditorVersion: ', ''
+    $editorFolder = unity editors path $version | Select-Object -Last 1
+    # Without the editor, "unity run" fails and says so.
+    if ($LASTEXITCODE -ne 0 -or -not $editorFolder) { return }
+    $client = Join-Path $editorFolder 'Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe'
+    if (-not (Test-Path -LiteralPath $client)) {
+        Write-Warning "Unity's licensing client is not at $client; building without starting it first."
+        return
+    }
+    # Through ShellExecute, so the client inherits none of this script's handles; with
+    # -NoNewWindow it would hold the output open in the same way.
+    Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
+    # Time to start listening before the editor looks for it.
+    Start-Sleep -Seconds 5
+}
+
 # Runs one editor with Build Forge's arguments and returns its exit code.
 function Invoke-Unity([string[]]$ForgeArguments, [string]$Log) {
     if ($Editor) {
@@ -148,6 +176,7 @@ function Invoke-Unity([string[]]$ForgeArguments, [string]$Log) {
     $arguments += @('--', '-nographics', '-silent-crashes', '-logFile', $Log,
         '-cacheServerWaitForUploadCompletion') + $ForgeArguments
 
+    Start-LicensingClient
     Write-Host "unity $($arguments -join ' ')"
     # To the console, not into this function's return value.
     & unity @arguments | Out-Host

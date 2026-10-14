@@ -36,7 +36,7 @@ The CLI itself supplies `-batchmode`, `-projectPath` and `-quit`; do not pass th
 
 On Windows, `unity run` can keep waiting after a finished build: the log ends with Unity's whole shutdown, and the step does not return until the job times out. The CLI returns only when every process holding the editor's output has closed it. When no licensing client runs for the account, the editor starts `Unity.Licensing.Client.exe`, which inherits that output. The client exits as soon as its last connection closes, so a lone build returns normally, but while another process of the same account is connected to it, such as Unity Hub or a second editor, the step waits. Ending `Unity.Licensing.Client.exe` releases it with the build's exit code.
 
-Before each `unity run`, start the client yourself, the way the editor would, so the editor connects to it instead of starting its own. Do it in the same step, right before `unity run`, with the project's editor version: Jenkins ends the processes a step started when that step ends, so a client started in a step of its own would already be gone.
+Before each `unity run`, start the client yourself, the way the editor would, so the editor connects to it instead of starting its own. Do it in the same step, right before `unity run`, with the project's editor version: Jenkins ends the processes a step started when that step ends, so a client started in a step of its own would already be gone. The Example Integration sample's pipeline, workflow and scripts do this.
 
 ```powershell
 $version = (Get-Content Client/ProjectSettings/ProjectVersion.txt -TotalCount 1) -replace 'm_EditorVersion: ', ''

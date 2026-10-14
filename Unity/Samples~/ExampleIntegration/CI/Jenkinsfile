@@ -6,6 +6,13 @@
 // ProjectSettings/ProjectVersion.txt with the platform modules your profiles use.
 //
 // Adjust PROJECT_DIR, OUTPUT_DIR, the profile names and the credential IDs below.
+//
+// Each Unity step first starts Unity's licensing client, the way the editor would, so
+// that the editor connects to it instead of starting its own. A client the editor starts
+// inherits the output "unity run" waits on, and while another process of the agent's
+// account stays connected to it, the step does not return after the build. It is started
+// in the same step because Jenkins ends the processes a step started when the step ends.
+// See the Build Forge manual's Command line and CI page.
 
 pipeline {
     // Any agent label expression that selects your Unity build machines.
@@ -59,10 +66,16 @@ pipeline {
                 // changes platform, so switch the workspace to the profile in a run of its
                 // own first (the build window's Shared workspace command). A job per
                 // profile, in a workspace of its own, can leave this stage out.
-                bat '''
-                    set "UNITY_EDITOR_VERSION="
-                    unity run "%PROJECT_DIR%" --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile "Assets/Settings/Build Profiles/%PROFILE_NAME%.asset"
-                    if errorlevel 1 exit /b %ERRORLEVEL%
+                powershell '''
+                    Remove-Item Env:UNITY_EDITOR_VERSION -ErrorAction SilentlyContinue
+                    $version = (Get-Content "$env:PROJECT_DIR/ProjectSettings/ProjectVersion.txt" -TotalCount 1) -replace 'm_EditorVersion: ', ''
+                    $client = Join-Path (unity editors path $version) 'Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe'
+                    if (Test-Path -LiteralPath $client) {
+                        Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
+                        Start-Sleep -Seconds 5
+                    }
+                    unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset"
+                    exit $LASTEXITCODE
                 '''
             }
         }
@@ -80,12 +93,18 @@ pipeline {
                 ]) {
                     // Jenkins sets BUILD_NUMBER for every build; Build Number's variable
                     // sources read it. Batch mode counts as a CI build for Build Forge.
-                    // Single quotes: cmd, not Groovy, expands the variables, so secrets
-                    // never pass through Groovy string interpolation.
-                    bat '''
-                        set "UNITY_EDITOR_VERSION="
-                        unity run "%PROJECT_DIR%" --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/%PROFILE_NAME%.asset" -forgeVariant "%VARIANT_NAME%"
-                        if errorlevel 1 exit /b %ERRORLEVEL%
+                    // Single quotes: PowerShell, not Groovy, expands the variables, so
+                    // secrets never pass through Groovy string interpolation.
+                    powershell '''
+                        Remove-Item Env:UNITY_EDITOR_VERSION -ErrorAction SilentlyContinue
+                        $version = (Get-Content "$env:PROJECT_DIR/ProjectSettings/ProjectVersion.txt" -TotalCount 1) -replace 'm_EditorVersion: ', ''
+                        $client = Join-Path (unity editors path $version) 'Editor/Data/Resources/Licensing/Client/Unity.Licensing.Client.exe'
+                        if (Test-Path -LiteralPath $client) {
+                            Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
+                            Start-Sleep -Seconds 5
+                        }
+                        unity run $env:PROJECT_DIR --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/$env:PROFILE_NAME.asset" -forgeVariant $env:VARIANT_NAME
+                        exit $LASTEXITCODE
                     '''
                 }
             }
