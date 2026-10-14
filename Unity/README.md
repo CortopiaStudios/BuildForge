@@ -314,6 +314,8 @@ Copy the command from the build window's **CI Command** field for the selected p
 - A successful build and cleanup exits zero. Treat **every nonzero launcher result as failure**, and compress or publish only after zero. The CLI maps Editor failures to exit `6` (verified with beta.9 and beta.11); the original Editor code remains in the error message. Cleanup errors fail CI even when a player artifact was produced.
 - For a bounded job, add `--timeout <seconds>` before `--`, allowing sufficient time for imports, the full build and cache uploads. A forced timeout or process crash cannot guarantee cleanup; discard or recover the affected workspace before reuse. Run only one Unity process per checkout.
 
+**Known Windows stall:** `unity run` can keep waiting after a finished build while a licensing client the editor started holds its output. Start Unity's licensing client yourself right before each `unity run`, in the same CI step; see the manual's [Command line and CI](Documentation~/ci.md#start-the-licensing-client-before-each-build-windows).
+
 **Known Windows cancellation issue:** with Unity CLI **1.0.0-beta.9** and
 **beta.10**, cancelling `unity run` can leave its Editor running and prevent the
 next build from opening the same project. The generated command stays as shown

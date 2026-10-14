@@ -54,7 +54,7 @@ unity run "<project>" --non-interactive -- -nographics -silent-crashes -logFile 
 - With `--shared-workspace` it runs `BuildForge.CommandLine.Activate` first and builds only if that succeeded, as described in the CI documentation.
 - `--timeout` passes on to `unity run --timeout`.
 - It exits with the build's result. The Unity CLI's own codes (exit 6 when Unity exits with 1) are mapped to documented `forge` codes.
-- It is where a fix for the CI command stalling after a finished build belongs (`Unity/Development~/RELEASE-STATUS.md`, item 4). Which fix depends on what holds the step open on Jenkins, which is still being investigated.
+- It is where a fix for the CI command stalling after a finished build belongs (`Unity/ARCHITECTURE.md`, "The CI command can stall after a finished build"); until then the manual documents starting the licensing client before each `unity run`. Which fix depends on what holds the step open on a CI agent that runs one build at a time, which is still being investigated.
 
 ### Uploads
 
@@ -127,7 +127,7 @@ The default template, the file formats and Build Forge's arguments belong to a p
 1. **Upload settings.** App IDs, release channels, Steam depots and the names of the credential variables: in the Build Forge profile, in a file in the repository, or in the CI job. The choice decides whether the package needs new settings.
 2. **Version policy.** Which Build Forge versions a `forge` release supports.
 3. **A build result file.** The package could also write a small JSON file at the end of each build, listing exactly what it produced. It isn't needed to find outputs, but it could serve archiving and checking uploads.
-4. **The stall fix.** What `forge build` does about it depends on the investigation in RELEASE-STATUS item 4.
+4. **The stall fix.** What `forge build` does about it depends on the open question in ARCHITECTURE.md's "The CI command can stall after a finished build".
 
 ## Order of work
 

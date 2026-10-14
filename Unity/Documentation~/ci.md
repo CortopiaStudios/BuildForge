@@ -32,6 +32,25 @@ The CLI itself supplies `-batchmode`, `-projectPath` and `-quit`; do not pass th
 - Git, with read access to the Build Forge repository if it is private; see [Installation](installation.md#private-repositories).
 - A full clone if any profile uses the git commit count as its [build number](plugins/build-number.md).
 
+## Start the licensing client before each build (Windows)
+
+On Windows, `unity run` can keep waiting after a finished build: the log ends with Unity's whole shutdown, and the step does not return until the job times out. The CLI returns only when every process holding the editor's output has closed it. When no licensing client runs for the account, the editor starts `Unity.Licensing.Client.exe`, which inherits that output. The client exits as soon as its last connection closes, so a lone build returns normally, but while another process of the same account is connected to it, such as Unity Hub or a second editor, the step waits. Ending `Unity.Licensing.Client.exe` releases it with the build's exit code.
+
+Before each `unity run`, start the client yourself, the way the editor would, so the editor connects to it instead of starting its own. Do it in the same step, right before `unity run`, with the project's editor version: Jenkins ends the processes a step started when that step ends, so a client started in a step of its own would already be gone.
+
+```powershell
+$version = (Get-Content Client/ProjectSettings/ProjectVersion.txt -TotalCount 1) -replace 'm_EditorVersion: ', ''
+$client = Join-Path (unity editors path $version) 'Editor\Data\Resources\Licensing\Client\Unity.Licensing.Client.exe'
+# Through ShellExecute, so the client inherits none of the step's handles; with
+# -NoNewWindow it would hold the step's output open in the same way.
+Start-Process -FilePath $client -ArgumentList '--namedPipe', "Unity-LicenseClient-$env:USERNAME" -WindowStyle Hidden
+Start-Sleep -Seconds 5
+```
+
+The client runs once per account, so starting it while one runs does nothing. It waits for its first connection and exits after its last, so start it before every build, not once per agent. This was checked with Unity CLI 1.0.0-beta.12 and beta.13.
+
+A step has also stalled on an agent that runs one build at a time, with no second process of the account; the cause is not known yet. If it happens, list the running processes and their parents before ending `Unity.Licensing.Client.exe`, so the cause can be found.
+
 ## Build Forge's arguments
 
 | Argument | Value | Effect |
