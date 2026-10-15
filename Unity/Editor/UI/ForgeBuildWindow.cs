@@ -394,34 +394,30 @@ namespace BuildForge.Editor.UI
             names.AddRange(Enum.GetNames(typeof(BuildTargetGroup))
                 .Where(n => Equals(Enum.Parse(typeof(BuildTargetGroup), n), group)));
             names.Add("Standalone");
-            // FindTexture returns null (no log) for names this editor does not ship.
-            var texture = names
-                .Select(n => EditorGUIUtility.FindTexture($"BuildSettings.{n}.Small") ?? EditorGUIUtility.FindTexture($"BuildSettings.{n}"))
-                .FirstOrDefault(t => t != null);
+            // FindTexture returns null (no log) for names this editor does not ship. IconContent
+            // loads the name as Unity's windows do, as the @2x texture on a high-DPI display.
+            var name = names.SelectMany(n => new[] { $"BuildSettings.{n}.Small", $"BuildSettings.{n}" })
+                .FirstOrDefault(n => EditorGUIUtility.FindTexture(n) != null);
+            var texture = name != null ? EditorGUIUtility.IconContent(name).image : null;
             platformIconCache[target] = texture;
             return texture;
         }
 
-        static readonly Dictionary<string, Texture> profilePlatformIconCache = new();
-
         /// <summary>
         /// Unity's small icon for the profile's own platform, as in the Build Profiles
-        /// window: Meta Quest's for a Meta Quest profile, which builds for Android. The
+        /// window's list: Meta Quest's for a Meta Quest profile, which builds for Android. The
         /// build target's icon when Unity's platform lookup is unavailable.
         /// </summary>
         internal static Texture PlatformIcon(BuildProfile profile)
-        {
-            var iconName = BuildProfilePlatform.IconName(profile);
-            if (iconName != null)
-            {
-                if (!profilePlatformIconCache.TryGetValue(iconName, out var icon))
-                    profilePlatformIconCache[iconName] = icon =
-                        EditorGUIUtility.FindTexture(iconName + ".Small") ?? EditorGUIUtility.FindTexture(iconName);
-                if (icon != null)
-                    return icon;
-            }
-            return PlatformIcon(BuildProfileUtility.GetBuildTarget(profile));
-        }
+            => BuildProfilePlatform.Icon(profile, small: true) ?? BuildProfilePlatform.Icon(profile, small: false)
+                ?? PlatformIcon(BuildProfileUtility.GetBuildTarget(profile));
+
+        /// <summary>
+        /// Unity's large icon for the profile's own platform, as in the Build Profiles
+        /// window's header; the small one when Unity's platform lookup is unavailable.
+        /// </summary>
+        internal static Texture LargePlatformIcon(BuildProfile profile)
+            => BuildProfilePlatform.Icon(profile, small: false) ?? PlatformIcon(profile);
 
         /// <summary>
         /// The profile's own platform, as Unity's Build Profiles window names it ("Meta
@@ -615,7 +611,7 @@ namespace BuildForge.Editor.UI
         {
             const float IconBox = 48f;
             var buildProfile = profile.BuildProfile;
-            var icon = buildProfile != null ? PlatformIcon(buildProfile) : null;
+            var icon = buildProfile != null ? LargePlatformIcon(buildProfile) : null;
             if (icon == null)
                 icon = AssetPreview.GetMiniThumbnail(profile);
             var subtitle = buildProfile != null
@@ -625,9 +621,13 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.BeginHorizontal();
             GUILayout.Space(8);
             var iconRect = GUILayoutUtility.GetRect(IconBox, IconBox, GUILayout.Width(IconBox), GUILayout.Height(IconBox));
-            EditorGUI.DrawRect(iconRect, new Color(1f, 1f, 1f, 0.06f));
+            // The Build Profiles window's .platform-icon-large (6000.3 to 6000.6): corners
+            // rounded by 5 points, --unity-theme-background-color-53 and the icon at its
+            // 32 points, centered.
+            var boxColor = EditorGUIUtility.isProSkin ? new Color32(42, 42, 42, 255) : new Color32(240, 240, 240, 255);
+            GUI.DrawTexture(iconRect, Texture2D.whiteTexture, ScaleMode.StretchToFill, true, 0f, boxColor, 0f, 5f);
             if (icon != null)
-                GUI.DrawTexture(new Rect(iconRect.x + 10f, iconRect.y + 10f, IconBox - 20f, IconBox - 20f), icon, ScaleMode.ScaleToFit);
+                GUI.DrawTexture(new Rect(iconRect.x + 8f, iconRect.y + 8f, IconBox - 16f, IconBox - 16f), icon, ScaleMode.ScaleToFit);
             GUILayout.Space(10);
             // The text block must expand, or its width is the title's and the
             // subtitle gets clipped.

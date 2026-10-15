@@ -34,9 +34,23 @@ namespace BuildForge.Tests.Editor
             try
             {
                 Assert.AreEqual("Windows", BuildProfilePlatform.DisplayName(profile));
-                Assert.AreEqual("BuildSettings.Windows", BuildProfilePlatform.IconName(profile));
                 Assert.AreEqual("Windows", ForgeBuildWindow.PlatformName(profile));
-                Assert.IsNotNull(ForgeBuildWindow.PlatformIcon(profile));
+                StringAssert.Contains("BuildSettings.Windows.Small", ForgeBuildWindow.PlatformIcon(profile).name);
+            }
+            finally { UnityEngine.Object.DestroyImmediate(profile); }
+        }
+
+        // The header draws the icon at 28 points: the small one, made for 16, came out blurred.
+        [Test]
+        public void TheHeadersIcon_IsUnitysLargePlatformIcon()
+        {
+            var profile = ProfileWithPlatform(null);
+            try
+            {
+                var large = ForgeBuildWindow.LargePlatformIcon(profile);
+                StringAssert.Contains("BuildSettings.Windows", large.name);
+                StringAssert.DoesNotContain(".Small", large.name);
+                Assert.Greater(large.width, ForgeBuildWindow.PlatformIcon(profile).width);
             }
             finally { UnityEngine.Object.DestroyImmediate(profile); }
         }
@@ -53,11 +67,10 @@ namespace BuildForge.Tests.Editor
                 if (BuildProfilePlatform.DisplayName(profile) == null)
                     Assert.Ignore("This editor has no Meta Quest platform; it comes with Android Build Support.");
                 Assert.AreEqual("Meta Quest", ForgeBuildWindow.PlatformName(profile));
-                Assert.AreEqual("BuildSettings.Meta", BuildProfilePlatform.IconName(profile));
                 var icon = ForgeBuildWindow.PlatformIcon(profile);
-                Assert.IsNotNull(icon);
-                Assert.AreNotSame(ForgeBuildWindow.PlatformIcon(BuildProfileUtility.GetBuildTarget(profile)), icon,
-                    "Meta Quest's own icon, not the build target's.");
+                StringAssert.Contains("BuildSettings.Meta.Small", icon.name, "Meta Quest's own icon, not the build target's.");
+                StringAssert.Contains("BuildSettings.Meta", ForgeBuildWindow.LargePlatformIcon(profile).name);
+                Assert.AreNotSame(ForgeBuildWindow.PlatformIcon(BuildProfileUtility.GetBuildTarget(profile)), icon);
             }
             finally { UnityEngine.Object.DestroyImmediate(profile); }
         }
@@ -69,7 +82,10 @@ namespace BuildForge.Tests.Editor
             try
             {
                 Assert.AreEqual(BuildProfileUtility.GetBuildTarget(profile).ToString(), ForgeBuildWindow.PlatformName(profile));
-                Assert.IsNotNull(ForgeBuildWindow.PlatformIcon(profile));
+                var targetIcon = ForgeBuildWindow.PlatformIcon(BuildProfileUtility.GetBuildTarget(profile));
+                Assert.IsNotNull(targetIcon);
+                Assert.AreSame(targetIcon, ForgeBuildWindow.PlatformIcon(profile));
+                Assert.AreSame(targetIcon, ForgeBuildWindow.LargePlatformIcon(profile), "Not Unity's generic editor icon.");
             }
             finally { UnityEngine.Object.DestroyImmediate(profile); }
         }
