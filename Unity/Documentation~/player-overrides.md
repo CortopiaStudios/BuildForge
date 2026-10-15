@@ -40,7 +40,7 @@ The same view is in the Build Forge settings Inspector (Assets > Build Forge > E
 ## How values are shown and compared
 
 - Colors are drawn as swatches, asset references as object fields, enums by their display names (also integer-backed ones, found through `PlayerSettings`), booleans as Yes and No.
-- Per-platform settings, such as the application identifier or the scripting backend, are compared for the profile's own platform only; differences for other platforms are ignored. A Dedicated Server profile is compared on Unity's Server entries.
+- Per-platform settings, such as the application identifier or the scripting backend, are compared for the profile's own platform only; differences for other platforms are ignored. A Dedicated Server profile is compared on Unity's Server entries. A cell shows the platform's value without the platform's key in front, since the column names the platform; a platform with two entries for one setting shows both with their keys.
 - Static and dynamic batching become separate rows, read from the profile's platform entry.
 - A per-platform entry that one side does not have shows as `(default)`. The comparison reads only the serialized values, so an absent entry and an explicit value can differ although Unity would use the same value for both.
 - Fields that never mean an override, such as `productGUID`, are left out. Unity writes null references and quotes differently in Build Profiles and Project Settings; the comparison treats those spellings as equal, so they never show as differences.

@@ -85,6 +85,19 @@ namespace BuildForge.Tests.Editor
             Assert.IsFalse(different.Rows.Single().PossiblyStale, "The profiles differ from each other too.");
         }
 
+        [Test]
+        public void ProfilesOfDifferentPlatforms_HoldingTheSameValue_ArePossiblyStale()
+        {
+            // Each profile differs from its own platform's Project Settings value, and both hold 2.
+            var matrix = PlayerSettingsMatrix.Build(new[]
+            {
+                Profile("Quest", BuildTarget.Android, OwnCopy(("scriptingBackend", "  Android: 2\n  Standalone: 0"))),
+                Profile("Windows", BuildTarget.StandaloneWindows64, OwnCopy(("scriptingBackend", "  Android: 1\n  Standalone: 2"))),
+            }, Project);
+
+            Assert.IsTrue(matrix.Rows.Single(r => r.PropertyPath == "scriptingBackend").PossiblyStale);
+        }
+
         // A per-platform setting has one Project Settings value per platform, so
         // each platform's profiles get their own Project Settings column.
         [Test]
@@ -110,7 +123,7 @@ namespace BuildForge.Tests.Editor
             Assert.IsFalse(version.PossiblyStale, "Windows holds the Project Settings value.");
 
             var backend = matrix.Rows.Single(r => r.PropertyPath == "scriptingBackend");
-            CollectionAssert.AreEqual(new[] { "  Android: 1", "  Android: 1", "  Standalone: 0", "  Standalone: 1" }, backend.Values);
+            CollectionAssert.AreEqual(new[] { "1", "1", "0", "1" }, backend.Values, "The column names the platform; the cells leave its key out.");
             CollectionAssert.AreEqual(new[] { false, false, false, true }, backend.Differs);
         }
 
@@ -147,8 +160,7 @@ namespace BuildForge.Tests.Editor
         [Test]
         public void DisplayValue_IsTheValueTheDiffShowsForTheTarget()
         {
-            Assert.AreEqual("  Standalone: 0",
-                PlayerSettingsDiffComputer.DisplayValue(Project, "scriptingBackend", BuildTarget.StandaloneWindows64));
+            Assert.AreEqual("0", PlayerSettingsDiffComputer.DisplayValue(Project, "scriptingBackend", BuildTarget.StandaloneWindows64));
             Assert.AreEqual("1.12.0", PlayerSettingsDiffComputer.DisplayValue(Project, "bundleVersion", BuildTarget.Android));
             Assert.IsNull(PlayerSettingsDiffComputer.DisplayValue(Project, "missing", BuildTarget.Android));
 

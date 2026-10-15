@@ -30,7 +30,8 @@ namespace BuildForge.Editor.Core
                 if (!platformMap.TryGetValue(key, out var platformValue))
                     continue;
 
-                if (IsPerPlatformProperty(platformValue) || IsPerPlatformProperty(profileValue))
+                var perPlatform = IsPerPlatformProperty(platformValue) || IsPerPlatformProperty(profileValue);
+                if (perPlatform)
                 {
                     profileValue = SelectPlatformValue(profileValue, targetKeys);
                     platformValue = SelectPlatformValue(platformValue, targetKeys);
@@ -44,8 +45,8 @@ namespace BuildForge.Editor.Core
                     diffs.Add(new Configuration.DiffEntry(
                         key,
                         FormatDisplayName(key),
-                        FormatYamlValue(platformValue),
-                        FormatYamlValue(profileValue),
+                        FormatYamlValue(perPlatform ? WithoutPlatformKey(platformValue) : platformValue),
+                        FormatYamlValue(perPlatform ? WithoutPlatformKey(profileValue) : profileValue),
                         Configuration.DiffType.Modified));
                 }
             }
@@ -64,7 +65,7 @@ namespace BuildForge.Editor.Core
             if (!map.TryGetValue(key, out var value) && !ExpandPerPlatformArrays(map, targetKeys).TryGetValue(key, out value))
                 return null;
             if (IsPerPlatformProperty(value))
-                value = SelectPlatformValue(value, targetKeys);
+                value = WithoutPlatformKey(SelectPlatformValue(value, targetKeys));
             return FormatYamlValue(value);
         }
 
@@ -200,6 +201,21 @@ namespace BuildForge.Editor.Core
             if (matchesTarget)
                 selected.AddRange(block);
             return selected.Count == 0 ? "[]" : string.Join("\n", selected);
+        }
+
+        /// <summary>
+        /// A per-platform value narrowed to the target, as the views show it: the value
+        /// of its single dictionary entry, without the platform key, which the view
+        /// already names. Several entries, such as Standalone and
+        /// WindowsStandaloneSupport, and sequence blocks keep their keys.
+        /// </summary>
+        static string WithoutPlatformKey(string selected)
+        {
+            var lines = selected.Split('\n').Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+            if (lines.Length != 1)
+                return selected;
+            var entry = Regex.Match(lines[0].Trim(), @"^(\w+):(?:\s(.*))?$");
+            return entry.Success && PlatformKeys.Contains(entry.Groups[1].Value) ? entry.Groups[2].Value.Trim() : selected;
         }
 
         public static bool IsNoisyProperty(string path)

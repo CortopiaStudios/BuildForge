@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - From the public scripting API, now internal: `ForgeBuildRunner.ForwardedCIArguments` (use `GetCICommand`), `ForgeProfile.ProfileName` (use `DisplayName`), `IsEmbedded`, `NormalizeOutputPathInput` and `IsOutputPathCustomized`, and `ForgeSettings.MangleForFilename`, `IsPluginDisabledWithDefault` and `SetPluginDisabled`. They served Build Forge's own UI and plugins, and a public member cannot change after 1.0
 
 ### Fixed
+- The Platform Player Overrides view shows a per-platform setting, such as Scripting Define Symbols or the application identifier, without the platform's key in front, which the column already names: `MY_DEFINE` instead of `Android: MY_DEFINE`. Profiles of different platforms that hold the same value now count as holding the same value, so the matrix can mark it as possibly stale
 - The XR Vendor Filter's pre-build log line no longer leaves out the package names when no package is excluded: it names the manifest entries the build removes, or says there is nothing to keep out
 - The XR Vendor Filter's line in the build window's plugin list names the manifest entries a build removes when only Extra Manifest Prefixes are set, instead of "excludes nothing"
 - The Build Forge section in Unity's Build Profiles window no longer throws a NullReferenceException several times a second while the window shows its Scene List page, whose editor Unity creates without targets

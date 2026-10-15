@@ -137,9 +137,20 @@ namespace BuildForge.Tests.Editor
 
             Assert.AreEqual(1, diffs.Count);
             Assert.AreEqual(property, diffs[0].PropertyPath);
-            StringAssert.Contains(before, diffs[0].BaseValue);
-            StringAssert.Contains(after, diffs[0].ProfileValue);
-            StringAssert.DoesNotContain("Android", diffs[0].BaseValue);
+            Assert.AreEqual(before, diffs[0].BaseValue, "The platform key is left out: the view names the platform.");
+            Assert.AreEqual(after, diffs[0].ProfileValue);
+        }
+
+        [Test]
+        public void PerPlatformDictionary_TwoEntriesForTheTarget_KeepTheirKeys()
+        {
+            var profile = new Dictionary<string, string> { ["setting"] = "    Standalone: 1\n    WindowsStandaloneSupport: 1" };
+            var platform = new Dictionary<string, string> { ["setting"] = "    Standalone: 0\n    WindowsStandaloneSupport: 0" };
+
+            var diffs = PlayerSettingsDiffComputer.ComputeDiff(profile, platform, BuildTarget.StandaloneWindows64);
+
+            Assert.AreEqual(1, diffs.Count);
+            Assert.AreEqual("Standalone: 0, Windows Standalone Support: 0", diffs[0].BaseValue);
         }
 
         [TestCase("  - m_BuildTarget: Android\n    m_Encoding: ")]
@@ -419,7 +430,7 @@ namespace BuildForge.Tests.Editor
 
             var diffs = PlayerSettingsDiffComputer.ComputeDiff(profile, platform, BuildTarget.StandaloneLinux64, dedicatedServer: true);
             Assert.AreEqual(1, diffs.Count);
-            StringAssert.Contains("Server: 1", diffs[0].ProfileValue);
+            Assert.AreEqual("1", diffs[0].ProfileValue);
             Assert.IsEmpty(PlayerSettingsDiffComputer.ComputeDiff(profile, platform, BuildTarget.StandaloneLinux64),
                 "A player profile compares the Standalone entries.");
         }
