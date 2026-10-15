@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-10-15
+
 ### Added
 - Public API for plugins, which the bundled plugins now use too: `GitHelper` runs git in the project, `BuildProfileUtility` gives a Build Profile's build target, `BuildEnvironment.IsCI` the CI detection a build would see, outside a build, `ForgeSettings.IsPluginEnabled(Type)` whether a plugin is on in Project Settings, and a plugin that assigns the build number can set `ForgeBuildContext.BuildNumber`, which `{BuildNumber}` and the manifest read
 - The Package Manager links to the manual and to this changelog on GitHub (`documentationUrl`, `changelogUrl`)
