@@ -25,14 +25,10 @@ public static class VariantProofSetup
         native.scenes = new[] { new EditorBuildSettingsScene("Assets/Proof.unity", true) };
         native.overrideGlobalScenes = true;
         native.scriptingDefines = new[] { "BUILD_PROFILE_PROOF" };
-        var forge = AssetDatabase.LoadAssetAtPath<ForgeProfile>("Assets/ProofForge.asset");
-        if (forge == null)
-        {
-            forge = ScriptableObject.CreateInstance<ForgeProfile>();
-            AssetDatabase.CreateAsset(forge, "Assets/ProofForge.asset");
-        }
+        // Stored inside the Build Profile, as Assets > Build Forge > Add Build Forge Settings does.
+        var forge = (ForgeProfile)typeof(ForgeProfile).Assembly.GetType("BuildForge.Editor.Core.ForgeProfileEmbedding")
+            .GetMethod("Add", BindingFlags.Static | BindingFlags.Public).Invoke(null, new object[] { native });
         var fp = new SerializedObject(forge);
-        fp.FindProperty("buildProfile").objectReferenceValue = native;
         fp.FindProperty("outputPath").stringValue = "Builds/{Variant}/Proof";
         fp.ApplyModifiedPropertiesWithoutUndo();
         var settings = new SerializedObject(ForgeSettings.instance);

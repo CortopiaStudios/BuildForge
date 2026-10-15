@@ -22,7 +22,7 @@ public static class VariantFailureProof
 
     public static void Run()
     {
-        var forge = AssetDatabase.LoadAssetAtPath<ForgeProfile>("Assets/ProofForge.asset");
+        var forge = AssetDatabase.LoadAssetAtPath<BuildProfile>("Assets/Proof.asset").GetComponent<ForgeProfile>();
         CheckFailure(forge, "Development");
         EditorState.GetMethod("Apply", Flags).Invoke(null, new object[] { forge, "Development" });
         try { CheckFailure(forge, "Default"); }
