@@ -435,7 +435,7 @@ Editor/
       AndroidKeystoreEnvPlugin.cs          # Override keystore settings from env vars
       AndroidKeystoreEnvConfig.cs          # Global + per-profile keystore env config
     CloudDiagnostics/
-      CloudDiagnosticsPlugin.cs            # Crash reporting / symbol upload: Always, CI only, Never
+      CloudDiagnosticsPlugin.cs            # Crash reporting / symbol upload: Always, CI Only, Never
       CloudDiagnosticsConfig.cs            # Per-profile crash reporting mode
     AndroidManifest/
       AndroidManifestPlugin.cs             # Per-profile custom main manifest, swapped in for the build

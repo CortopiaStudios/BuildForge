@@ -89,7 +89,7 @@ Some plugin work is only worth doing on a build machine, such as uploading symbo
 
 Every command-line build therefore counts as CI unless it says otherwise. A local script that builds in batch mode and should count as a local build passes `-forgeCI false`. An interactive editor on a build machine that should count as CI gets `FORGE_CI=1`.
 
-What depends on it among the bundled plugins: [Build Number](plugins/build-number.md) with the "Env Var on CI, Git Count Locally" source, and [Cloud Diagnostics](plugins/cloud-diagnostics.md) with "CI only". CI builds are never shown in the file browser afterwards. Your plugins read it as `ForgeBuildContext.IsCI`.
+What depends on it among the bundled plugins: [Build Number](plugins/build-number.md) with the "Env Var on CI, Git Count Locally" source, and [Cloud Diagnostics](plugins/cloud-diagnostics.md) with "CI Only". CI builds are never shown in the file browser afterwards. Your plugins read it as `ForgeBuildContext.IsCI`.
 
 ## Exit codes and logs
 

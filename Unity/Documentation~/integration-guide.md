@@ -58,7 +58,7 @@ Create one Unity Build Profile per target configuration in Unity's Build Profile
 - **XR Vendor Filter**: on each Android profile, exclude the XR vendor packages its headsets do not use, for example Meta's and Pico's on a Steam Frame profile. It replaces build post-processing that removed their libraries or manifest entries.
 - **Android Manifest**: on the profiles that had a main manifest of their own. It need not remove other vendors' entries when the XR Vendor Filter does.
 - **Addressables Rebuild**: enable it if the old pipeline built content before the player and Addressables' build-with-player setting is off.
-- **Cloud Diagnostics**: enable it with **CI only** to keep symbol uploads and crash reports to CI builds.
+- **Cloud Diagnostics**: enable it with **CI Only** to keep symbol uploads and crash reports to CI builds.
 
 ## 6. Update project code
 
