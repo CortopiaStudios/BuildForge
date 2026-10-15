@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **OpenXR Features** under Play Mode Follows Applied Profile in Project Settings > Build Forge, shown while it is on. **Turn on the platform's**, the default, turns on Standalone's OpenXR features that the applied platform has on and turns none off, so features Standalone has on for Play Mode itself, such as hand tracking for a tool that authors hand poses, stay on. **Match the platform's** also turns off those the platform has off, as applying always did before. To keep such a feature out of a Standalone build, give that profile a Disable override
+
 ### Fixed
 - Changing a plugin's settings in a profile or in Project Settings and then changing them back, such as an OpenXR feature set to Enable and back to No Override, no longer leaves the plugin's settings in the Build Profile asset or in `ProjectSettings/ForgeSettings.asset` with only default values. `ForgeProfile.SetPluginConfig` and `ForgeSettings.SetGlobalPluginConfig` remove a configuration whose values equal a new instance's, as they remove null, so the file is left as it was
 - The build window's platform icons match Unity's Build Profiles window: the details header shows the platform's large icon at its 32 points instead of the small one scaled up, on the window's rounded icon background, darker than the pane in the dark theme and lighter in the light one, and on a high-DPI display the list, the header and the main toolbar use the icons' high-resolution textures, as Unity's windows do

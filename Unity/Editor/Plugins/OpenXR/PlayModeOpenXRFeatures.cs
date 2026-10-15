@@ -1,17 +1,26 @@
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.XR.OpenXR;
 
 namespace BuildForge.Editor.OpenXR
 {
     /// <summary>
-    /// Play Mode runs on Standalone's OpenXR settings. Gives each OpenXR feature
-    /// that Standalone shares with the applied profile's platform that
-    /// platform's on/off state, interaction profiles included.
+    /// Play Mode runs on Standalone's OpenXR settings. Turns on each OpenXR
+    /// feature of Standalone that the applied profile's platform has on,
+    /// interaction profiles included. By default it turns none off, so
+    /// Standalone keeps the features it has on itself; with OpenXR Features set
+    /// to Match the platform's, it turns off those the platform has off too.
     /// </summary>
     internal sealed class PlayModeOpenXRFeatures : IForgePlayModeMirror
     {
+        static readonly GUIContent[] FeatureModes =
+        {
+            new GUIContent("Turn on the platform's"),
+            new GUIContent("Match the platform's"),
+        };
+
         public string DisplayName => "Play Mode OpenXR features";
 
         public bool CanMirror(BuildTargetGroup source)
@@ -23,10 +32,26 @@ namespace BuildForge.Editor.OpenXR
             => OpenXRSettingsState.Capture(group, includeInteractionProfiles: true)?.ToJson();
 
         public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group)
-            => OpenXRSettingsState.MirrorFeatureStates(
-                BuildPipeline.GetBuildTargetGroup(Core.BuildProfileUtility.GetBuildTarget(profile.BuildProfile)), group);
+            => OpenXRSettingsState.CopyFeatureStates(
+                BuildPipeline.GetBuildTargetGroup(Core.BuildProfileUtility.GetBuildTarget(profile.BuildProfile)), group,
+                OpenXRPlugin.GetGlobalConfig().MatchPlatformFeaturesInPlayMode);
 
         public void RestoreEditorState(BuildTargetGroup group, string json)
             => OpenXRSettingsState.Restore(group, OpenXREditorStateSnapshot.FromJson(json));
+
+        public void OnDrawPlayModeSettingsGUI()
+        {
+            var config = OpenXRPlugin.GetGlobalConfig();
+            var mode = EditorGUILayout.Popup(new GUIContent("OpenXR Features",
+                    "What applying a profile of another platform does to Standalone's OpenXR features. Turn on the " +
+                    "platform's: the features the platform has on come on, and Standalone keeps the ones it has on " +
+                    "itself, such as hand tracking for a tool that runs in Play Mode. Match the platform's: the features " +
+                    "it has off go off too, so Play Mode has exactly the platform's features where Standalone has them."),
+                config.MatchPlatformFeaturesInPlayMode ? 1 : 0, FeatureModes);
+            if (mode == (config.MatchPlatformFeaturesInPlayMode ? 1 : 0))
+                return;
+            config.MatchPlatformFeaturesInPlayMode = mode == 1;
+            OpenXRPlugin.SaveGlobalConfig(config);
+        }
     }
 }

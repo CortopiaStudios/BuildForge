@@ -187,12 +187,15 @@ namespace BuildForge.Editor.OpenXR
         }
 
         /// <summary>
-        /// Gives each managed feature of <paramref name="target"/> the enabled
-        /// state of the same feature type in <paramref name="source"/>,
-        /// interaction profiles included. A feature only one platform has keeps
-        /// its state.
+        /// Turns on each managed feature of <paramref name="target"/> whose type
+        /// is on in <paramref name="source"/>, interaction profiles included. With
+        /// <paramref name="match"/>, also turns off each one that is off there, so
+        /// the target matches the source; without, it turns nothing off, and the
+        /// target keeps the features it has on itself, such as hand tracking for a
+        /// tool that runs in Play Mode. A feature only one platform has keeps its
+        /// state.
         /// </summary>
-        public static void MirrorFeatureStates(BuildTargetGroup source, BuildTargetGroup target)
+        public static void CopyFeatureStates(BuildTargetGroup source, BuildTargetGroup target, bool match)
         {
             var from = OpenXRSettings.GetSettingsForBuildTargetGroup(source);
             var to = OpenXRSettings.GetSettingsForBuildTargetGroup(target);
@@ -207,7 +210,7 @@ namespace BuildForge.Editor.OpenXR
                     sourceStates.Add(typeName, feature.enabled);
             }
             foreach (var feature in GetManagedFeatures(to, true))
-                if (sourceStates.TryGetValue(feature.GetType().FullName, out var enabled))
+                if (sourceStates.TryGetValue(feature.GetType().FullName, out var enabled) && (enabled || match))
                     SetEnabled(feature, enabled);
             Flush(to);
         }

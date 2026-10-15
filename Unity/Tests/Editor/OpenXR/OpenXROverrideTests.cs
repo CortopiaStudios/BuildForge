@@ -482,7 +482,12 @@ namespace BuildForge.Tests.OpenXR
                 Assert.AreEqual(before[feature], feature.enabled, feature.name);
         }
 
-        [Test] public void MirrorFeatureStates_CopiesWhatStandaloneShares_RestoreBringsItBack()
+        // OpenXR Features: Turn on the platform's (the default). A feature on for
+        // the applied platform comes on for Play Mode; one that Standalone has on
+        // itself, such as hand tracking for a tool that runs in Play Mode, stays
+        // on although the platform has it off. Match the platform's turns it off.
+        [TestCase(false)] [TestCase(true)]
+        public void CopyFeatureStates_TurnsOnWhatThePlatformHasOn_AndOffOnlyWhenMatching_RestoreBringsItBack(bool match)
         {
             var android = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Android);
             var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
@@ -497,9 +502,14 @@ namespace BuildForge.Tests.OpenXR
             var standaloneSnapshot = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
             try
             {
-                source.enabled = !targetOriginal;
-                OpenXRSettingsState.MirrorFeatureStates(BuildTargetGroup.Android, BuildTargetGroup.Standalone);
-                Assert.That(target.enabled, Is.EqualTo(!targetOriginal));
+                source.enabled = true;
+                target.enabled = false;
+                OpenXRSettingsState.CopyFeatureStates(BuildTargetGroup.Android, BuildTargetGroup.Standalone, match);
+                Assert.IsTrue(target.enabled);
+
+                source.enabled = false;
+                OpenXRSettingsState.CopyFeatureStates(BuildTargetGroup.Android, BuildTargetGroup.Standalone, match);
+                Assert.That(target.enabled, Is.EqualTo(!match), match ? "Matching turns it off." : "Standalone keeps a feature it has on.");
             }
             finally
             {

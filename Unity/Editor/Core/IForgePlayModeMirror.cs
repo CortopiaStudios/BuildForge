@@ -22,5 +22,12 @@ namespace BuildForge.Editor.Core
 
         /// <summary>True when both the source platform and Standalone have settings to copy.</summary>
         bool CanMirror(BuildTargetGroup source);
+
+        /// <summary>
+        /// Options of this copy, drawn with IMGUI in Project Settings &gt; Build Forge
+        /// under Play Mode Follows Applied Profile while it is on, such as what the
+        /// OpenXR copy does with features. Nothing by default.
+        /// </summary>
+        void OnDrawPlayModeSettingsGUI() { }
     }
 }

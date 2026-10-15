@@ -117,8 +117,16 @@ namespace BuildForge.Editor.UI
             EditorGUILayout.PropertyField(playModeProp,
                 new UnityEngine.GUIContent("Play Mode Follows Applied Profile",
                     "Play Mode runs on Standalone's XR settings. When enabled, applying a profile for another " +
-                    "platform, such as Android, also gives Standalone that platform's XR loaders, Initialize XR on " +
-                    "Startup and OpenXR feature states. Revert to Baseline puts Standalone back; builds are unaffected."));
+                    "platform, such as Android, also gives Standalone that platform's XR loaders and Initialize XR on " +
+                    "Startup, and its OpenXR features as OpenXR Features below says. Revert to Baseline puts " +
+                    "Standalone back; builds are unaffected."));
+            if (playModeProp.boolValue)
+            {
+                EditorGUI.indentLevel++;
+                foreach (var mirror in ForgeEditorState.PlayModeMirrors())
+                    mirror.OnDrawPlayModeSettingsGUI();
+                EditorGUI.indentLevel--;
+            }
 
             EditorGUILayout.Space(8);
 

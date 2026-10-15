@@ -150,7 +150,8 @@ Stored in `ProjectSettings/ForgeSettings.asset`; commit it.
 | | Reveal Build In File Browser | On | After a successful editor build, shows the built file in Explorer, Finder or the Linux file manager. Never for CI builds, or for Build and Run, which runs the player instead. |
 | Profiles | Save Profiles On Edit | On | Writes Build Forge settings to disk right after each edit. |
 | | Maintain Build Profile Defines | On | Keeps the `BUILD_PROFILE_<NAME>` define in each profile. |
-| Play Mode | Play Mode Follows Applied Profile | On | Applying a profile of another platform than Standalone also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders, Initialize XR on Startup and OpenXR feature states. See [Apply](concepts.md#apply-and-re-apply). |
+| Play Mode | Play Mode Follows Applied Profile | On | Applying a profile of another platform than Standalone also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders and Initialize XR on Startup, and its OpenXR features as OpenXR Features says. See [Apply](concepts.md#apply-and-re-apply). |
+| | OpenXR Features | Turn on the platform's | Shown while Play Mode Follows Applied Profile is on. **Turn on the platform's** turns on Standalone's features that the platform has on and leaves the others as they are, so features Standalone has on for Play Mode itself stay on. **Match the platform's** also turns off those the platform has off, so Play Mode has exactly the platform's features where Standalone has them. |
 | Build Variants | (list) | Empty | Project-wide variant names. See [Build variants](variants.md). |
 | | Variant Rules | Empty | Optional rules per variant. |
 | | Mark Variant Builds | On | Shown once variants exist. Suffixes a variant build's product name with the variant. |

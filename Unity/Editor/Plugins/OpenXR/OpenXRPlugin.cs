@@ -1229,12 +1229,12 @@ namespace BuildForge.Editor.OpenXR
             forgeProfile.SetPluginConfig(ConfigKey, config);
         }
 
-        static OpenXRGlobalConfig GetGlobalConfig()
+        internal static OpenXRGlobalConfig GetGlobalConfig()
         {
             return ForgeSettings.instance.GetGlobalPluginConfig<OpenXRGlobalConfig>(GlobalConfigKey);
         }
 
-        static void SaveGlobalConfig(OpenXRGlobalConfig config)
+        internal static void SaveGlobalConfig(OpenXRGlobalConfig config)
         {
             ForgeSettings.instance.SetGlobalPluginConfig(GlobalConfigKey, config);
         }

@@ -32,7 +32,7 @@ namespace BuildForge.Editor.Configuration
         [Tooltip("When enabled, Build Forge keeps a BUILD_PROFILE_<NAME> scripting define in each referenced Unity Build Profile's Scripting Defines list, so code can compile conditionally per profile.")]
         [SerializeField] bool maintainBuildProfileDefines = true;
 
-        [Tooltip("When enabled, applying a profile for another platform also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders, Initialize XR on Startup and OpenXR feature states. Revert to Baseline puts Standalone back.")]
+        [Tooltip("When enabled, applying a profile for another platform also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders and Initialize XR on Startup, and its OpenXR features as OpenXR Features below says. Revert to Baseline puts Standalone back.")]
         [SerializeField] bool playModeFollowsAppliedProfile = true;
 
         [Tooltip("Project-wide variant names. Each selects BUILD_VARIANT_<NAME> and any configured rules for development mode, extra defines, product marking and plugins. Once variants exist, every build names one.")]
