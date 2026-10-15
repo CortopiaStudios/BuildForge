@@ -75,6 +75,18 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
+        public void DescribeBuild_XRVendorFilter_WithOnlyExtraPrefixes_NamesTheEntriesItRemoves()
+        {
+            IForgePlugin plugin = new XRVendorFilterPlugin();
+            Assert.AreEqual("excludes nothing", plugin.DescribeBuild(profile, isCI: false));
+
+            profile.SetPluginConfig(XRVendorFilterPlugin.ConfigKey,
+                new XRVendorFilterConfig { enabled = true, extraManifestPrefixes = { "com.example." } });
+
+            Assert.AreEqual("removes com.example.* manifest entries", plugin.DescribeBuild(profile, isCI: false));
+        }
+
+        [Test]
         public void IsEnabled_BuildNumber_DefaultsOffAndRoundTripsViaSetEnabled()
         {
             IForgePlugin plugin = new BuildNumberPlugin();

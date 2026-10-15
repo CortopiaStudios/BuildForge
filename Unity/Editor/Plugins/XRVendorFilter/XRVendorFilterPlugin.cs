@@ -172,9 +172,9 @@ namespace BuildForge.Editor.Plugins
         public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
         {
             var config = Config(forgeProfile);
-            if (config.excludedPackages.Count == 0)
-                return "excludes nothing";
             var rules = XRVendors.RulesFor(config.excludedPackages, config.extraManifestPrefixes);
+            if (config.excludedPackages.Count == 0)
+                return rules.IsEmpty ? "excludes nothing" : $"removes {DescribeRules(rules)}";
             return $"keeps {Names(config.excludedPackages)} out" + (rules.IsEmpty ? "" : $"; removes {DescribeRules(rules)}");
         }
 
