@@ -26,7 +26,7 @@ The CLI itself supplies `-batchmode`, `-projectPath` and `-quit`; do not pass th
 
 ## Requirements on the build machine
 
-- The standalone `unity` CLI on the PATH of the account the job runs as. The tested version is **1.0.0-beta.11**, with Unity **6000.3.23f1**, on Windows. Check `unity --version` under the agent's account, pin that version in the agent image, and check again before updating it. Unity Hub may bundle a different CLI version internally; the one on the PATH is what runs.
+- The standalone `unity` CLI on the PATH of the account the job runs as. The tested version is **1.0.0-beta.13**, with Unity **6000.3.23f1**, on Windows. Check `unity --version` under the agent's account, pin that version in the agent image, and check again before updating it. Unity Hub may bundle a different CLI version internally; the one on the PATH is what runs.
 - An activated Unity editor of the project's version, with the platform modules the profiles build for (for Android also its SDK, NDK and JDK). Installing and licensing editors is part of setting up the agent; `--non-interactive` only prevents prompts.
 - `UNITY_EDITOR_VERSION` unset, unless you mean to override the project's editor version.
 - Git, with read access to the Build Forge repository if it is private; see [Installation](installation.md#private-repositories).
@@ -95,7 +95,7 @@ What depends on it among the bundled plugins: [Build Number](plugins/build-numbe
 
 - **0**: the build succeeded and every restore and cleanup step succeeded.
 - **1** from the editor: Build Forge refused the arguments, could not resolve the profile or variant, the build failed or threw, or a restore or cleanup step failed. A failed restore fails the run even when the player was built, so CI does not go on with a modified project.
-- The Unity CLI reports a nonzero editor exit as **6** (verified with CLI beta.9 and beta.11); its message names the editor's own exit code.
+- The Unity CLI reports a nonzero editor exit as **6** (verified with CLI beta.9, beta.11 and beta.13); its message names the editor's own exit code.
 - Unity can also fail before Build Forge runs, for example on a compile error, with its own nonzero code.
 
 Treat every nonzero result as a failure, and archive or publish only after 0.
@@ -182,7 +182,7 @@ Neither form passes `-accept-apiupdate`, which would let Unity's API updater rew
 
 ## Why `unity run` and not `unity build`
 
-Build Forge needs both `-activeBuildProfile` at editor startup and its own `-executeMethod`. The CLI's `unity build` command treats native Build Profile builds and custom-method builds as separate strategies: combining `--profile` with `--execute-method` is rejected, and so is forwarding `-activeBuildProfile` through `--args` (checked with CLI beta.9 and beta.11). `unity run` passes both, so the generated command uses it.
+Build Forge needs both `-activeBuildProfile` at editor startup and its own `-executeMethod`. The CLI's `unity build` command treats native Build Profile builds and custom-method builds as separate strategies: combining `--profile` with `--execute-method` is rejected, and so is forwarding `-activeBuildProfile` through `--args` (checked with CLI beta.9, beta.11 and beta.13). `unity run` passes both, so the generated command uses it.
 
 ## Examples
 

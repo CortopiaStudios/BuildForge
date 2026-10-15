@@ -179,4 +179,4 @@ They stay in the Build Profile assets, and come back when the package returns. R
 The package's tests and real builds have been run on Windows editors only. The command line and the scripts are written for all three systems, but macOS and Linux have not been verified.
 
 **Which Unity CLI version should I use?**
-Build Forge was checked with 1.0.0-beta.9 and 1.0.0-beta.11. Pin the version you verified on your agents.
+Build Forge was checked with 1.0.0-beta.9, 1.0.0-beta.11 and 1.0.0-beta.13. Pin the version you verified on your agents.
