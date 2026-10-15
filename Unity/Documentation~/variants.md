@@ -92,7 +92,7 @@ An empty list, an unknown name or a name listed twice in Allowed Variants is an 
 
 | Where | How |
 |---|---|
-| Build window | The **Variant** dropdown in the details header, shown once variants exist. The details and the CI Command show that variant, for any selected profile, and Apply, Build and Build and Run use it. The choice is remembered for the editor session; in a new session it starts at the applied variant. Until a variant is applied or picked, the dropdown reads **Pick a variant**, and Apply, Build and Build and Run wait for one. |
+| Build window | The **Variant** dropdown after the profile's name in the details header, shown once variants exist. The details and the CI Command show that variant, for any selected profile, and Apply, Build and Build and Run use it. The choice is remembered for the editor session; in a new session it starts at the applied variant. Until a variant is applied or picked, the dropdown reads **Pick a variant**, and Apply, Build and Build and Run wait for one. |
 | Main toolbar | The apply dropdown lists the variants; picking one applies the active profile with it and makes the build window select it too. **Build** and **Build and Run** build the build window's variant, and wait for a pick like the window's. |
 | Command line | `-forgeVariant Internal`, required once the project has variants: a build without it fails and lists the variants rather than picking one. Names must match a configured variant exactly, including case. An unknown or disallowed variant, an empty value, or `-forgeVariant` in a project without variants fails the build. |
 | Your scripts | `ForgeBuildRunner.RunBuild(forgeProfile, "Internal")`. |

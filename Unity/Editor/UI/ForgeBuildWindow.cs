@@ -20,6 +20,7 @@ namespace BuildForge.Editor.UI
         Dictionary<ForgeProfile, List<string>> validationWarnings = new();
         static GUIStyle cachedWordWrapStyle;
         static GUIStyle cachedTitleStyle;
+        static GUIStyle cachedTitleSeparatorStyle;
         static GUIStyle cachedSectionStyle;
         static GUIStyle cachedNoticeTextStyle;
         Vector2 listScroll;
@@ -632,24 +633,11 @@ namespace BuildForge.Editor.UI
             // subtitle gets clipped.
             EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true));
             GUILayout.Space(6);
-            cachedTitleStyle ??= new GUIStyle(EditorStyles.boldLabel) { fontSize = 14 };
-            // MinWidth 0: the title and subtitle give way to the buttons beside them and are
-            // cut, or a narrow window scrolls the details pane sideways, hiding the buttons.
-            EditorGUILayout.LabelField(profile.DisplayName, cachedTitleStyle, GUILayout.Height(20f), GUILayout.ExpandWidth(true), GUILayout.MinWidth(0f));
+            // Width 0: the title line and the subtitle give way to the button beside them and
+            // are cut, or a narrow window scrolls the details pane sideways, hiding the button.
+            DrawTitleLine(GUILayoutUtility.GetRect(0f, 20f, GUILayout.ExpandWidth(true)), profile);
             EditorGUILayout.LabelField(subtitle, EditorStyles.miniLabel, GUILayout.ExpandWidth(true), GUILayout.MinWidth(0f));
             EditorGUILayout.EndVertical();
-            // The variant sits with the details, which show it for any selected profile,
-            // and not with the actions, which only the active profile has.
-            var variants = ForgeSettings.instance.BuildVariants;
-            if (variants.Count > 0)
-            {
-                EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(false));
-                GUILayout.Space(6);
-                var canMutate = ForgeEditorState.CanMutate(out var mutateReason);
-                DrawVariantDropdown(CurrentVariant, variants, canMutate, mutateReason);
-                EditorGUILayout.EndVertical();
-                GUILayout.Space(6);
-            }
             EditorGUILayout.BeginVertical(GUILayout.Width(120f));
             GUILayout.Space(6);
             if (GUILayout.Button("Open in Inspector", EditorStyles.miniButton, GUILayout.Width(120f)))
@@ -1085,27 +1073,65 @@ namespace BuildForge.Editor.UI
             return content;
         }
 
-        // The details header's variant dropdown grows with its label up to this width.
+        // The variant dropdown grows with its label up to this width.
         const float VariantDropdownMaxWidth = 170f;
 
         /// <summary>
-        /// The variant dropdown in the details header, a mini pull-down like the Open in
-        /// Inspector button beside it, as wide as its label up to a cap. Unity's pattern
-        /// for a menu-opening control: reserve the rect up front (valid in every event),
-        /// EditorGUI.DropdownButton on it, drop the menu at that rect.
+        /// The details header's title line: the profile's name and, once variants exist,
+        /// the variant dropdown right after it, since the details below show this profile
+        /// with that variant, for any selected profile. In a narrow window the name gives
+        /// way and ends in "…"; the dropdown keeps its width.
         /// </summary>
-        void DrawVariantDropdown(string variant, IReadOnlyList<string> variants, bool canMutate, string mutateReason)
+        void DrawTitleLine(Rect line, ForgeProfile profile)
         {
-            var style = EditorStyles.miniPullDown;
-            var label = variant != null ? $"Variant: {variant}" : "Pick a variant";
-            var width = Mathf.Min(style.CalcSize(new GUIContent(label)).x, VariantDropdownMaxWidth);
+            cachedTitleStyle ??= new GUIStyle(EditorStyles.boldLabel) { fontSize = 14 };
+            var variants = ForgeSettings.instance.BuildVariants;
+            if (variants.Count == 0)
+            {
+                GUI.Label(line, FitContent(profile.DisplayName, null, null, cachedTitleStyle, line.width), cachedTitleStyle);
+                return;
+            }
+
+            cachedTitleSeparatorStyle ??= new GUIStyle(cachedTitleStyle)
+            {
+                fontStyle = FontStyle.Normal,
+                normal = { textColor = EditorStyles.centeredGreyMiniLabel.normal.textColor }
+            };
+            const float Gap = 4f;
+            var separator = new GUIContent("\u00b7");
+            var separatorWidth = cachedTitleSeparatorStyle.CalcSize(separator).x;
+            var variant = CurrentVariant;
+            var canMutate = ForgeEditorState.CanMutate(out var mutateReason);
+            var style = EditorStyles.popup;
+            var label = variant ?? "Pick a variant";
+            var dropdownWidth = Mathf.Min(Mathf.Min(style.CalcSize(new GUIContent(label)).x, VariantDropdownMaxWidth), line.width);
             var caption = FitContent(label,
                 canMutate
                     ? "The variant these details and the CI Command show, and the one Apply, Build and Build and Run use " +
                       "(Project Settings > Build Forge > Build Variants)."
                     : mutateReason,
-                null, style, width);
-            var rect = GUILayoutUtility.GetRect(caption, style, GUILayout.Width(width));
+                null, style, dropdownWidth);
+
+            var nameSpace = Mathf.Max(0f, line.width - dropdownWidth - separatorWidth - 2 * Gap);
+            var name = FitContent(profile.DisplayName, null, null, cachedTitleStyle, nameSpace);
+            var nameWidth = Mathf.Min(cachedTitleStyle.CalcSize(name).x, nameSpace);
+            GUI.Label(new Rect(line.x, line.y, nameWidth, line.height), name, cachedTitleStyle);
+            var x = line.x + nameWidth + Gap;
+            GUI.Label(new Rect(x, line.y, separatorWidth, line.height), separator, cachedTitleSeparatorStyle);
+            x += separatorWidth + Gap;
+            var height = Mathf.Min(style.fixedHeight > 0f ? style.fixedHeight : EditorGUIUtility.singleLineHeight, line.height);
+            DrawVariantDropdown(new Rect(x, line.y + (line.height - height) / 2f, dropdownWidth, height), caption, style,
+                variant, variants, canMutate);
+        }
+
+        /// <summary>
+        /// The variant dropdown on the details header's title line. Unity's pattern for a
+        /// menu-opening control: EditorGUI.DropdownButton on a rect that is valid in every
+        /// event, and the menu dropped at that rect.
+        /// </summary>
+        void DrawVariantDropdown(Rect rect, GUIContent caption, GUIStyle style, string variant,
+            IReadOnlyList<string> variants, bool canMutate)
+        {
             using (new EditorGUI.DisabledScope(!canMutate))
             {
                 if (EditorGUI.DropdownButton(rect, caption, FocusType.Passive, style))

@@ -30,7 +30,7 @@ So Revert to Baseline is always in the notices, whichever profile is selected.
 
 | Item | Shows |
 |---|---|
-| Header | The platform icon, the profile's name, the **Variant** dropdown once variants exist, and **Open in Inspector**, which selects the Unity Build Profile: the Inspector shows Unity's settings and the Build Forge section. |
+| Header | The platform icon, the profile's name with the **Variant** dropdown right after it once variants exist, and **Open in Inspector**, which selects the Unity Build Profile: the Inspector shows Unity's settings and the Build Forge section. |
 | Variant | The variant the details below and the CI Command show, for any selected profile, and the one Apply, Build and Build and Run use, as do the main toolbar's Build buttons. In a new editor session it starts at the applied variant. Until a variant is applied or picked it reads **Pick a variant**, the details leave out the plugins and the CI Command, and Apply, Build and Build and Run are disabled. Variants the selected profile does not allow are listed as unavailable. A long name ends in "…"; the tooltip then starts with the whole label. |
 | Unity Build Profile | The asset, marked "(active)" when it is; click to show it in the Project window. |
 | Build Forge Settings | Click to edit them in the Inspector, in the Unity Build Profile's Build Forge section. |
