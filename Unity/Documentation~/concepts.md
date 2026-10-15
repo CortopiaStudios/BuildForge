@@ -13,7 +13,7 @@ A **Unity Build Profile** is Unity's asset for one way of building the project: 
 Consequences of storing them in the Build Profile:
 
 - **One per Build Profile.** Two configurations that differ only in plugin settings, for example two OpenXR feature sets for the same platform, need two Unity Build Profiles.
-- **One name.** Everything user-facing uses the Unity Build Profile's name: the build window, the `{ProfileName}` output path placeholder, the `BUILD_PROFILE_<NAME>` define and the manifest's `BuildProfile`.
+- **One name.** Everything user-facing uses the Unity Build Profile's name: the build window, the `{ProfileName}` output path placeholder, the optional `BUILD_PROFILE_<NAME>` define and the manifest's `BuildProfile`.
 - **They travel with the asset.** Renaming, duplicating or deleting the Build Profile in the editor carries the Build Forge settings; a duplicate gets its own independent copy.
 - **Only Build Profile assets in `Assets/`** can hold them. Unity's platform profiles live in `Library/`, which is not committed.
 
@@ -66,7 +66,7 @@ Build Forge's Activate keeps the two consistent. Unity can change the active pro
 
 **Activate** makes a profile's Unity Build Profile the active one, like Unity's own Switch Profile. Before that, it reverts whatever another profile applied to the editor, so nothing stale stays behind. Activating the profile that is still applied keeps its settings.
 
-Activate also writes the profile's `BUILD_PROFILE_<NAME>` define and, unless the profile is the applied one, removes variant defines from it, including ones saved on another machine. If the profile targets another platform, Unity switches platform and reimports assets; Build Forge logs what it did once the editor has reloaded.
+Activate also writes the profile's [`BUILD_PROFILE_<NAME>` define](#the-build_profile_-define) when Maintain Build Profile Defines is on and, unless the profile is the applied one, removes variant defines from it, including ones saved on another machine. If the profile targets another platform, Unity switches platform and reimports assets; Build Forge logs what it did once the editor has reloaded.
 
 Activate does not apply the profile's plugin settings. Play Mode then runs with the project's own settings plus the Build Profile's Unity settings.
 
@@ -124,7 +124,7 @@ The build window reminds you while a profile is applied. A `BUILD_VARIANT_` defi
 
 ## The BUILD_PROFILE_ define
 
-Build Forge keeps one scripting define in each Unity Build Profile with Build Forge settings: `BUILD_PROFILE_` plus the profile's name, upper-cased, with every run of other characters between letters or digits collapsed to one underscore and any at the start or end left out. "Quest 3" gives `BUILD_PROFILE_QUEST_3`, "(Quest)" gives `BUILD_PROFILE_QUEST`. Letters outside ASCII are kept: "Übung" gives `BUILD_PROFILE_ÜBUNG`.
+With **Project Settings > Build Forge > Profiles > Maintain Build Profile Defines** on (it's off by default), Build Forge keeps one scripting define in each Unity Build Profile with Build Forge settings: `BUILD_PROFILE_` plus the profile's name, upper-cased, with every run of other characters between letters or digits collapsed to one underscore and any at the start or end left out. "Quest 3" gives `BUILD_PROFILE_QUEST_3`, "(Quest)" gives `BUILD_PROFILE_QUEST`. Letters outside ASCII are kept: "Übung" gives `BUILD_PROFILE_ÜBUNG`.
 
 The define is in the Build Profile's own Scripting Defines list, which Unity applies whenever the profile is active, in the editor and in builds:
 
@@ -138,7 +138,7 @@ The define is in the Build Profile's own Scripting Defines list, which Unity app
 - Writing to the active profile recompiles scripts once.
 - At build time a missing or stale define is only reported in the build log, never written, since writing would recompile in the middle of the build. Open the build window once and commit the profile.
 - Two names can give the same define ("Quest 3" and "Quest-3"); the build window and the Build Forge section warn about that.
-- **Project Settings > Build Forge > Profiles > Maintain Build Profile Defines** turns the define off.
+- Turning the setting off stops the writes. Defines already written stay in the profiles; remove them by hand once no code uses them.
 
 ## Variants
 

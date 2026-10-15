@@ -9,7 +9,7 @@ Write down what the current build scripts do for each target, then decide where 
 | In the current pipeline | With Build Forge |
 |---|---|
 | A menu item or CI method per target that switches platform, sets defines and settings, then builds | One Unity Build Profile per target, with Build Forge settings; the build window or the generated CI command builds it |
-| Scripting defines per target, set in Player Settings | The Build Profile's Scripting Defines list, or the `BUILD_PROFILE_<NAME>` define Build Forge keeps there |
+| Scripting defines per target, set in Player Settings | The Build Profile's Scripting Defines list, or the `BUILD_PROFILE_<NAME>` define Build Forge keeps there with Maintain Build Profile Defines on |
 | Debug and release switches: development build and its options, debug defines, IL2CPP, stripping and compression settings, Android debug symbols | [Variants](variants.md) with rules |
 | A version string with the build number | The variant rules' [Version](variants.md#version) |
 | An XR provider per target | XR Plug-in Management, when every profile of a platform uses the same providers; [XR Loaders](plugins/xr-loaders.md) when they differ |
@@ -34,7 +34,7 @@ Things Build Forge does not do: it does not override Player Settings, does not b
 
 Create one Unity Build Profile per target configuration in Unity's Build Profiles window. Unity has no public API for creating Build Profile assets, so this step is done by hand.
 
-- **Name them as they should appear.** The name becomes the `BUILD_PROFILE_` define, a folder in the output path, the build window's row and the manifest's `BuildProfile`. Renaming later is possible and Build Forge follows, but code that uses the old define does not.
+- **Name them as they should appear.** The name becomes a folder in the output path, the build window's row, the manifest's `BuildProfile` and, with Maintain Build Profile Defines on, the `BUILD_PROFILE_` define. Renaming later is possible and Build Forge follows, but code that uses the old define does not.
 - **Profiles may share a platform.** Headsets that are all Android get one Android Build Profile each.
 - **Decide on the Quest profile type.** Unity's Meta Quest Build Profile type and a plain Android profile both work; the Meta Quest type changes shared Android OpenXR features in the editor. See [Meta Quest Build Profiles](plugins/openxr.md#meta-quest-build-profiles).
 - **Set scenes and defines on each profile.** Move defines that belong to one target out of Player Settings into that profile's Scripting Defines list: a define in the Android Player Settings reaches every Android profile that has no Player Settings of its own.
@@ -63,7 +63,7 @@ Create one Unity Build Profile per target configuration in Unity's Build Profile
 ## 6. Update project code
 
 - Code that looked for build settings by searching assets: Build Forge settings are a component of the Build Profile asset. Use `BuildProfile.GetActiveBuildProfile()` and `GetComponent<ForgeProfile>()`; `AssetDatabase.FindAssets("t:ForgeProfile")` finds nothing. One project's Android post-processing silently stopped working because of this, and its first build kept vendor entries it should have removed.
-- Code that branched on the active platform to tell targets apart: use the `BUILD_PROFILE_` defines in player code, and `ForgeBuildContext` or the active Build Profile in editor code.
+- Code that branched on the active platform to tell targets apart: turn on Maintain Build Profile Defines and use the `BUILD_PROFILE_` defines in player code, and `ForgeBuildContext` or the active Build Profile in editor code.
 - Code that relied on `DEVELOPMENT_BUILD` in the editor: the editor never defines it. Use a variant define or a rule's define.
 - Custom build steps from the old scripts: move them into a plugin with an order that places them correctly, for example above 400 to read the build number.
 

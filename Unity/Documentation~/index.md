@@ -7,7 +7,7 @@ Around that it adds:
 - a build window to activate, apply and build profiles, and a main toolbar element to activate, apply, build and run them;
 - **Apply** and **Revert to Baseline**, so Play Mode can run with a profile's plugin settings, with drift detection;
 - build variants, such as an internal build with debug tools, selectable per build;
-- a `BUILD_PROFILE_<NAME>` scripting define in every Build Profile with Build Forge settings;
+- optionally, a `BUILD_PROFILE_<NAME>` scripting define in every Build Profile with Build Forge settings;
 - a build manifest in the player, readable at runtime;
 - a command-line entry point for CI with strict argument checking;
 - a Player Overrides window that shows how each Build Profile's own Player Settings differ from Project Settings.

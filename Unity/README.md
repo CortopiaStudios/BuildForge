@@ -267,7 +267,7 @@ Prevents builds that bypass Build Forge. Unity's own Build and Build And Run are
 
 ### Scripting Define per Build Profile
 
-Build Forge keeps a `BUILD_PROFILE_<NAME>` scripting define in each referenced Unity Build Profile's own Scripting Defines list (upper-cased name, runs of non-alphanumerics between letters or digits collapsed to one underscore and any at the start or end left out: "Quest 3" gives `BUILD_PROFILE_QUEST_3`; letters outside ASCII are kept, so "Übung" gives `BUILD_PROFILE_ÜBUNG`). Unity applies that list whenever the profile is active, in the editor and in the build, so code can branch at compile time per profile:
+With **Project Settings > Build Forge > Profiles > Maintain Build Profile Defines** on (it's off by default), Build Forge keeps a `BUILD_PROFILE_<NAME>` scripting define in each referenced Unity Build Profile's own Scripting Defines list (upper-cased name, runs of non-alphanumerics between letters or digits collapsed to one underscore and any at the start or end left out: "Quest 3" gives `BUILD_PROFILE_QUEST_3`; letters outside ASCII are kept, so "Übung" gives `BUILD_PROFILE_ÜBUNG`). Unity applies that list whenever the profile is active, in the editor and in the build, so code can branch at compile time per profile:
 
 ```csharp
 #if BUILD_PROFILE_QUEST_3
@@ -275,7 +275,7 @@ Build Forge keeps a `BUILD_PROFILE_<NAME>` scripting define in each referenced U
 #endif
 ```
 
-The define is written whenever Build Forge touches the profile (profile inspector, build window, profile switch) and replaced after a rename; user defines in the list are left alone. Writing to the active profile triggers one recompile. Disable in **Project Settings > Build Forge > Profiles > Maintain Build Profile Defines**. At build time a missing or stale define is only reported, never written.
+The define is written whenever Build Forge touches the profile (profile inspector, build window, profile switch) and replaced after a rename; user defines in the list are left alone. Writing to the active profile triggers one recompile. Turning the setting off stops the writes and leaves the defines already written. At build time a missing or stale define is only reported, never written.
 
 Sanitizing can make two names coincide ("Quest 3" and "Quest-3" both give `BUILD_PROFILE_QUEST_3`), which would make an `#if` true for both profiles. Build Forge warns about that in the build window and the profile inspector; rename one of the profiles.
 

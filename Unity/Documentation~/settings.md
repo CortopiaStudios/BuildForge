@@ -12,7 +12,7 @@
 
 **Edit** shows the settings on their own in the Inspector. That view also has the **Unity Build Profile** field (read-only, with **Select**) and a **Player Overrides** foldout, which the section inside Unity's Build Profile editor leaves out because that editor already shows the profile and its Player Settings. **Open in Inspector** and a double-click in the build window select the Unity Build Profile instead, so the Inspector shows Unity's settings and the Build Forge section. Both views end with an **Open Build Window** button.
 
-**Remove** asks first, then deletes the profile's plugin settings, output path and variant restrictions; version control can bring them back. The profile's `BUILD_PROFILE_<NAME>` define stays in its Scripting Defines list.
+**Remove** asks first, then deletes the profile's plugin settings, output path and variant restrictions; version control can bring them back. A `BUILD_PROFILE_<NAME>` define that Build Forge wrote stays in its Scripting Defines list.
 
 Unity offers no public way for packages outside the Unity registry to add a section to its Build Profile editor, so Build Forge inserts its section into that editor's UI itself. If a future Unity version changes that UI, the section may be missing; the Assets menu and the build window keep working.
 
@@ -131,7 +131,7 @@ Turn the option off only when earlier output must stay, for example files staged
 These stay on the Unity Build Profile and Build Forge builds with them as Unity would:
 
 - the scene list (the profile's own, or the global one);
-- the profile's Scripting Defines list, where Build Forge also keeps its `BUILD_PROFILE_` and variant defines;
+- the profile's Scripting Defines list, where Build Forge also keeps its variant defines and, with Maintain Build Profile Defines on, its `BUILD_PROFILE_` define;
 - build options such as Development Build;
 - the profile's own Player, Quality and Graphics Settings, when it has them.
 
@@ -149,7 +149,7 @@ Stored in `ProjectSettings/ForgeSettings.asset`; commit it.
 | Output | Sanitize Product Name | On | Sanitizes `{ProjectName}`. |
 | | Reveal Build In File Browser | On | After a successful editor build, shows the built file in Explorer, Finder or the Linux file manager. Never for CI builds, or for Build and Run, which runs the player instead. |
 | Profiles | Save Profiles On Edit | On | Writes Build Forge settings to disk right after each edit. |
-| | Maintain Build Profile Defines | On | Keeps the `BUILD_PROFILE_<NAME>` define in each profile. |
+| | Maintain Build Profile Defines | Off | Keeps the `BUILD_PROFILE_<NAME>` define in each profile. See [The BUILD_PROFILE_ define](concepts.md#the-build_profile_-define). |
 | Play Mode | Play Mode Follows Applied Profile | Off | Applying a profile of another platform than Standalone also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders and Initialize XR on Startup, and its OpenXR features as OpenXR Features says. See [Apply](concepts.md#apply-and-re-apply). |
 | | OpenXR Features | Turn on the platform's | Shown while Play Mode Follows Applied Profile is on. **Turn on the platform's** turns on Standalone's features that the platform has on and leaves the others as they are, so features Standalone has on for Play Mode itself stay on. **Match the platform's** also turns off those the platform has off, so Play Mode has exactly the platform's features where Standalone has them. |
 | Build Variants | (list) | Empty | Project-wide variant names. See [Build variants](variants.md). |

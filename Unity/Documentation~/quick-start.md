@@ -8,7 +8,7 @@ This walk-through takes a project with Build Forge installed from a new Unity Bu
 2. Click **Add Build Profile**, choose **Windows**, and add it. Unity saves the profile as an asset in the project (by default under `Assets/Settings/Build Profiles/`).
 3. Rename it **Windows**.
 
-The name matters: Build Forge uses the Unity Build Profile's name everywhere. It becomes the scripting define `BUILD_PROFILE_WINDOWS`, the `{ProfileName}` part of the output path, the row in the build window, and `BuildProfile` in the build manifest.
+The name matters: Build Forge uses the Unity Build Profile's name everywhere. It becomes the `{ProfileName}` part of the output path, the row in the build window, `BuildProfile` in the build manifest and, if you turn on Maintain Build Profile Defines, the scripting define `BUILD_PROFILE_WINDOWS`.
 
 Only Build Profile assets in `Assets/` can hold Build Forge settings. Unity's platform profiles, the entries in the window's Platforms list, live in `Library/` and cannot.
 

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Play Mode Follows Applied Profile** is off by default. A project keeps the value its `ProjectSettings/ForgeSettings.asset` stores. With it on, OpenXR features now default to **Turn on the platform's**; choose **Match the platform's** for the previous behavior
+- **Maintain Build Profile Defines** is off by default, so Build Forge writes no `BUILD_PROFILE_<NAME>` define into a Build Profile unless asked: turn it on in Project Settings > Build Forge > Profiles to use the define. A project keeps the value its `ProjectSettings/ForgeSettings.asset` stores
 
 ### Fixed
 - Changing a plugin's settings in a profile or in Project Settings and then changing them back, such as an OpenXR feature set to Enable and back to No Override, no longer leaves the plugin's settings in the Build Profile asset or in `ProjectSettings/ForgeSettings.asset` with only default values. `ForgeProfile.SetPluginConfig` and `ForgeSettings.SetGlobalPluginConfig` remove a configuration whose values equal a new instance's, as they remove null, so the file is left as it was

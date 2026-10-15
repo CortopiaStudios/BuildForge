@@ -76,7 +76,7 @@ Change the revision, or refresh the lock entry as described above, and read the 
 1. If a profile is applied to the editor, click **Revert to Baseline** in the build window first. Otherwise its plugin settings (OpenXR features, the XR loader list, variant defines) stay as applied, and nothing is left that knows their baseline.
 2. Remove the package from the Package Manager.
 
-The Build Forge settings stay inside the Build Profile assets. Unity keeps that data while the package is gone, and the Build Profiles still load and build; adding the package again restores the settings. The `BUILD_PROFILE_<NAME>` defines stay in the Build Profiles' Scripting Defines lists; remove them by hand once no code uses them. `ProjectSettings/ForgeSettings.asset` and the `UserSettings/Forge*.asset` files can be deleted.
+The Build Forge settings stay inside the Build Profile assets. Unity keeps that data while the package is gone, and the Build Profiles still load and build; adding the package again restores the settings. Any `BUILD_PROFILE_<NAME>` defines that Maintain Build Profile Defines wrote stay in the Build Profiles' Scripting Defines lists; remove them by hand once no code uses them. `ProjectSettings/ForgeSettings.asset` and the `UserSettings/Forge*.asset` files can be deleted.
 
 ## Installation problems
 

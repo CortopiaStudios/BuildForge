@@ -30,7 +30,7 @@ namespace BuildForge.Editor.Configuration
         [SerializeField] bool saveProfilesOnEdit = true;
 
         [Tooltip("When enabled, Build Forge keeps a BUILD_PROFILE_<NAME> scripting define in each referenced Unity Build Profile's Scripting Defines list, so code can compile conditionally per profile.")]
-        [SerializeField] bool maintainBuildProfileDefines = true;
+        [SerializeField] bool maintainBuildProfileDefines;
 
         [Tooltip("When enabled, applying a profile for another platform also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders and Initialize XR on Startup, and its OpenXR features as OpenXR Features below says. Revert to Baseline puts Standalone back.")]
         [SerializeField] bool playModeFollowsAppliedProfile;
@@ -134,7 +134,7 @@ namespace BuildForge.Editor.Configuration
 
         /// <summary>
         /// Keep a <c>BUILD_PROFILE_&lt;NAME&gt;</c> scripting define in every
-        /// referenced Unity Build Profile (default). See BuildProfileDefines.
+        /// referenced Unity Build Profile. Off by default. See BuildProfileDefines.
         /// </summary>
         public bool MaintainBuildProfileDefines
         {
