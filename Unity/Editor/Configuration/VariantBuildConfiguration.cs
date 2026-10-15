@@ -8,8 +8,8 @@ namespace BuildForge.Editor.Configuration
     internal enum VariantCodeGeneration
     {
         Inherit,
-        [InspectorName("Faster runtime")] OptimizeSpeed,
-        [InspectorName("Faster (smaller) builds")] OptimizeSize
+        [InspectorName("Optimize for runtime speed")] OptimizeSpeed,
+        [InspectorName("Optimize for code size and build time")] OptimizeSize
     }
 
     internal enum VariantStacktraceInformation

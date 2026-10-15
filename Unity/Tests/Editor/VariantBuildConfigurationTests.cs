@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
+using BuildForge.Editor.UI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Build;
@@ -41,6 +42,19 @@ namespace BuildForge.Tests.Editor
                 "Managed Stripping Level", "Strip Engine Code",
                 "Compression Method", "Link Time Optimization", "Debug Symbols",
             }, labels);
+        }
+
+        // A rule's options read as in Unity 6's Player Settings, and as the Player
+        // Overrides view names the same values.
+        [TestCase(typeof(VariantCodeGeneration), typeof(Il2CppCodeGeneration), "il2cppCodeGeneration")]
+        [TestCase(typeof(VariantStacktraceInformation), typeof(Il2CppStacktraceInformation), "il2cppStacktraceInformation")]
+        public void OptionLabels_AreThePlayerOverridesNames(Type ruleOptions, Type unityOptions, string property)
+        {
+            foreach (var name in Enum.GetNames(ruleOptions).Where(n => n != "Inherit"))
+            {
+                var label = ruleOptions.GetField(name).GetCustomAttribute<UnityEngine.InspectorNameAttribute>()?.displayName ?? name;
+                Assert.AreEqual(PlayerSettingsDiffView.PerPlatformValueName(property, (int)Enum.Parse(unityOptions, name)), label, name);
+            }
         }
 
         [Test] public void DevelopmentOptionsOnWithDevelopmentOff_AreRejected()
