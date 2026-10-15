@@ -164,6 +164,25 @@ namespace BuildForge.Tests.Editor
             Assert.IsTrue(XRVendorFilterPlugin.IncludeInBuild(vendor.LibraryPaths[0]), "No build is excluding anything.");
         }
 
+        [Test]
+        public void PreBuildMessage_SaysWhatTheBuildKeepsOutAndRemoves()
+        {
+            var vendor = new XRVendors.AndroidLibraryPackage { Name = "com.unity.xr.picoxr", DisplayName = "PICO" };
+            vendor.LibraryPaths.Add("Packages/com.unity.xr.picoxr/Plugins/libpxrplatformloader.so");
+            var installed = new Dictionary<string, XRVendors.AndroidLibraryPackage> { [vendor.Name] = vendor };
+            string Message(XRVendorFilterConfig config)
+                => XRVendorFilterPlugin.PreBuildMessage(XRVendorFilterPlugin.CreateExclusion(config, installed, vendor.LibraryPaths));
+            var prefix = XRVendorFilterPlugin.LogPrefix;
+            var picoRules = XRVendorFilterPlugin.DescribeRules(XRVendors.RulesFor(new[] { vendor.Name }, null));
+
+            Assert.AreEqual($"{prefix} Nothing to keep out of this build.", Message(new XRVendorFilterConfig()));
+            Assert.AreEqual($"{prefix} Removing com.example.* manifest entries after the vendors' Gradle steps.",
+                Message(new XRVendorFilterConfig { extraManifestPrefixes = { "com.example." } }));
+            Assert.AreEqual($"{prefix} Keeping 1 Android library of com.unity.xr.picoxr out of this build, " +
+                            $"and removing {picoRules} after the vendors' Gradle steps.",
+                Message(new XRVendorFilterConfig { excludedPackages = { vendor.Name } }));
+        }
+
         [TestCase("Packages/com.meta.xr.sdk.core/Plugins/Android/OVRPlugin.aar", true)]
         [TestCase("Packages/com.meta.xr.sdk.platform/Plugins/Android64/libovrplatformloader.so", true)]
         [TestCase("Assets/Plugins/Android/vendor.jar", true)]

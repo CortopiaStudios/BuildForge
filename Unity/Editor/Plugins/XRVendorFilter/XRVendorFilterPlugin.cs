@@ -107,9 +107,18 @@ namespace BuildForge.Editor.Plugins
                 .Where(i => i != null && XRVendors.IsAndroidLibrary(i.assetPath) && i.GetCompatibleWithPlatform(BuildTarget.Android))
                 .Select(i => i.assetPath);
             Active = CreateExclusion(config, installed, allLibraryPaths);
-            Debug.Log($"{LogPrefix} Keeping {Active.LibraryPaths.Count} Android {(Active.LibraryPaths.Count == 1 ? "library" : "libraries")} " +
-                      $"of {Names(Active.Packages)} out of this build" +
-                      (Active.Rules.IsEmpty ? "." : $", and removing {DescribeRules(Active.Rules)} after the vendors' Gradle steps."));
+            Debug.Log(PreBuildMessage(Active));
+        }
+
+        /// <summary>The pre-build log line: what the build keeps out and which manifest entries it removes.</summary>
+        internal static string PreBuildMessage(Exclusion exclusion)
+        {
+            var removing = exclusion.Rules.IsEmpty ? null : $"{DescribeRules(exclusion.Rules)} after the vendors' Gradle steps";
+            if (exclusion.Packages.Count == 0)
+                return removing == null ? $"{LogPrefix} Nothing to keep out of this build." : $"{LogPrefix} Removing {removing}.";
+            var count = exclusion.LibraryPaths.Count;
+            return $"{LogPrefix} Keeping {count} Android {(count == 1 ? "library" : "libraries")} of {Names(exclusion.Packages)} " +
+                   "out of this build" + (removing == null ? "." : $", and removing {removing}.");
         }
 
         public void OnPostBuild(ForgeBuildContext context) => Active = null;
