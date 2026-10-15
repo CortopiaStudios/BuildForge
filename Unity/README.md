@@ -403,13 +403,22 @@ Editor/
     BuildEnvironment.cs                    # CI detection (-forgeCI / FORGE_CI / batch mode)
     GitHelper.cs                           # Runs git for plugins (Git Metadata, Build Number) and the core
     BuildManifestWriter.cs                 # Writes/cleans up manifest
+    BuildOutputDirectory.cs                # Remove Previous Build Output: deletes only what the last build produced
+    BuildOutputLedger.cs                   # Per user: the files each profile's last build produced (UserSettings/)
     BuildProfilePlatform.cs                # A Build Profile's own platform name and icon, via Unity internals
+    BuildProfileDefines.cs                 # One BUILD_PROFILE_<NAME> define in each Build Profile's own defines
     UnityYamlParser.cs                    # Line-based YAML parser for Unity assets
     PlayerSettingsDiffComputer.cs          # Computes diffs between profile and platform YAML
     PlayerSettingsMatrix.cs                # All profiles' differences side by side, per platform
+    PlayerSettingsPersistence.cs           # Saves restored Player Settings into the profile's embedded copy
     ForgeProfileLookup.cs                  # 1:1 Build Forge settings <-> Unity Build Profile rule
+    ForgeProfileEmbedding.cs               # Build Forge settings stored inside the Build Profile asset
     ForgeEditorState.cs                    # Profile switch entry point (baseline, drift, revert)
     EditorStateApplier.cs                  # Pure apply/revert/drift logic over the ledger
+    BuildVariants.cs                       # Project-wide variants: resolution, BUILD_VARIANT define, rules
+    VariantBuildSettings.cs                # Build flags and settings a variant rule can set on the profile
+    VariantPlayerSettings.cs               # A variant rule's IL2CPP and stripping Player Settings for one build
+    VariantDefineLedger.cs                 # Per user: what Apply changed in each profile's defines (UserSettings/)
     IForgePlugin.cs                        # Plugin interface (with Validate + GUI hooks)
     IForgeEditorApplicable.cs              # Optional plugin capability: apply to editor
     IForgeManifestContributor.cs           # Manifest contribution interface
@@ -421,6 +430,8 @@ Editor/
   Configuration/
     ForgeProfile.cs                        # ScriptableObject extending Build Profile
     ForgeSettings.cs                       # Global settings (singleton)
+    BuildVariantRule.cs                    # Optional behavior for one variant: development, defines, marking
+    VariantBuildConfiguration.cs           # A variant rule's Unity build settings (Build Configuration)
     ForgeEditorStateStore.cs               # Per-user applied state, keyed on the Unity Build Profile (UserSettings/)
     ForgeUserPreferences.cs                # Per-user preferences for this project, e.g. the main toolbar (UserSettings/)
     DiffEntry.cs                           # Diff data model
@@ -465,6 +476,8 @@ Editor/
     ForgeBuildWindow.cs                    # Build window with auto-discovery
     ForgeMainToolbar.cs                    # Build Profile and apply dropdowns, Build buttons in the main toolbar
     ForgeProfileEditor.cs                  # Custom inspector with inline plugin UI
+    BuildProfileEditorSection.cs           # The Build Forge section in Unity's Build Profile editor
+    ForgeProfileMenus.cs                   # Assets > Build Forge and the Build Profile inspector's context menu
     ForgeSettingsProvider.cs               # Project Settings integration
     PlayerSettingsDiffView.cs              # Reusable Player Overrides diff UI
     PlayerSettingsDiffWindow.cs            # Standalone Player Overrides window
@@ -480,23 +493,32 @@ Samples~/
     ManifestDisplay.cs                     # Example: read manifest at runtime
   ExampleIntegration/
     Editor/ApplicationIdSuffixPlugin.cs    # Example plugin: application ID suffix for variant builds
+    Editor/ApplicationIdSuffixConfig.cs    # The example plugin's per-profile settings
     CI/                                    # Jenkinsfile, GitHub Actions workflow, PowerShell and bash wrappers
 
 Tests/
   Editor/
     Fixtures/                              # Test data (ProjectSettings.txt)
+    ActivationSummaryTests.cs              # Activate's summary line and active-profile mismatch warnings
     AndroidKeystoreEnvConfigTests.cs       # Keystore env resolution and validation
+    AndroidKeystoreEnvPluginTests.cs       # Keystore settings during and after a build
     BuildEnvironmentTests.cs               # CI detection precedence
     BuildWindowLabelTests.cs               # Build window labels in fixed-width controls
     BuildManifestTests.cs                  # Manifest serialization tests
     BuildManifestSectionTests.cs           # Manifest plugin sections
+    BuildManifestWriterTests.cs            # Manifest file writing and cleanup
     BuildProfilePlatformTests.cs           # A profile's own platform (Meta Quest, not Android)
+    BuildProfileDefinesTests.cs            # BUILD_PROFILE_<NAME> naming and define list upkeep
     BuildNumberConfigTests.cs              # Build number config defaults
+    BuildNumberPluginTests.cs              # Build number sources, parsing and restore
+    BuildOutputDirectoryTests.cs           # Remove Previous Build Output deletes only the last build's files
+    BuildVariantsTests.cs                  # Variant resolution, name validation and define arithmetic
     CloudDiagnosticsConfigTests.cs         # Crash reporting mode resolution
     EditorStateApplierTests.cs             # Apply/revert/drift invariant with fake plugins
     EditorStateLedgerTests.cs              # Ledger key/entry helpers
     ForgeBuildInterceptorTests.cs          # Interception of Unity's Build buttons and other builds
     ForgePluginContractTests.cs            # Contract every bundled plugin must meet
+    ForgeProfileEmbeddingTests.cs          # Settings inside the Build Profile, and its editor section
     ForgeProfileLookupTests.cs             # 1:1 rule: resolve and shared-profile errors
     ForgeProfileOutputPathTests.cs         # Output path placeholders and extensions
     ForgeSettingsPluginToggleTests.cs     # Plugin enable/disable precedence tests
@@ -506,6 +528,11 @@ Tests/
     NormalizeValueTests.cs                 # Diff value normalization
     PlayerSettingsDiffComputerTests.cs     # Diff computation tests
     PlayerSettingsMatrixTests.cs           # Matrix rows, columns and stale hints
+    StopTrackingTests.cs                   # Stop Tracking a setting group whose plugin is gone
+    VariantBuildConfigurationTests.cs      # A variant rule's Build Configuration: labels, checks, restore
+    VariantDefineLedgerTests.cs            # Undoing exactly what Apply changed in a profile's defines
+    VariantEditorIterationTests.cs         # Applying, switching and reverting variants in the editor
+    VariantRulesTests.cs                   # Variant rule validation, restrictions and their effect on builds
     XRVendorFilterTests.cs                 # Vendor rules, manifest stripping, leftover scan
     AndroidManifestPluginTests.cs          # Manifest swap and restore
     ForgeGradleCallbackTests.cs            # Gradle step dispatch to plugins
@@ -513,7 +540,12 @@ Tests/
     PluginConfigStorageTests.cs            # Config storage contract + YAML round trips
     PluginRegistryTests.cs                 # Plugin discovery tests
     PublicApiSurfaceTests.cs               # Locks the public API surface
+    Addressables/VariantExclusionTests.cs  # Addressables Stripper exclusions per variant
+    OpenXR/OpenXROverrideTests.cs          # OpenXR feature overrides and feature groups
     OpenXR/SerializedPropertySnapshotTests.cs # Property capture/apply round trips (with the OpenXR tests)
+    XRManagement/PlayModeXRLoadersTests.cs # Play Mode mirror of the platform's XR loaders
+    XRManagement/XRLoaderSelectionTests.cs # XR loader selection, apply and restore
+    XRManagement/TestXRLoader.cs           # XR loader stand-in for these tests
     UnityYamlParserTests.cs               # YAML parser tests with real fixture
 ```
 
