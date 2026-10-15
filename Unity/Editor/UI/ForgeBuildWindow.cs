@@ -21,6 +21,7 @@ namespace BuildForge.Editor.UI
         static GUIStyle cachedWordWrapStyle;
         static GUIStyle cachedTitleStyle;
         static GUIStyle cachedTitleSeparatorStyle;
+        static GUIStyle cachedSubtitleLayoutStyle;
         static GUIStyle cachedSectionStyle;
         static GUIStyle cachedNoticeTextStyle;
         Vector2 listScroll;
@@ -636,7 +637,17 @@ namespace BuildForge.Editor.UI
             // Width 0: the title line and the subtitle give way to the button beside them and
             // are cut, or a narrow window scrolls the details pane sideways, hiding the button.
             DrawTitleLine(GUILayoutUtility.GetRect(0f, 20f, GUILayout.ExpandWidth(true)), profile);
-            EditorGUILayout.LabelField(subtitle, EditorStyles.miniLabel, GUILayout.ExpandWidth(true), GUILayout.MinWidth(0f));
+            // Laid out like the title line, so it starts where the title does. EditorGUILayout's
+            // label field lays out its rect with the layerMaskField style, whatever style it
+            // draws with, and that style's left margin set it right of the title; its top and
+            // bottom margins keep the line's height.
+            if (cachedSubtitleLayoutStyle == null)
+            {
+                var margin = EditorStyles.layerMaskField.margin;
+                cachedSubtitleLayoutStyle = new GUIStyle { margin = new RectOffset(0, margin.right, margin.top, margin.bottom) };
+            }
+            GUI.Label(GUILayoutUtility.GetRect(0f, EditorGUIUtility.singleLineHeight, cachedSubtitleLayoutStyle, GUILayout.ExpandWidth(true)),
+                subtitle, EditorStyles.miniLabel);
             EditorGUILayout.EndVertical();
             EditorGUILayout.BeginVertical(GUILayout.Width(120f));
             GUILayout.Space(6);
