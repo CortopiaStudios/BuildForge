@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using BuildForge.Editor.Core;
+using BuildForge.Editor.UI;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.Build.Profile;
@@ -421,6 +422,27 @@ namespace BuildForge.Tests.Editor
             var empty = new Dictionary<string, string> { ["m_BuildTargetBatching"] = "[]" };
             Assert.IsEmpty(PlayerSettingsDiffComputer.ComputeDiff(empty, new Dictionary<string, string>(empty), BuildTarget.Android));
         }
+
+        // The views show a per-platform setting's value for the profile's platform; a
+        // numbered one gets the name Unity's Player Settings show for it.
+        [TestCase("scriptingBackend", 0, "Mono")]
+        [TestCase("scriptingBackend", 1, "IL2CPP")]
+        [TestCase("apiCompatibilityLevelPerPlatform", 3, ".NET Framework")]
+        [TestCase("apiCompatibilityLevelPerPlatform", 6, ".NET Standard 2.1")]
+        [TestCase("il2cppCodeGeneration", 1, "Optimize for code size and build time")]
+        [TestCase("il2cppStacktraceInformation", 1, "Method Name, File Name, and Line Number")]
+        [TestCase("il2cppCompilerConfiguration", 2, "Master")]
+        [TestCase("managedStrippingLevel", 4, "Minimal")]
+        [TestCase("mobileMTRendering", 1, "Yes")]
+        [TestCase("incrementalIl2cppBuild", 0, "No")]
+        public void PerPlatformValueName_IsTheNameUnitysPlayerSettingsShow(string property, int value, string expected)
+            => Assert.AreEqual(expected, PlayerSettingsDiffView.PerPlatformValueName(property, value));
+
+        [TestCase("buildNumber", 12)]
+        [TestCase("scriptingBackend", 99)]
+        [TestCase("mobileMTRendering", 2)]
+        public void PerPlatformValueName_LeavesPlainNumbersAndUnknownValuesAlone(string property, int value)
+            => Assert.IsNull(PlayerSettingsDiffView.PerPlatformValueName(property, value));
 
         [Test]
         public void DedicatedServerProfile_IsComparedOnServerEntries()

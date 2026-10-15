@@ -261,6 +261,53 @@ namespace BuildForge.Editor.UI
             "m_DynamicBatching",
         };
 
+        // Numbered per-platform settings, of which the views show the platform's value.
+        // Their SerializedProperty is the whole per-platform map, so the enum comes from here.
+        static readonly Dictionary<string, System.Type> PerPlatformEnums = new()
+        {
+            ["scriptingBackend"] = typeof(ScriptingImplementation),
+            ["apiCompatibilityLevelPerPlatform"] = typeof(ApiCompatibilityLevel),
+            ["il2cppCompilerConfiguration"] = typeof(Il2CppCompilerConfiguration),
+            ["il2cppCodeGeneration"] = typeof(UnityEditor.Build.Il2CppCodeGeneration),
+            ["il2cppStacktraceInformation"] = typeof(Il2CppStacktraceInformation),
+            ["managedStrippingLevel"] = typeof(ManagedStrippingLevel),
+        };
+
+        // Unity's Player Settings labels where they differ from the enum's names (the
+        // same on 6000.3.0f1 and 6000.6.4f1). API compatibility levels 3 and 6 also
+        // have two enum names each.
+        static readonly Dictionary<(string, int), string> PerPlatformLabels = new()
+        {
+            [("scriptingBackend", 0)] = "Mono",
+            [("apiCompatibilityLevelPerPlatform", 3)] = ".NET Framework",
+            [("apiCompatibilityLevelPerPlatform", 6)] = ".NET Standard 2.1",
+            [("il2cppCodeGeneration", 0)] = "Optimize for runtime speed",
+            [("il2cppCodeGeneration", 1)] = "Optimize for code size and build time",
+            [("il2cppStacktraceInformation", 0)] = "Method Name",
+            [("il2cppStacktraceInformation", 1)] = "Method Name, File Name, and Line Number",
+        };
+
+        static readonly HashSet<string> PerPlatformBooleans = new()
+        {
+            "mobileMTRendering",
+            "incrementalIl2cppBuild",
+        };
+
+        /// <summary>
+        /// The name of a numbered per-platform setting's value, as Unity's Player
+        /// Settings show it, or null for a setting or value without one.
+        /// </summary>
+        internal static string PerPlatformValueName(string propertyPath, int value)
+        {
+            if (PerPlatformBooleans.Contains(propertyPath))
+                return value == 1 ? "Yes" : value == 0 ? "No" : null;
+            if (PerPlatformLabels.TryGetValue((propertyPath, value), out var label))
+                return label;
+            return PerPlatformEnums.TryGetValue(propertyPath, out var type) && System.Enum.IsDefined(type, value)
+                ? EnumWords(System.Enum.GetName(type, value))
+                : null;
+        }
+
         /// <summary>
         /// Draws a value cell. The width goes on the cell's one control rect: an
         /// EditorGUILayout control without one reserves at least
@@ -285,6 +332,13 @@ namespace BuildForge.Editor.UI
 
             if (int.TryParse(value, out var intVal))
             {
+                var perPlatform = PerPlatformValueName(propertyPath, intVal);
+                if (perPlatform != null)
+                {
+                    EditorGUI.LabelField(rect, new GUIContent(perPlatform, $"{value} ({propertyPath})"));
+                    return;
+                }
+
                 var prop = GetPlayerSettingsSO().FindProperty(propertyPath);
                 if (prop != null)
                 {
@@ -430,10 +484,14 @@ namespace BuildForge.Editor.UI
             if (!System.Enum.IsDefined(type, value))
                 return null;
 
-            var name = System.Enum.GetName(type, value);
+            return EnumWords(System.Enum.GetName(type, value));
+        }
+
+        /// <summary>An enum name split into words, LandscapeLeft as "Landscape Left".</summary>
+        static string EnumWords(string name)
+        {
             name = Regex.Replace(name, @"([a-z])([A-Z])", "$1 $2");
-            name = Regex.Replace(name, @"([A-Z]+)([A-Z][a-z])", "$1 $2");
-            return name;
+            return Regex.Replace(name, @"([A-Z]+)([A-Z][a-z])", "$1 $2");
         }
 
         /// <summary>
