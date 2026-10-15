@@ -81,7 +81,7 @@ The first internal release.
 - Plugin system with zero-config discovery via `[ForgePlugin]` attribute and `TypeCache`
 - Plugin validation API for pre-build warnings (e.g. missing XR provider, Player Settings overrides shadowing)
 - `IForgePlugin.DescribeBuild(profile, isCI)` — optional one-line description of what a plugin will do in a build, shown in the build window
-- Plugin execution order: each bundled plugin has its own multiple of 100 (100–800), so their order is fixed; external plugins pick values in between, or 1–99 to run before all of them
+- Plugin execution order: each bundled plugin has its own multiple of 100 (100–1000), so their order is fixed; external plugins pick values in between, or 1–99 to run before all of them
 - Plugin configuration stored as native serialized objects (`[SerializeReference]`), per profile via `ForgeProfile.GetPluginConfig<T>` / `SetPluginConfig` and globally via `ForgeSettings.GetGlobalPluginConfig<T>` / `SetGlobalPluginConfig`, so profile and settings assets are readable and line-diffable. Fields with a fallback default (Build Number env var name, global Android Keystore Env var names) store empty until a name is typed, so a value in the YAML always means it was chosen
 - Player Settings diff view with YAML-to-YAML comparison and rich rendering (color swatches, object thumbnails, enum names, boolean Yes/No); per-platform dictionaries and lists, batching included, are compared for the selected profile's target (the Server entries for a Dedicated Server profile)
 - Inline Player Overrides foldout in the Build Forge section, with diff count
