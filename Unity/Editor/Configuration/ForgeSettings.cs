@@ -33,7 +33,7 @@ namespace BuildForge.Editor.Configuration
         [SerializeField] bool maintainBuildProfileDefines = true;
 
         [Tooltip("When enabled, applying a profile for another platform also gives Play Mode, which runs on Standalone's XR settings, that platform's XR loaders and Initialize XR on Startup, and its OpenXR features as OpenXR Features below says. Revert to Baseline puts Standalone back.")]
-        [SerializeField] bool playModeFollowsAppliedProfile = true;
+        [SerializeField] bool playModeFollowsAppliedProfile;
 
         [Tooltip("Project-wide variant names. Each selects BUILD_VARIANT_<NAME> and any configured rules for development mode, extra defines, product marking and plugins. Once variants exist, every build names one.")]
         [SerializeField] List<string> buildVariants = new();
@@ -148,8 +148,8 @@ namespace BuildForge.Editor.Configuration
 
         /// <summary>
         /// Applying a profile for a platform other than Standalone also writes
-        /// that platform's XR state to Standalone, which Play Mode runs on
-        /// (default). See IForgePlayModeMirror.
+        /// that platform's XR state to Standalone, which Play Mode runs on. Off by
+        /// default. See IForgePlayModeMirror.
         /// </summary>
         public bool PlayModeFollowsAppliedProfile
         {
