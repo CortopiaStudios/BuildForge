@@ -1,3 +1,5 @@
+using System;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
@@ -12,8 +14,10 @@ namespace BuildForge.Tests.Editor
     /// <summary>
     /// Build interception: Unity's own Build buttons stop before Unity asks for a
     /// location, other builds fail in the pre-build callback, both with the
-    /// dialog, and builds pass while interception is off. The dialog itself needs
-    /// an interactive editor, so these tests replace it.
+    /// dialog, and builds pass while interception is off. The handler for the
+    /// Build buttons is registered only in an interactive editor with
+    /// interception on. The dialog itself needs an interactive editor, so these
+    /// tests replace it.
     /// </summary>
     public class ForgeBuildInterceptorTests
     {
@@ -64,6 +68,34 @@ namespace BuildForge.Tests.Editor
 
             Assert.DoesNotThrow(() => new ForgeBuildInterceptor().OnPreprocessBuild(null));
             Assert.AreEqual(0, dialogs);
+        }
+
+        // Unity keeps the registered handler here (the same field from 6000.3.0f1 to 6000.7.0b4).
+        static readonly FieldInfo OptionsHandler =
+            typeof(BuildPlayerWindow).GetField("getBuildPlayerOptionsHandler", BindingFlags.Static | BindingFlags.NonPublic);
+
+        [Test]
+        public void Register_HandsUnitysBuildButtonsToTheInterceptor_InAnInteractiveEditorWithInterceptionOn()
+        {
+            Assert.IsNotNull(OptionsHandler, "BuildPlayerWindow.getBuildPlayerOptionsHandler is missing");
+            var previous = OptionsHandler.GetValue(null);
+            try
+            {
+                OptionsHandler.SetValue(null, null);
+                ForgeBuildInterceptor.Register(batchMode: true, interceptBuilds: true);
+                ForgeBuildInterceptor.Register(batchMode: false, interceptBuilds: false);
+                Assert.IsNull(OptionsHandler.GetValue(null));
+
+                ForgeBuildInterceptor.Register(batchMode: false, interceptBuilds: true);
+
+                var handler = (Delegate)OptionsHandler.GetValue(null);
+                Assert.AreEqual(typeof(ForgeBuildInterceptor).GetMethod(nameof(ForgeBuildInterceptor.OnUnityBuildButton),
+                    BindingFlags.Static | BindingFlags.NonPublic), handler?.Method);
+            }
+            finally
+            {
+                OptionsHandler.SetValue(null, previous);
+            }
         }
     }
 }

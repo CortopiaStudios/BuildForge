@@ -39,14 +39,17 @@ namespace BuildForge.Editor.Core
         /// <summary>Called instead of the dialog when set, so tests don't wait for a click.</summary>
         internal static Action DialogOverride;
 
-        static ForgeBuildInterceptor()
+        static ForgeBuildInterceptor() => Register(Application.isBatchMode, ForgeSettings.instance.InterceptBuilds);
+
+        /// <summary>Hands Unity's Build and Build And Run to <see cref="OnUnityBuildButton"/>, at each domain load.</summary>
+        internal static void Register(bool batchMode, bool interceptBuilds)
         {
             // Batch mode has no Build Profiles window. Registering replaces a handler
             // another script registered (Unity warns), so only while interception is
             // on; the handler then only blocks and never needs Unity's own default,
             // which alone knows whether to ask for a location. A change of the setting
             // reaches the handler at the next domain reload, see OnUnityBuildButton.
-            if (Application.isBatchMode || !ForgeSettings.instance.InterceptBuilds)
+            if (batchMode || !interceptBuilds)
                 return;
             BuildPlayerWindow.RegisterGetBuildPlayerOptionsHandler(OnUnityBuildButton);
         }
