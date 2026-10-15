@@ -104,7 +104,7 @@ class MyConfig { public bool enabled; public int retries = 3; }
 
 var config = forgeProfile.GetPluginConfig<MyConfig>("MyPlugin"); // stored instance, or a default that is not stored
 config.retries = 5;
-forgeProfile.SetPluginConfig("MyPlugin", config);                 // stores and marks the profile dirty
+forgeProfile.SetPluginConfig("MyPlugin", config);                 // stores it, unless all values are defaults, and marks the profile dirty
 ```
 
 Plugins can also contribute data to the build manifest by implementing `IForgeManifestContributor`, and add a step to an Android build's generated Gradle project by implementing `IForgeGradleProcessor`: Build Forge calls it after the vendors' own Gradle steps (Unity callback order 1000000; Meta's runs at 99999), in plugin order.

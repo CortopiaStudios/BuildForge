@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using BuildForge.Editor.OpenXR;
 using BuildForge.Runtime;
@@ -73,6 +74,31 @@ namespace BuildForge.Tests.OpenXR
         {
             config.EnabledFeatures.Add(controller.GetType().FullName);
             Assert.That(OpenXRPlugin.OverrideWarnings(config, new[] { controller }, true), Is.Empty);
+        }
+
+        // What the Feature Overrides dropdown does for Enable and then No Override.
+        [Test] public void FeatureEnabledAndBackToNoOverride_LeavesNoProfileSettings()
+        {
+            var profile = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                var typeName = controller.GetType().FullName;
+                var stored = profile.GetPluginConfig<OpenXRProfileConfig>("OpenXR");
+                stored.EnabledFeatures.Add(typeName);
+                stored.SetFeatureOverrides(typeName, new List<PropertyValueEntry> { new PropertyValueEntry { path = "m_Enabled", value = "1" } });
+                profile.SetPluginConfig("OpenXR", stored);
+                Assert.AreSame(stored, profile.GetPluginConfig<OpenXRProfileConfig>("OpenXR"));
+
+                stored.EnabledFeatures.Remove(typeName);
+                stored.SetFeatureOverrides(typeName, null);
+                profile.SetPluginConfig("OpenXR", stored);
+                Assert.AreNotSame(stored, profile.GetPluginConfig<OpenXRProfileConfig>("OpenXR"),
+                    "Back at No Override, the profile stores no OpenXR settings.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(profile);
+            }
         }
 
         [Test] public void MissingEnabledFeatureIsReported()

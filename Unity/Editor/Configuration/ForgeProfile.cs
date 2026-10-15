@@ -219,7 +219,10 @@ namespace BuildForge.Editor.Configuration
 
         /// <summary>
         /// Stores (or replaces) the configuration for <paramref name="key"/> and
-        /// marks the asset dirty; null removes it. The instance is owned by this
+        /// marks the asset dirty; null removes it, and so does a configuration
+        /// whose serialized values equal a new <typeparamref name="T"/>, which
+        /// reads the same as none: settings changed and then changed back leave
+        /// the asset as it was. The instance is owned by this
         /// profile: after mutating it, call this again so the asset is dirtied,
         /// never share one instance between profiles, and re-read it with
         /// <see cref="GetPluginConfig{T}"/> rather than caching it. <typeparamref name="T"/>
@@ -227,7 +230,7 @@ namespace BuildForge.Editor.Configuration
         /// </summary>
         public void SetPluginConfig<T>(string key, T config) where T : class
         {
-            PluginConfigSlot.Set(pluginConfigs, key, config);
+            PluginConfigSlot.Set(pluginConfigs, key, config, removeIfDefaultOf: typeof(T));
             EditorUtility.SetDirty(this);
         }
     }
@@ -250,7 +253,13 @@ namespace BuildForge.Editor.Configuration
             return slot?.config as T ?? new T();
         }
 
-        public static void Set(List<PluginConfigSlot> slots, string key, object config)
+        /// <summary>
+        /// Stores <paramref name="config"/> under <paramref name="key"/>; null
+        /// removes the slot. With <paramref name="removeIfDefaultOf"/>, so does a
+        /// config that <see cref="IsDefault"/> finds equal to a new instance of
+        /// that type, which is what <see cref="Get{T}"/> returns without a slot.
+        /// </summary>
+        public static void Set(List<PluginConfigSlot> slots, string key, object config, Type removeIfDefaultOf = null)
         {
             if (config != null)
             {
@@ -260,6 +269,8 @@ namespace BuildForge.Editor.Configuration
                 if (!type.IsSerializable || typeof(UnityEngine.Object).IsAssignableFrom(type))
                     throw new ArgumentException(
                         $"{type.FullName} must be a [Serializable] class that does not derive from UnityEngine.Object.");
+                if (removeIfDefaultOf != null && IsDefault(config, removeIfDefaultOf))
+                    config = null;
             }
 
             var slot = slots.Find(s => s.key == key);
@@ -274,6 +285,19 @@ namespace BuildForge.Editor.Configuration
                 slot.config = config;
             else
                 slots.Add(new PluginConfigSlot { key = key, config = config });
+        }
+
+        /// <summary>
+        /// Whether <paramref name="config"/> is a <paramref name="type"/> whose
+        /// serialized values equal a new one's. False for a subclass, since a
+        /// reader of <paramref name="type"/> would get a new base instance back,
+        /// and for a type without a public parameterless constructor.
+        /// </summary>
+        internal static bool IsDefault(object config, Type type)
+        {
+            if (config.GetType() != type || type.GetConstructor(Type.EmptyTypes) == null)
+                return false;
+            return EditorJsonUtility.ToJson(config) == EditorJsonUtility.ToJson(Activator.CreateInstance(type));
         }
     }
 }

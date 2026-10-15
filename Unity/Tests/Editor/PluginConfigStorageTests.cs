@@ -104,6 +104,48 @@ namespace BuildForge.Tests.Editor
             Assert.DoesNotThrow(() => PluginConfigSlot.Set(slots, "BuildNumber", null));
         }
 
+        [Test]
+        public void SetPluginConfig_BackAtItsDefaults_StoresNothing()
+        {
+            var config = new BuildNumberConfig { Offset = 7 };
+            profile.SetPluginConfig("BuildNumber", config);
+            EditorUtility.ClearDirty(profile);
+
+            config.Offset = 0;
+            profile.SetPluginConfig("BuildNumber", config);
+
+            Assert.AreNotSame(config, profile.GetPluginConfig<BuildNumberConfig>("BuildNumber"),
+                "Settings at their defaults read the same as none, so they are not stored.");
+            Assert.IsTrue(EditorUtility.IsDirty(profile), "Removing the stored settings changes the asset.");
+        }
+
+        [Serializable] class Shape { public int sides; }
+        [Serializable] class ShapeConfig { [SerializeReference] public Shape shape = new Shape(); }
+
+        [Test]
+        public void SetPluginConfig_ChangeInsideAManagedReference_IsStored()
+        {
+            var config = new ShapeConfig();
+            config.shape.sides = 3;
+            profile.SetPluginConfig("Shapes", config);
+
+            Assert.AreSame(config, profile.GetPluginConfig<ShapeConfig>("Shapes"),
+                "A value inside a [SerializeReference] field differs from the defaults too.");
+        }
+
+        [Serializable] class BaseConfig { public int value; }
+        [Serializable] class DerivedConfig : BaseConfig { }
+
+        [Test]
+        public void SetPluginConfig_SubclassAtItsDefaults_IsStored()
+        {
+            BaseConfig config = new DerivedConfig();
+            profile.SetPluginConfig("Derived", config);
+
+            Assert.AreSame(config, profile.GetPluginConfig<BaseConfig>("Derived"),
+                "Without it, a reader of the base class would get a new base instance.");
+        }
+
         class NotSerializable { }
 
         [Test]
@@ -111,6 +153,8 @@ namespace BuildForge.Tests.Editor
         {
             var slots = new List<PluginConfigSlot>();
             Assert.Throws<ArgumentException>(() => PluginConfigSlot.Set(slots, "X", new NotSerializable()));
+            Assert.Throws<ArgumentException>(() => profile.SetPluginConfig("X", new NotSerializable()),
+                "Also when its values are those of a new instance.");
         }
 
         [Test]
@@ -172,6 +216,37 @@ namespace BuildForge.Tests.Editor
             }
         }
 
+        [Test]
+        public void Asset_SettingsChangedBack_LeaveTheAssetAsItWas()
+        {
+            if (!AssetDatabase.IsValidFolder(TempFolder))
+                AssetDatabase.CreateFolder("Assets", "BuildForgeTestTmp");
+
+            try
+            {
+                var asset = ScriptableObject.CreateInstance<ForgeProfile>();
+                AssetDatabase.CreateAsset(asset, TempAssetPath);
+                AssetDatabase.SaveAssets();
+                var untouched = File.ReadAllText(TempAssetPath);
+
+                var config = asset.GetPluginConfig<BuildNumberConfig>("BuildNumber");
+                config.Enabled = true;
+                asset.SetPluginConfig("BuildNumber", config);
+                AssetDatabase.SaveAssets();
+                StringAssert.Contains("key: BuildNumber", File.ReadAllText(TempAssetPath));
+
+                config.Enabled = false;
+                asset.SetPluginConfig("BuildNumber", config);
+                AssetDatabase.SaveAssets();
+                Assert.AreEqual(untouched, File.ReadAllText(TempAssetPath));
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(TempAssetPath);
+                AssetDatabase.DeleteAsset(TempFolder);
+            }
+        }
+
         /// <summary>
         /// Proves ScriptableSingleton.Save writes managed references as plain YAML.
         /// Touches the host project's ProjectSettings/ForgeSettings.asset under a
@@ -203,6 +278,29 @@ namespace BuildForge.Tests.Editor
             {
                 ForgeSettings.instance.SetGlobalPluginConfig<AndroidKeystoreEnvGlobalConfig>(key, null);
                 StringAssert.DoesNotContain(key, File.ReadAllText(path), "Cleanup must remove the test key.");
+            }
+        }
+
+        [Test]
+        public void ForgeSettings_GlobalConfigChangedBack_LeavesNoEntry()
+        {
+            const string key = "BuildForge.Tests.Tmp";
+            const string path = "ProjectSettings/ForgeSettings.asset";
+
+            try
+            {
+                var config = new AndroidKeystoreEnvGlobalConfig { KeystorePathEnvVar = "X_TEST" };
+                ForgeSettings.instance.SetGlobalPluginConfig(key, config);
+                StringAssert.Contains("key: " + key, File.ReadAllText(path));
+
+                // What clearing the field in Project Settings stores; a new instance holds null.
+                config.KeystorePathEnvVar = "";
+                ForgeSettings.instance.SetGlobalPluginConfig(key, config);
+                StringAssert.DoesNotContain(key, File.ReadAllText(path));
+            }
+            finally
+            {
+                ForgeSettings.instance.SetGlobalPluginConfig<AndroidKeystoreEnvGlobalConfig>(key, null);
             }
         }
     }

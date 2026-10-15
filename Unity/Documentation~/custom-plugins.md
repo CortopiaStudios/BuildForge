@@ -170,7 +170,7 @@ forgeProfile.SetPluginConfig("MyStudio.MyPlugin", config);
 ```
 
 - `GetPluginConfig` returns the stored instance, or a new default instance that is **not** stored; reading never changes the asset.
-- After changing it, call `SetPluginConfig` again, which marks the Build Forge settings changed; with **Save Profiles On Edit** on, the Build Forge section saves them right after the edit. Code outside the section saves with `AssetDatabase.SaveAssetIfDirty(forgeProfile)`. Passing null removes the configuration.
+- After changing it, call `SetPluginConfig` again, which marks the Build Forge settings changed; with **Save Profiles On Edit** on, the Build Forge section saves them right after the edit. Code outside the section saves with `AssetDatabase.SaveAssetIfDirty(forgeProfile)`. Passing null removes the configuration, and so does passing one whose values are all those of a new instance, since it would read the same: a setting changed and then changed back leaves the asset as it was.
 - Do not share one instance between profiles, and read it again rather than caching it.
 - The class must be a `[Serializable]` class that does not derive from `UnityEngine.Object`; `SetPluginConfig` throws otherwise. Unity does not serialize dictionaries; use lists.
 - Pick a key that will not collide with other plugins, for example with your studio's or project's name in front.

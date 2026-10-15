@@ -95,12 +95,14 @@ namespace BuildForge.Editor.Configuration
 
         /// <summary>
         /// Stores (or replaces) the global configuration for <paramref name="key"/>
-        /// and saves; null removes it. Same ownership rules as
-        /// <see cref="ForgeProfile.SetPluginConfig{T}"/>.
+        /// and saves; null removes it, and so does a configuration whose serialized
+        /// values equal a new <typeparamref name="T"/>, as with
+        /// <see cref="ForgeProfile.SetPluginConfig{T}"/>, whose ownership rules
+        /// apply too.
         /// </summary>
         public void SetGlobalPluginConfig<T>(string key, T config) where T : class
         {
-            PluginConfigSlot.Set(globalPluginConfigs, key, config);
+            PluginConfigSlot.Set(globalPluginConfigs, key, config, removeIfDefaultOf: typeof(T));
             SaveSettings();
         }
 

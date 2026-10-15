@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Changing a plugin's settings in a profile or in Project Settings and then changing them back, such as an OpenXR feature set to Enable and back to No Override, no longer leaves the plugin's settings in the Build Profile asset or in `ProjectSettings/ForgeSettings.asset` with only default values. `ForgeProfile.SetPluginConfig` and `ForgeSettings.SetGlobalPluginConfig` remove a configuration whose values equal a new instance's, as they remove null, so the file is left as it was
+
 ## [0.9.1] - 2026-10-15
 
 ### Added
