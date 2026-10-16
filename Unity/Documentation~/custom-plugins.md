@@ -83,7 +83,8 @@ The package targets C# 9. Plugins can use only Build Forge's public API, listed 
 Build Forge finds every class with `[ForgePlugin]` that implements `IForgePlugin`, through Unity's `TypeCache`; no registration is needed. Abstract classes are skipped, and a class with the attribute that does not implement the interface is skipped with a warning.
 
 - Each plugin class needs a public parameterless constructor. Build Forge creates one instance and reuses it for every build until the next domain reload, so reset per-build state at the start of `OnPreBuild`, or keep it in the build context (see below).
-- New plugins are enabled for the whole project by default. `[ForgePlugin(SafeToDefaultEnable = false)]` makes a plugin start disabled until someone enables it in **Project Settings > Build Forge > Installed Plugins**.
+- **Installing a plugin must not change any build.** Until a profile turns the plugin on or configures it, the plugin leaves builds as they were. Give a plugin that acts by itself [a per-profile switch](#the-per-profile-switch) that starts off, or have it act only on what a profile configures, as the bundled plugins do. A project's own plugin, meant for every build of that project, can do without.
+- Plugins are enabled for the whole project by default, which makes them available to every profile. `[ForgePlugin(SafeToDefaultEnable = false)]` makes a plugin start disabled until someone enables it in **Project Settings > Build Forge > Installed Plugins**. Use it for a plugin that can't follow the rule above.
 - A plugin turned off there is hidden from the Build Forge section and skipped by builds, but can still restore editor settings it applied before.
 
 ## The interface
@@ -108,7 +109,7 @@ The variant overloads call the plain ones by default, so implement whichever you
 
 ### The per-profile switch
 
-Return non-null from `IsEnabled` and Build Forge handles the switch: it draws the **Enabled** checkbox, calls `SetEnabled` when it changes, greys out the plugin's settings and marks the foldout **(disabled)** while it is off, and skips the plugin's build steps for that profile. The plugin's own code needs no check. Plugins that change what a build produces should default to off, so adding them to a project does not change existing builds.
+Return non-null from `IsEnabled` and Build Forge handles the switch: it draws the **Enabled** checkbox, calls `SetEnabled` when it changes, greys out the plugin's settings and marks the foldout **(disabled)** while it is off, and skips the plugin's build steps for that profile. The plugin's own code needs no check. Start the switch off in a new configuration, so that adding the plugin to a project changes no existing build; see [How plugins are found](#how-plugins-are-found).
 
 ## Execution order
 
