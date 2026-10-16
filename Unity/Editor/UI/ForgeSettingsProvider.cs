@@ -185,8 +185,8 @@ namespace BuildForge.Editor.UI
                 foreach (var plugin in plugins)
                 {
                     var typeName = plugin.GetType().FullName;
-                    var safeDefault = ForgePluginRegistry.IsSafeToDefaultEnable(plugin);
-                    var isDisabled = ForgeSettings.instance.IsPluginDisabledWithDefault(typeName, safeDefault);
+                    var enabledByDefault = ForgePluginRegistry.IsEnabledByDefault(plugin);
+                    var isDisabled = ForgeSettings.instance.IsPluginDisabledWithDefault(typeName, enabledByDefault);
                     var newEnabled = EditorGUILayout.Toggle(
                         new UnityEngine.GUIContent(plugin.DisplayName, plugin.Description), !isDisabled);
                     if (newEnabled == isDisabled)

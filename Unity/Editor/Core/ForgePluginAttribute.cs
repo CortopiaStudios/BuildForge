@@ -6,11 +6,12 @@ namespace BuildForge.Editor.Core
     public class ForgePluginAttribute : Attribute
     {
         /// <summary>
-        /// When false, the plugin is disabled by default until the user explicitly
-        /// enables it in Project Settings. Use for plugins that modify build output
-        /// (PlayerSettings, build artifacts) so they don't silently affect builds
-        /// on first install.
+        /// Whether the plugin starts enabled in Project Settings &gt; Build Forge &gt;
+        /// Installed Plugins, where a project can turn it off; true by default. A
+        /// plugin must not change any build until a profile turns it on or
+        /// configures it. Set this to false for a plugin that can't follow that
+        /// rule, so a project enables it knowingly.
         /// </summary>
-        public bool SafeToDefaultEnable { get; set; } = true;
+        public bool EnabledByDefault { get; set; } = true;
     }
 }

@@ -191,7 +191,7 @@ namespace BuildForge.Editor.UI
             {
                 var pluginId = plugin.GetType().FullName;
                 if (ForgeSettings.instance.IsPluginDisabledWithDefault(
-                    pluginId, ForgePluginRegistry.IsSafeToDefaultEnable(plugin)))
+                    pluginId, ForgePluginRegistry.IsEnabledByDefault(plugin)))
                     continue;
 
                 var applicable = buildProfile != null && plugin.IsApplicable(buildProfile);

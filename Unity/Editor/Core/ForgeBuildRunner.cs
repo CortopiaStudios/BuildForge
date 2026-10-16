@@ -135,7 +135,7 @@ namespace BuildForge.Editor.Core
             // own hooks against being disabled)
             var plugins = ForgePluginRegistry.GetPlugins()
                 .Where(p => !ForgeSettings.instance.IsPluginDisabledWithDefault(
-                    p.GetType().FullName, ForgePluginRegistry.IsSafeToDefaultEnable(p)))
+                    p.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(p)))
                 .Where(p => p.IsApplicable(buildProfile))
                 .Where(p => p.IsEnabled(forgeProfile) != false)
                 .ToList();

@@ -227,7 +227,7 @@ namespace BuildForge.Editor.Core
                 if (!(plugin is IForgeEditorApplicable applicable))
                     continue;
                 if (ForgeSettings.instance.IsPluginDisabledWithDefault(
-                        plugin.GetType().FullName, ForgePluginRegistry.IsSafeToDefaultEnable(plugin)))
+                        plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin)))
                     continue;
                 if (!plugin.IsApplicable(profile.BuildProfile))
                     continue;

@@ -20,15 +20,15 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void SafeToEnable_DefaultsEnabled()
+        public void EnabledByDefault_StartsEnabled()
         {
-            Assert.IsFalse(PluginEnableState.IsDisabled(disabled, enabled, "com.test.fake.plugin", safeToDefaultEnable: true));
+            Assert.IsFalse(PluginEnableState.IsDisabled(disabled, enabled, "com.test.fake.plugin", enabledByDefault: true));
         }
 
         [Test]
-        public void NotSafeToEnable_DefaultsDisabled()
+        public void NotEnabledByDefault_StartsDisabled()
         {
-            Assert.IsTrue(PluginEnableState.IsDisabled(disabled, enabled, "com.test.fake.plugin2", safeToDefaultEnable: false));
+            Assert.IsTrue(PluginEnableState.IsDisabled(disabled, enabled, "com.test.fake.plugin2", enabledByDefault: false));
         }
 
         [Test]
@@ -37,28 +37,28 @@ namespace BuildForge.Tests.Editor
             const string plugin = "com.test.toggle.test";
 
             PluginEnableState.Set(disabled, enabled, plugin, isDisabled: true);
-            Assert.IsTrue(PluginEnableState.IsDisabled(disabled, enabled, plugin, safeToDefaultEnable: true));
+            Assert.IsTrue(PluginEnableState.IsDisabled(disabled, enabled, plugin, enabledByDefault: true));
 
             PluginEnableState.Set(disabled, enabled, plugin, isDisabled: false);
-            Assert.IsFalse(PluginEnableState.IsDisabled(disabled, enabled, plugin, safeToDefaultEnable: false));
+            Assert.IsFalse(PluginEnableState.IsDisabled(disabled, enabled, plugin, enabledByDefault: false));
         }
 
         [Test]
-        public void ExplicitEnable_OverridesUnsafeDefault()
+        public void ExplicitEnable_OverridesDisabledByDefault()
         {
             const string plugin = "com.test.explicit.enable";
 
             PluginEnableState.Set(disabled, enabled, plugin, isDisabled: false);
-            Assert.IsFalse(PluginEnableState.IsDisabled(disabled, enabled, plugin, safeToDefaultEnable: false));
+            Assert.IsFalse(PluginEnableState.IsDisabled(disabled, enabled, plugin, enabledByDefault: false));
         }
 
         [Test]
-        public void ExplicitDisable_OverridesSafeDefault()
+        public void ExplicitDisable_OverridesEnabledByDefault()
         {
             const string plugin = "com.test.explicit.disable";
 
             PluginEnableState.Set(disabled, enabled, plugin, isDisabled: true);
-            Assert.IsTrue(PluginEnableState.IsDisabled(disabled, enabled, plugin, safeToDefaultEnable: true));
+            Assert.IsTrue(PluginEnableState.IsDisabled(disabled, enabled, plugin, enabledByDefault: true));
         }
 
         [Test]

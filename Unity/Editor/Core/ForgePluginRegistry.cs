@@ -59,21 +59,21 @@ namespace BuildForge.Editor.Core
         }
 
         /// <summary>
-        /// Reads the plugin's [ForgePlugin] SafeToDefaultEnable flag.
+        /// Reads the plugin's [ForgePlugin] EnabledByDefault flag.
         /// </summary>
-        public static bool IsSafeToDefaultEnable(IForgePlugin plugin)
+        public static bool IsEnabledByDefault(IForgePlugin plugin)
         {
-            return IsSafeToDefaultEnable(plugin.GetType());
+            return IsEnabledByDefault(plugin.GetType());
         }
 
         /// <summary>
         /// Type-based overload for callers that don't hold a plugin instance.
         /// </summary>
-        public static bool IsSafeToDefaultEnable(Type pluginType)
+        public static bool IsEnabledByDefault(Type pluginType)
         {
             var attr = (ForgePluginAttribute)Attribute.GetCustomAttribute(
                 pluginType, typeof(ForgePluginAttribute));
-            return attr == null || attr.SafeToDefaultEnable;
+            return attr == null || attr.EnabledByDefault;
         }
 
         /// <summary>

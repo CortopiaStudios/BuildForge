@@ -205,10 +205,10 @@ namespace BuildForge.Editor.Configuration
         /// the user turned it off. A profile's own switch is the plugin's IsEnabled.
         /// </summary>
         public bool IsPluginEnabled(System.Type pluginType)
-            => !IsPluginDisabledWithDefault(pluginType.FullName, Core.ForgePluginRegistry.IsSafeToDefaultEnable(pluginType));
+            => !IsPluginDisabledWithDefault(pluginType.FullName, Core.ForgePluginRegistry.IsEnabledByDefault(pluginType));
 
-        internal bool IsPluginDisabledWithDefault(string pluginTypeName, bool safeToDefaultEnable)
-            => PluginEnableState.IsDisabled(disabledPlugins, enabledPlugins, pluginTypeName, safeToDefaultEnable);
+        internal bool IsPluginDisabledWithDefault(string pluginTypeName, bool enabledByDefault)
+            => PluginEnableState.IsDisabled(disabledPlugins, enabledPlugins, pluginTypeName, enabledByDefault);
 
         internal void SetPluginDisabled(string pluginTypeName, bool disabled)
         {
@@ -233,13 +233,13 @@ namespace BuildForge.Editor.Configuration
     internal static class PluginEnableState
     {
         public static bool IsDisabled(
-            List<string> disabled, List<string> enabled, string pluginTypeName, bool safeToDefaultEnable)
+            List<string> disabled, List<string> enabled, string pluginTypeName, bool enabledByDefault)
         {
             if (disabled.Contains(pluginTypeName))
                 return true;
             if (enabled.Contains(pluginTypeName))
                 return false;
-            return !safeToDefaultEnable;
+            return !enabledByDefault;
         }
 
         public static void Set(

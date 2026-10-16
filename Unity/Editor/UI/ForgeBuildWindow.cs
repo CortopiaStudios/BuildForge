@@ -166,7 +166,7 @@ namespace BuildForge.Editor.UI
                 foreach (var plugin in plugins)
                 {
                     if (ForgeSettings.instance.IsPluginDisabledWithDefault(
-                        plugin.GetType().FullName, ForgePluginRegistry.IsSafeToDefaultEnable(plugin))) continue;
+                        plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin))) continue;
                     if (!plugin.IsApplicable(profile.BuildProfile)) continue;
                     if (plugin.IsEnabled(profile) == false) continue;
                     warnings.AddRange(plugin.Validate(profile, CurrentVariant));
@@ -769,7 +769,7 @@ namespace BuildForge.Editor.UI
                 return true;
             var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == "BuildForge.Editor.Plugins.BuildNumberPlugin");
             return plugin != null
-                   && !ForgeSettings.instance.IsPluginDisabledWithDefault(plugin.GetType().FullName, ForgePluginRegistry.IsSafeToDefaultEnable(plugin))
+                   && !ForgeSettings.instance.IsPluginDisabledWithDefault(plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin))
                    && plugin.IsApplicable(profile.BuildProfile)
                    && plugin.IsEnabled(profile) != false;
         }
@@ -814,7 +814,7 @@ namespace BuildForge.Editor.UI
             {
                 string skipReason = null;
                 if (ForgeSettings.instance.IsPluginDisabledWithDefault(
-                        plugin.GetType().FullName, ForgePluginRegistry.IsSafeToDefaultEnable(plugin)))
+                        plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin)))
                     skipReason = "disabled in Project Settings";
                 else if (!plugin.IsApplicable(buildProfile))
                     skipReason = plugin.NotApplicableReason(buildProfile) ?? "not applicable to this Unity Build Profile";
