@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using BuildForge.Editor.Core;
+using BuildForge.Editor.UI;
 using NUnit.Framework;
 using UnityEditor;
 using ColumnKind = BuildForge.Editor.Core.PlayerSettingsMatrix.ColumnKind;
@@ -139,6 +140,26 @@ namespace BuildForge.Tests.Editor
             CollectionAssert.IsEmpty(matrix.Columns);
             CollectionAssert.IsEmpty(matrix.Rows);
             CollectionAssert.AreEqual(new[] { "Windows", "Quest" }, matrix.UsingProjectSettings);
+        }
+
+        // A cell's tooltip holds its whole value, which a narrow column cuts off,
+        // without the column's name, which the header shows, or how to select the
+        // profile, which the legend says.
+        [Test]
+        public void CellTooltip_IsTheCellsValue_AndAProfileCellAddsTheProjectSettingsValue()
+        {
+            var matrix = PlayerSettingsMatrix.Build(new[]
+            {
+                Profile("Quest", BuildTarget.Android, OwnCopy(("bundleVersion", "1.11.0"), ("androidSplitApplicationBinary", "1"))),
+                Profile("Steam Frame", BuildTarget.Android, OwnCopy(("bundleVersion", "1.11.0"))),
+            }, Project);
+            var split = matrix.Rows.Single(r => r.PropertyPath == "androidSplitApplicationBinary");
+            var version = matrix.Rows.Single(r => r.PropertyPath == "bundleVersion");
+
+            Assert.AreEqual("0", PlayerSettingsMatrixView.CellTooltip(matrix, split, 0));
+            Assert.AreEqual("1\nProject Settings (Android): 0", PlayerSettingsMatrixView.CellTooltip(matrix, split, 1));
+            StringAssert.StartsWith("1.11.0\nProject Settings (Android): 1.12.0\nEvery profile with Player Settings of its own",
+                PlayerSettingsMatrixView.CellTooltip(matrix, version, 2), "A possibly stale cell says why it is marked.");
         }
 
         // Windows and macOS share the Standalone group, but Unity keys some of

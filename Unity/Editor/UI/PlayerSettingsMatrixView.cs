@@ -233,23 +233,25 @@ namespace BuildForge.Editor.UI
                 PlayerSettingsDiffView.DrawValue(rect, row.PropertyPath, row.Values[c]);
                 GUI.contentColor = previous;
             }
-            GUI.Label(rect, new GUIContent(string.Empty, CellTooltip(row, c)));
+            GUI.Label(rect, new GUIContent(string.Empty, CellTooltip(matrix, row, c)));
         }
 
-        string CellTooltip(PlayerSettingsMatrix.Row row, int c)
+        // The cell's whole value, without its column's name, which the header shows,
+        // or how to select the profile, which the legend says. A profile's cell adds
+        // its platform's Project Settings value.
+        internal static string CellTooltip(PlayerSettingsMatrix matrix, PlayerSettingsMatrix.Row row, int c)
         {
             var column = matrix.Columns[c];
+            if (column.Kind == ColumnKind.ProjectSettings)
+                return row.Values[c];
             var shared = c;
             while (matrix.Columns[shared].Kind != ColumnKind.ProjectSettings)
                 shared--;
-            var projectValue = $"Project Settings ({column.Platform}): {row.Values[shared]}";
-            if (column.Kind == ColumnKind.ProjectSettings)
-                return projectValue;
-            var tooltip = $"{column.ProfileName}: {row.Values[c]}\n{projectValue}";
+            var tooltip = $"{row.Values[c]}\nProject Settings ({column.Platform}): {row.Values[shared]}";
             if (row.PossiblyStale)
                 tooltip += "\nEvery profile with Player Settings of its own has this value, unlike Project Settings: possibly " +
                            "a Project Settings change that was not copied into them.";
-            return tooltip + "\nClick to select the Unity Build Profile.";
+            return tooltip;
         }
 
         void DrawLegend(int profileColumns)
