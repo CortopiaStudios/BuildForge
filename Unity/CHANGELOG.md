@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-10-16
+
 ### Added
 - `IForgeEditorApplicable.MergeEditorState`, optional: the snapshot that undoes an Apply after its settings changed, keeping those changes. Without it, Build Forge restores the baseline then and warns that this may undo them
 
