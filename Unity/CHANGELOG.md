@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `IForgeEditorApplicable.MergeEditorState`, optional: the snapshot that undoes an Apply after its settings changed, keeping those changes. Without it, Build Forge restores the baseline then and warns that this may undo them
+
+### Fixed
+- Undoing an Apply no longer undoes changes made to its settings since, such as a git pull's. Revert to Baseline, Re-apply, Activate and every build while a profile is applied restored the settings from before the Apply. A build then used those old values and wrote them back into the project, where they could be committed over a teammate's change. Now each OpenXR setting, feature state and XR Management value goes back only where it still has the value the Apply wrote. **Dismiss Drift** takes the accepted changes into the baseline, so reverting later keeps them
+
 ## [0.9.2] - 2026-10-16
 
 ### Added

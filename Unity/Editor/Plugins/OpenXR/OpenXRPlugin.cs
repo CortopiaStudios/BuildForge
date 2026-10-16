@@ -564,6 +564,9 @@ namespace BuildForge.Editor.OpenXR
             OpenXRSettingsState.Restore(group, OpenXREditorStateSnapshot.FromJson(json));
         }
 
+        public string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)
+            => OpenXRSettingsState.Merge(baselineJson, expectedJson, currentJson);
+
         #endregion
 
         public void ContributeToManifest(BuildManifest manifest, ForgeBuildContext context)

@@ -71,16 +71,16 @@ namespace BuildForge.Editor.Core
         const string LogPrefix = "[Build Forge/EditorState]";
 
         /// <summary>
-        /// Restores every entry to its baseline (reverse order), removing only
-        /// successful entries. Failed entries remain available for retry, even
-        /// without the previously applied profile asset.
+        /// Undoes every entry's Apply (reverse order; see <see cref="RestoreEntry"/>),
+        /// removing only successful entries. Failed entries remain available for
+        /// retry, even without the previously applied profile asset.
         /// </summary>
         public static void RevertAll(List<EditorStateEntry> entries, Func<string, IForgeEditorApplicable> resolve)
         {
             var failures = new List<Exception>();
             for (int i = entries.Count - 1; i >= 0; i--)
             {
-                var failure = RestoreEntry(entries[i], entries[i].baselineJson, resolve);
+                var failure = RestoreEntry(entries[i], resolve, out _);
                 if (failure == null)
                     entries.RemoveAt(i);
                 else
@@ -212,7 +212,12 @@ namespace BuildForge.Editor.Core
             return drift;
         }
 
-        /// <summary>Makes the current state the expected state; baselines are untouched.</summary>
+        /// <summary>
+        /// Makes the current state the expected state. When the plugin can merge
+        /// (see <see cref="IForgeEditorApplicable.MergeEditorState"/>), the accepted
+        /// changes also go into the baseline, so undoing the Apply later keeps them;
+        /// otherwise the baseline is untouched.
+        /// </summary>
         public static bool DismissDrift(List<EditorStateEntry> entries, Func<string, IForgeEditorApplicable> resolve)
         {
             var changed = false;
@@ -223,21 +228,38 @@ namespace BuildForge.Editor.Core
                 var current = TryCapture(plugin, group, entry.key);
                 if (current == null || current == entry.expectedJson)
                     continue;
+                try
+                {
+                    var merged = plugin.MergeEditorState(group, entry.baselineJson, entry.expectedJson, current);
+                    if (merged != null)
+                        entry.baselineJson = merged;
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError($"{LogPrefix} {entry.key}: merge failed; the baseline is unchanged. {e.Message}");
+                }
                 entry.expectedJson = current;
                 changed = true;
             }
             return changed;
         }
 
-        /// <summary>Restores baselines but keeps the entries, so the applied state can be resumed after a build.</summary>
+        /// <summary>
+        /// Undoes every entry's Apply but keeps the entries, so the applied state
+        /// can be resumed after a build. What was restored becomes the entry's
+        /// baseline, so changes kept because they were made after the Apply (see
+        /// <see cref="RestoreEntry"/>) stay kept when the profile is reverted later.
+        /// </summary>
         public static void SuspendForBuild(List<EditorStateEntry> entries, Func<string, IForgeEditorApplicable> resolve)
         {
             var failures = new List<Exception>();
             for (int i = entries.Count - 1; i >= 0; i--)
             {
-                var failure = RestoreEntry(entries[i], entries[i].baselineJson, resolve);
+                var failure = RestoreEntry(entries[i], resolve, out var restored);
                 if (failure != null)
                     failures.Add(failure);
+                else
+                    entries[i].baselineJson = restored;
             }
 
             if (failures.Count > 0)
@@ -295,8 +317,17 @@ namespace BuildForge.Editor.Core
             return result;
         }
 
-        static Exception RestoreEntry(EditorStateEntry entry, string json, Func<string, IForgeEditorApplicable> resolve)
+        /// <summary>
+        /// Undoes an entry's Apply. While the settings are as the Apply left them,
+        /// that is the baseline. Once they changed after the Apply, as with a git
+        /// pull, the baseline would undo those changes too, so the plugin merges
+        /// the three states to undo only the Apply (see
+        /// <see cref="IForgeEditorApplicable.MergeEditorState"/>). <paramref name="restored"/>
+        /// is the snapshot written.
+        /// </summary>
+        static Exception RestoreEntry(EditorStateEntry entry, Func<string, IForgeEditorApplicable> resolve, out string restored)
         {
+            restored = null;
             if (!TryResolve(entry, resolve, out var plugin, out var group))
             {
                 Debug.LogWarning($"{LogPrefix} {entry.key}: plugin not found, cannot restore its settings.");
@@ -305,7 +336,9 @@ namespace BuildForge.Editor.Core
 
             try
             {
+                var json = UndoApply(entry, plugin, group);
                 plugin.RestoreEditorState(group, json);
+                restored = json;
             }
             catch (Exception e)
             {
@@ -314,6 +347,23 @@ namespace BuildForge.Editor.Core
             }
 
             return null;
+        }
+
+        static string UndoApply(EditorStateEntry entry, IForgeEditorApplicable plugin, BuildTargetGroup group)
+        {
+            var current = TryCapture(plugin, group, entry.key);
+            if (current == null || current == entry.expectedJson || current == entry.baselineJson)
+                return entry.baselineJson;
+
+            var merged = plugin.MergeEditorState(group, entry.baselineJson, entry.expectedJson, current);
+            if (merged == null)
+            {
+                Debug.LogWarning($"{LogPrefix} {entry.key}: the settings changed after the Apply, and the plugin can't " +
+                                 "tell those changes from the Apply's, so restoring the state from before the Apply may undo them.");
+                return entry.baselineJson;
+            }
+            Debug.Log($"{LogPrefix} {entry.key}: kept the changes made to the settings after the Apply and undid only the Apply.");
+            return merged;
         }
 
         static bool TryResolve(

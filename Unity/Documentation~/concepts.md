@@ -42,7 +42,7 @@ A build runs these steps:
 1. Checks that the variant is valid for the profile and that the profile is active.
 2. With **Remove Previous Build Output** on, removes the previous build's files from the destination.
 3. Marks a variant build's product name, for example `My Game (Internal)`.
-4. If a profile is applied to the editor, restores its baseline, so the build starts from the project's own settings.
+4. If a profile is applied to the editor, restores its baseline, so the build starts from the project's own settings. Settings changed after the Apply keep their new values.
 5. Puts the variant's development flags and defines on the Build Profile.
 6. Runs each plugin's pre-build step, in plugin order.
 7. Writes the build manifest, with every plugin's contribution.
@@ -84,13 +84,15 @@ Apply first reverts whatever is applied, then records each setting's current val
 
 A plugin that cannot apply its settings stops the Apply, as it would stop a build, for example XR Loaders on a platform without XR Plug-in Management settings. Build Forge then restores what the Apply wrote, nothing is applied afterwards, not even the profile that was applied before, and the console names the plugin and the reason.
 
-Once a profile is applied, the button reads **Re-apply**. Use it after editing the profile's plugin settings: Re-apply goes back to the baseline and applies the profile as it is now, so removed overrides disappear too.
+Once a profile is applied, the button reads **Re-apply**. Use it after editing the profile's plugin settings: Re-apply undoes the Apply and applies the profile as it is now, so removed overrides disappear too.
 
 Apply is available for the active profile when it has something to apply: a plugin with editor settings, Play Mode XR to copy, or any configured variant. Apply, Activate and Revert to Baseline are disabled in Play Mode, while scripts compile or assets import, and during builds.
 
 ## Revert to Baseline
 
 **Revert to Baseline** restores every setting the applied profile changed, in reverse order, removes the variant defines Apply wrote, and forgets the applied profile.
+
+Settings that changed after the Apply, for example in a git pull, keep their new values. Build Forge restores the baseline only where a setting still has the value the Apply wrote, and so do Re-apply, Activate and builds. The bundled plugins compare each OpenXR setting, each feature's enabled state and its properties as a whole, and each XR Management value. A custom plugin restores its whole baseline, with a warning, unless it implements [`MergeEditorState`](custom-plugins.md#applying-settings-to-the-editor). As with `git revert`, a setting changed after the Apply to the very value the Apply wrote counts as the Apply's and goes back too.
 
 If a setting cannot be restored, its baseline is kept for another attempt, and Apply, Activate, Revert to Baseline and builds stop on it until a revert succeeds. When the cause is permanent, for example the package of the plugin that wrote the setting was removed, or the baseline names an XR loader that no longer exists, the dialog after the failed revert offers **Stop Tracking**: those settings keep their current values and Build Forge forgets them. As a last resort, with the editor closed, deleting `UserSettings/ForgeEditorState.asset` forgets every baseline.
 
@@ -102,7 +104,7 @@ The build window lists drifted settings, for example `OpenXR (Android)`, with **
 
 - **Re-apply** writes the profile's settings again.
 - **Revert to Baseline** undoes the Apply.
-- **Dismiss Drift** accepts the current state as the applied one, for legitimate changes such as a package upgrade rewriting its settings. Baselines and the profile are unchanged, and the next Apply or build writes the profile's settings again. It covers plugin settings only: a missing variant define stays reported until Re-apply or Revert to Baseline, so the build window offers Dismiss Drift only while plugin settings have drifted.
+- **Dismiss Drift** accepts the current state as the applied one, for legitimate changes such as a package upgrade rewriting its settings. The accepted changes also go into the baseline, so undoing the Apply keeps them. The profile is unchanged, and the next Apply or build writes the profile's settings again. It covers plugin settings only: a missing variant define stays reported until Re-apply or Revert to Baseline, so the build window offers Dismiss Drift only while plugin settings have drifted.
 
 Drift is checked at most every two seconds.
 
@@ -114,7 +116,7 @@ The build window and the main toolbar warn about that, the toolbar with the warn
 
 ## Builds while a profile is applied
 
-A build always starts from the baseline: it restores the applied profile's settings first, applies the built profile's own settings, and applies the previously applied profile again afterwards. That holds also when the built profile is the applied one, since its configuration may have changed since it was applied. An applied profile therefore never leaks into a build.
+A build always starts from the baseline: it undoes the applied profile's settings first, keeping settings changed after the Apply, applies the built profile's own settings, and applies the previously applied profile again afterwards. That holds also when the built profile is the applied one, since its configuration may have changed since it was applied. An applied profile therefore never leaks into a build.
 
 ## Commit settings while nothing is applied
 

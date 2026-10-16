@@ -39,6 +39,9 @@ namespace BuildForge.Editor.OpenXR
         public void RestoreEditorState(BuildTargetGroup group, string json)
             => OpenXRSettingsState.Restore(group, OpenXREditorStateSnapshot.FromJson(json));
 
+        public string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)
+            => OpenXRSettingsState.Merge(baselineJson, expectedJson, currentJson);
+
         public void OnDrawPlayModeSettingsGUI()
         {
             var config = OpenXRPlugin.GetGlobalConfig();

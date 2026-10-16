@@ -90,6 +90,24 @@ namespace BuildForge.Editor.XRManagement
             Set(target, snapshot.initManagerOnStart, loaders);
         }
 
+        // Each field takes the baseline's value while the current one is still the
+        // one the Apply left; the loader list counts as one value.
+        public string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)
+        {
+            if (string.IsNullOrEmpty(baselineJson) || string.IsNullOrEmpty(expectedJson) || string.IsNullOrEmpty(currentJson))
+                return null;
+            var baseline = JsonUtility.FromJson<Snapshot>(baselineJson);
+            var expected = JsonUtility.FromJson<Snapshot>(expectedJson);
+            var current = JsonUtility.FromJson<Snapshot>(currentJson);
+            return JsonUtility.ToJson(new Snapshot
+            {
+                initManagerOnStart = current.initManagerOnStart == expected.initManagerOnStart
+                    ? baseline.initManagerOnStart
+                    : current.initManagerOnStart,
+                loaderGuids = current.loaderGuids.SequenceEqual(expected.loaderGuids) ? baseline.loaderGuids : current.loaderGuids,
+            });
+        }
+
         static void Set(XRGeneralSettings settings, bool initManagerOnStart, List<XRLoader> loaders)
         {
             settings.InitManagerOnStart = initManagerOnStart;

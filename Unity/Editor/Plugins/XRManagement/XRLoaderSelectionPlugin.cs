@@ -106,6 +106,11 @@ namespace BuildForge.Editor.XRManagement
             SetLoaders(group, loaders);
         }
 
+        // The loader list is the whole snapshot and counts as one value. Build Forge
+        // asks only once it changed after the Apply, so the current list is kept.
+        public string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)
+            => currentJson;
+
         static void SetLoaders(BuildTargetGroup group, List<XRLoader> loaders)
         {
             var manager = Manager(group);

@@ -133,7 +133,7 @@ namespace BuildForge.Tests.Editor
             Apply(profileB, BuildTargetGroup.Android);
 
             CollectionAssert.AreEqual(
-                new[] { "restore:Android:base", "capture:Android", "apply:B:Android", "capture:Android" }, plugin.Calls);
+                new[] { "capture:Android", "restore:Android:base", "capture:Android", "apply:B:Android", "capture:Android" }, plugin.Calls);
             Assert.AreEqual(1, entries.Count);
             Assert.AreEqual("base", entries[0].baselineJson, "B's baseline must be the pre-A state, not A's state.");
             Assert.AreEqual("base+B", plugin.World[BuildTargetGroup.Android], "No stacking.");
@@ -248,7 +248,9 @@ namespace BuildForge.Tests.Editor
 
             EditorStateApplier.RevertAll(entries, Resolve);
 
-            CollectionAssert.AreEqual(new[] { "restore:Standalone:base", "restore:Android:base" }, plugin.Calls);
+            CollectionAssert.AreEqual(
+                new[] { "capture:Standalone", "restore:Standalone:base", "capture:Android", "restore:Android:base" }, plugin.Calls,
+                "Each restore first captures, to see whether the settings changed after the Apply.");
             Assert.IsEmpty(entries);
         }
 
@@ -303,7 +305,7 @@ namespace BuildForge.Tests.Editor
             Assert.Throws<AggregateException>(() => Apply(profileB, BuildTargetGroup.Android));
 
             Assert.AreEqual(0, checkpoints);
-            CollectionAssert.AreEqual(new[] { "restore:Android:base" }, plugin.Calls);
+            CollectionAssert.AreEqual(new[] { "capture:Android", "restore:Android:base" }, plugin.Calls);
             Assert.AreEqual("base", entries[0].baselineJson);
             Assert.AreEqual("base+A", entries[0].expectedJson);
             Assert.AreEqual("base+A", plugin.World[BuildTargetGroup.Android]);
@@ -474,6 +476,154 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual(1, result.Failures.Count);
             Assert.AreEqual("baseline", entries.Single().baselineJson);
             Assert.AreEqual("applied", entries.Single().expectedJson);
+        }
+
+        /// <summary>
+        /// World state per group is a set of settings, "key=value" pairs sorted and
+        /// joined with ';', starting as "x=1". Applying a profile sets the setting
+        /// named after it, so profile A writes "A=on". Merges per setting.
+        /// </summary>
+        class KeyedPlugin : IForgeEditorApplicable
+        {
+            readonly Dictionary<BuildTargetGroup, SortedDictionary<string, string>> world = new();
+
+            SortedDictionary<string, string> Settings(BuildTargetGroup group)
+                => world.TryGetValue(group, out var settings) ? settings : world[group] = Parse("x=1");
+
+            public string State(BuildTargetGroup group) => Serialize(Settings(group));
+
+            public void Set(BuildTargetGroup group, string key, string value) => Settings(group)[key] = value;
+
+            public string CaptureEditorState(BuildTargetGroup group) => State(group);
+
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) => Set(group, forgeProfile.name, "on");
+
+            public void RestoreEditorState(BuildTargetGroup group, string json) => world[group] = Parse(json);
+
+            public string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)
+            {
+                var baseline = Parse(baselineJson);
+                var expected = Parse(expectedJson);
+                var current = Parse(currentJson);
+                var merged = new SortedDictionary<string, string>();
+                foreach (var key in baseline.Keys.Union(current.Keys))
+                {
+                    baseline.TryGetValue(key, out var before);
+                    expected.TryGetValue(key, out var applied);
+                    current.TryGetValue(key, out var now);
+                    var value = now == applied ? before : now;
+                    if (value != null)
+                        merged[key] = value;
+                }
+                return Serialize(merged);
+            }
+
+            static string Serialize(SortedDictionary<string, string> settings)
+                => string.Join(";", settings.Select(p => p.Key + "=" + p.Value));
+
+            static SortedDictionary<string, string> Parse(string json)
+            {
+                var settings = new SortedDictionary<string, string>();
+                foreach (var pair in json.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+                    settings[pair.Split('=')[0]] = pair.Split('=')[1];
+                return settings;
+            }
+        }
+
+        const string KeyedName = "Keyed";
+        static readonly Regex KeptLog = new Regex(@"Keyed\|Android: kept the changes made to the settings after the Apply");
+
+        void ApplyKeyed(KeyedPlugin keyed, ForgeProfile profile)
+            => EditorStateApplier.Apply(entries,
+                new[] { new EditorStatePair { PluginTypeName = KeyedName, Group = BuildTargetGroup.Android, Plugin = keyed } },
+                profile, name => name == KeyedName ? keyed : null, null);
+
+        // A change made after the Apply, as by a git pull, survives the build: only
+        // what the Apply wrote is undone, and the kept change becomes the baseline,
+        // so reverting later keeps it too.
+        [Test]
+        public void Suspend_KeepsChangesMadeAfterTheApply_AndUndoesOnlyTheApply()
+        {
+            var keyed = new KeyedPlugin();
+            Func<string, IForgeEditorApplicable> resolve = name => name == KeyedName ? keyed : null;
+            ApplyKeyed(keyed, profileA);
+            Assert.AreEqual("A=on;x=1", keyed.State(BuildTargetGroup.Android));
+            keyed.Set(BuildTargetGroup.Android, "x", "2");
+            LogAssert.Expect(LogType.Log, KeptLog);
+
+            EditorStateApplier.SuspendForBuild(entries, resolve);
+
+            Assert.AreEqual("x=2", keyed.State(BuildTargetGroup.Android));
+            Assert.AreEqual("x=2", entries.Single().baselineJson);
+            EditorStateApplier.ResumeAfterBuild(entries, profileA, resolve);
+            Assert.AreEqual("A=on;x=2", keyed.State(BuildTargetGroup.Android));
+            Assert.IsEmpty(EditorStateApplier.Drift(entries, resolve));
+            EditorStateApplier.RevertAll(entries, resolve);
+            Assert.AreEqual("x=2", keyed.State(BuildTargetGroup.Android));
+        }
+
+        [Test]
+        public void RevertAll_KeepsChangesMadeAfterTheApply()
+        {
+            var keyed = new KeyedPlugin();
+            ApplyKeyed(keyed, profileA);
+            keyed.Set(BuildTargetGroup.Android, "x", "2");
+            keyed.Set(BuildTargetGroup.Android, "y", "3");
+            LogAssert.Expect(LogType.Log, KeptLog);
+
+            EditorStateApplier.RevertAll(entries, name => name == KeyedName ? keyed : null);
+
+            Assert.AreEqual("x=2;y=3", keyed.State(BuildTargetGroup.Android));
+            Assert.IsEmpty(entries);
+        }
+
+        // Accepting drift takes the accepted changes into the baseline too, so
+        // undoing the Apply later keeps them.
+        [Test]
+        public void DismissDrift_TakesTheAcceptedChangesIntoTheBaseline()
+        {
+            var keyed = new KeyedPlugin();
+            Func<string, IForgeEditorApplicable> resolve = name => name == KeyedName ? keyed : null;
+            ApplyKeyed(keyed, profileA);
+            keyed.Set(BuildTargetGroup.Android, "x", "2");
+
+            Assert.IsTrue(EditorStateApplier.DismissDrift(entries, resolve));
+
+            Assert.AreEqual("x=2", entries.Single().baselineJson);
+            Assert.AreEqual("A=on;x=2", entries.Single().expectedJson);
+            EditorStateApplier.RevertAll(entries, resolve);
+            Assert.AreEqual("x=2", keyed.State(BuildTargetGroup.Android));
+        }
+
+        // Re-applying keeps what changed after the Apply and writes the profile's own
+        // settings again, so a pulled value of one of them returns on revert.
+        [Test]
+        public void Reapply_KeepsChangesMadeAfterTheApply_AndWritesTheProfilesSettingsAgain()
+        {
+            var keyed = new KeyedPlugin();
+            ApplyKeyed(keyed, profileA);
+            keyed.Set(BuildTargetGroup.Android, "A", "off");
+            keyed.Set(BuildTargetGroup.Android, "x", "2");
+            LogAssert.Expect(LogType.Log, KeptLog);
+
+            ApplyKeyed(keyed, profileA);
+
+            Assert.AreEqual("A=on;x=2", keyed.State(BuildTargetGroup.Android));
+            Assert.AreEqual("A=off;x=2", entries.Single().baselineJson);
+        }
+
+        // Without MergeEditorState a plugin can't tell changes made after the Apply
+        // from the Apply's: the baseline is restored, with a warning.
+        [Test]
+        public void ChangedAfterTheApply_WithoutMerge_RestoresTheBaselineAndWarns()
+        {
+            Apply(profileA, BuildTargetGroup.Android);
+            plugin.World[BuildTargetGroup.Android] = "base+A+pulled";
+            LogAssert.Expect(LogType.Warning, new Regex(@"Fake\|Android: the settings changed after the Apply"));
+
+            EditorStateApplier.RevertAll(entries, Resolve);
+
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
         }
     }
 }

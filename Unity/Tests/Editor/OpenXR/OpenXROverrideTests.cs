@@ -568,5 +568,85 @@ namespace BuildForge.Tests.OpenXR
             }
             finally { Object.DestroyImmediate(profile); }
         }
+
+        static OpenXREditorStateSnapshot Snapshot(string renderMode, string latency, params OpenXRFeatureState[] features)
+        {
+            var snapshot = new OpenXREditorStateSnapshot();
+            snapshot.settings.Add(new SettingsOverride { propertyName = "m_renderMode", value = renderMode });
+            snapshot.settings.Add(new SettingsOverride { propertyName = "m_latencyOptimization", value = latency });
+            snapshot.features.AddRange(features);
+            return snapshot;
+        }
+
+        static OpenXRFeatureState Feature(string name, bool enabled, string json = "{}")
+            => new OpenXRFeatureState { featureTypeName = name, enabled = enabled, json = json };
+
+        // Undoing an Apply after a git pull: what the Apply wrote goes back to the
+        // baseline, what changed after it stays.
+        [Test] public void Merge_UndoesTheApply_AndKeepsChangesMadeAfterIt()
+        {
+            var baseline = Snapshot("0", "0", Feature("Hands", false, "{\"a\":1}"), Feature("Touch", false)).ToJson();
+            var expected = Snapshot("1", "0", Feature("Hands", true, "{\"a\":1}"), Feature("Touch", false)).ToJson();
+            var current = Snapshot("1", "1", Feature("Hands", true, "{\"a\":2}"), Feature("Touch", true)).ToJson();
+
+            var merged = OpenXREditorStateSnapshot.FromJson(OpenXRSettingsState.Merge(baseline, expected, current));
+
+            Assert.AreEqual("0", merged.settings.Single(s => s.propertyName == "m_renderMode").value, "The Apply's setting is undone.");
+            Assert.AreEqual("1", merged.settings.Single(s => s.propertyName == "m_latencyOptimization").value, "The pulled setting stays.");
+            var hands = merged.features.Single(f => f.featureTypeName == "Hands");
+            Assert.IsFalse(hands.enabled, "The feature the Apply turned on goes off again.");
+            Assert.AreEqual("{\"a\":2}", hands.json, "Its pulled properties stay.");
+            Assert.IsTrue(merged.features.Single(f => f.featureTypeName == "Touch").enabled, "The feature the pull turned on stays on.");
+        }
+
+        // A snapshot leaves out interaction profiles while Build Forge doesn't manage
+        // them, and a feature can come or go with a package.
+        [Test] public void Merge_TakesTheBaselineForWhatTheCurrentSnapshotLeavesOut()
+        {
+            var baseline = Snapshot("0", "0", Feature("Hands", false), Feature("Touch", false)).ToJson();
+            var expected = Snapshot("0", "0", Feature("Hands", true), Feature("Touch", true)).ToJson();
+            var current = Snapshot("0", "0", Feature("Hands", true), Feature("New", true)).ToJson();
+
+            var merged = OpenXREditorStateSnapshot.FromJson(OpenXRSettingsState.Merge(baseline, expected, current));
+
+            CollectionAssert.AreEquivalent(new[] { "Hands", "New", "Touch" }, merged.features.Select(f => f.featureTypeName));
+            Assert.IsFalse(merged.features.Single(f => f.featureTypeName == "Touch").enabled, "Not in the current snapshot: the baseline's.");
+            Assert.IsFalse(merged.features.Single(f => f.featureTypeName == "Hands").enabled);
+            Assert.IsTrue(merged.features.Single(f => f.featureTypeName == "New").enabled, "Only in the current snapshot: kept.");
+            Assert.IsNull(OpenXRSettingsState.Merge(baseline, expected, "not json"));
+        }
+
+        // The same on the host's Standalone settings: the Apply turned on one
+        // controller profile, a pull another, and restoring the merge keeps the pull's.
+        [Test] public void Merge_OnRealSettings_RestoresWhatTheApplyChangedOnly()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var applied = standalone.GetFeature<KHRSimpleControllerProfile>();
+            var pulled = standalone.GetFeature<HTCViveControllerProfile>();
+            Assert.That(applied, Is.Not.Null);
+            Assert.That(pulled, Is.Not.Null);
+            var original = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            try
+            {
+                applied.enabled = false;
+                pulled.enabled = false;
+                var baseline = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson();
+                applied.enabled = true;
+                var expected = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson();
+                pulled.enabled = true;
+                var current = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson();
+
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone,
+                    OpenXREditorStateSnapshot.FromJson(OpenXRSettingsState.Merge(baseline, expected, current)));
+
+                Assert.IsFalse(applied.enabled, "The Apply is undone.");
+                Assert.IsTrue(pulled.enabled, "The pull is kept.");
+            }
+            finally
+            {
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
     }
 }

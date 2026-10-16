@@ -173,5 +173,13 @@ namespace BuildForge.Tests.XRManagement
             plugin.SetEnabled(profile, false);
             CollectionAssert.AreEqual(manager.activeLoaders, XRLoaderSelectionPlugin.EffectiveLoaders(profile, Group));
         }
+
+        // The loader list is one value: changed after the Apply, it is kept.
+        [Test]
+        public void Merge_KeepsALoaderListChangedAfterTheApply()
+        {
+            Assert.AreEqual("{\"loaderGuids\":[\"pulled\"]}", plugin.MergeEditorState(Group,
+                "{\"loaderGuids\":[\"base\"]}", "{\"loaderGuids\":[\"applied\"]}", "{\"loaderGuids\":[\"pulled\"]}"));
+        }
     }
 }

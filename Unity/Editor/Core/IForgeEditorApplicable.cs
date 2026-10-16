@@ -47,5 +47,19 @@ namespace BuildForge.Editor.Core
         /// back into the global project settings and saves them.
         /// </summary>
         void RestoreEditorState(BuildTargetGroup group, string json);
+
+        /// <summary>
+        /// The snapshot to restore when Build Forge undoes the Apply (Revert to
+        /// Baseline, the next Apply, and before a build) while the settings changed
+        /// after it: <paramref name="currentJson"/> differs from
+        /// <paramref name="expectedJson"/>, the state the Apply left, as after a git
+        /// pull. Take <paramref name="baselineJson"/>'s value for each setting whose
+        /// current value is still the one the Apply left, and keep the current
+        /// value of every other setting, so only the Apply is undone. Return null
+        /// when the plugin can't tell the two apart: Build Forge then restores the
+        /// baseline and warns that this may undo those changes.
+        /// </summary>
+        string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)
+            => null;
     }
 }

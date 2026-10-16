@@ -144,5 +144,18 @@ namespace BuildForge.Tests.XRManagement
             ForgeSettings.instance.PlayModeFollowsAppliedProfile = false;
             Assert.IsFalse(ForgeEditorState.GetParticipatingPairs(profile).Any(p => p.Plugin is IForgePlayModeMirror));
         }
+
+        // The Apply turned Initialize XR on Startup on and copied the loaders; a pull
+        // then changed the loaders. Undoing the Apply keeps the pulled loaders.
+        [Test]
+        public void Merge_UndoesTheApply_AndKeepsChangesMadeAfterIt()
+        {
+            var merged = new PlayModeXRLoaders().MergeEditorState(BuildTargetGroup.Standalone,
+                "{\"initManagerOnStart\":false,\"loaderGuids\":[\"base\"]}",
+                "{\"initManagerOnStart\":true,\"loaderGuids\":[\"applied\"]}",
+                "{\"initManagerOnStart\":true,\"loaderGuids\":[\"pulled\"]}");
+
+            Assert.AreEqual("{\"initManagerOnStart\":false,\"loaderGuids\":[\"pulled\"]}", merged);
+        }
     }
 }

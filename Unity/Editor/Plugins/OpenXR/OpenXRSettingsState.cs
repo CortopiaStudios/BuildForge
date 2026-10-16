@@ -255,6 +255,73 @@ namespace BuildForge.Editor.OpenXR
             Flush(settings);
         }
 
+        // ------------------------------------------------------------------ merge
+
+        /// <summary>
+        /// The snapshot that undoes an Apply but keeps what changed after it (see
+        /// IForgeEditorApplicable.MergeEditorState). Each setting, and each
+        /// feature's enabled state and properties, takes the baseline's value
+        /// while the current one is still the one the Apply left, and keeps the
+        /// current one otherwise. A feature's properties count as one value. What
+        /// the current snapshot doesn't hold, such as interaction profiles left out
+        /// of it, takes the baseline's value. Null when a snapshot can't be read.
+        /// </summary>
+        public static string Merge(string baselineJson, string expectedJson, string currentJson)
+        {
+            var baseline = OpenXREditorStateSnapshot.FromJson(baselineJson);
+            var expected = OpenXREditorStateSnapshot.FromJson(expectedJson);
+            var current = OpenXREditorStateSnapshot.FromJson(currentJson);
+            if (baseline == null || expected == null || current == null)
+                return null;
+
+            var merged = new OpenXREditorStateSnapshot { version = current.version };
+
+            var baselineSettings = ByKey(baseline.settings, s => s.propertyName);
+            var expectedSettings = ByKey(expected.settings, s => s.propertyName);
+            var currentSettings = ByKey(current.settings, s => s.propertyName);
+            foreach (var setting in current.settings)
+            {
+                var asApplied = expectedSettings.TryGetValue(setting.propertyName, out var applied) && applied.value == setting.value;
+                merged.settings.Add(asApplied && baselineSettings.TryGetValue(setting.propertyName, out var before) ? before : setting);
+            }
+            foreach (var setting in baseline.settings)
+                if (!currentSettings.ContainsKey(setting.propertyName))
+                    merged.settings.Add(setting);
+
+            var baselineFeatures = ByKey(baseline.features, f => f.featureTypeName);
+            var expectedFeatures = ByKey(expected.features, f => f.featureTypeName);
+            var currentFeatures = ByKey(current.features, f => f.featureTypeName);
+            foreach (var feature in current.features)
+            {
+                if (!expectedFeatures.TryGetValue(feature.featureTypeName, out var applied)
+                    || !baselineFeatures.TryGetValue(feature.featureTypeName, out var before))
+                {
+                    merged.features.Add(feature);
+                    continue;
+                }
+                merged.features.Add(new OpenXRFeatureState
+                {
+                    featureTypeName = feature.featureTypeName,
+                    enabled = feature.enabled == applied.enabled ? before.enabled : feature.enabled,
+                    json = feature.json == applied.json ? before.json : feature.json,
+                });
+            }
+            foreach (var feature in baseline.features)
+                if (!currentFeatures.ContainsKey(feature.featureTypeName))
+                    merged.features.Add(feature);
+
+            return merged.ToJson();
+        }
+
+        static Dictionary<string, T> ByKey<T>(List<T> items, Func<T, string> key)
+        {
+            var result = new Dictionary<string, T>();
+            foreach (var item in items)
+                if (item != null && key(item) != null)
+                    result[key(item)] = item;
+            return result;
+        }
+
         // ---------------------------------------------------------------- helpers
 
         /// <summary>
