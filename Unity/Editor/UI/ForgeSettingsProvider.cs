@@ -1,3 +1,4 @@
+using System.Linq;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using UnityEditor;
@@ -19,10 +20,10 @@ namespace BuildForge.Editor.UI
         // and require specific packages to compile
         static readonly (string name, string description, string packageId)[] OptionalPlugins = new[]
         {
-            ("XR Loaders", "Per-profile XR provider selection", "com.unity.xr.management"),
-            ("OpenXR", "Per-profile XR feature and settings overrides", "com.unity.xr.openxr"),
-            ("Addressables Stripper", "Strip Addressable groups and labels from builds", "com.unity.addressables"),
             ("Addressables Rebuild", "Rebuild Addressables content before building", "com.unity.addressables"),
+            ("Addressables Stripper", "Strip Addressable groups and labels from builds", "com.unity.addressables"),
+            ("OpenXR", "Per-profile XR feature and settings overrides", "com.unity.xr.openxr"),
+            ("XR Loaders", "Per-profile XR provider selection", "com.unity.xr.management"),
         };
 
         static System.Collections.Generic.Dictionary<string, bool> packageInstallCache;
@@ -182,7 +183,8 @@ namespace BuildForge.Editor.UI
             }
             else
             {
-                foreach (var plugin in plugins)
+                // Alphabetical, to find a plugin by name; builds run them in their Order.
+                foreach (var plugin in plugins.OrderBy(p => p.DisplayName, System.StringComparer.OrdinalIgnoreCase))
                 {
                     var typeName = plugin.GetType().FullName;
                     var enabledByDefault = ForgePluginRegistry.IsEnabledByDefault(plugin);
