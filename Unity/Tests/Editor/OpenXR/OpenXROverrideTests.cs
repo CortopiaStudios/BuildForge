@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using BuildForge.Editor.OpenXR;
 using BuildForge.Runtime;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEditor.Build.Profile;
 using UnityEditor.XR.OpenXR.Features;
 using UnityEngine;
 using UnityEngine.XR.OpenXR;
@@ -517,6 +519,54 @@ namespace BuildForge.Tests.OpenXR
                 OpenXRSettingsState.Restore(BuildTargetGroup.Android, androidSnapshot);
             }
             Assert.That(target.enabled, Is.EqualTo(targetOriginal));
+        }
+
+        // Meta Quest Setup is off by default. A Meta Quest profile whose builds would lack
+        // a feature that OpenXR turns on in the editor gets a warning while the step's flag
+        // says it hasn't run; the setup, an Enable override or the flag ends it.
+        [Test] public void MetaQuestSetupWarning_NamesWhatCIBuildsWouldLack_UntilTheSetupIsOn()
+        {
+            var quest = CreateMetaQuestFeature();
+            try
+            {
+                SetFeatureId(quest, "com.unity.openxr.feature.metaquest");
+                var ids = new[] { "com.unity.openxr.feature.metaquest" };
+                var features = new OpenXRFeature[] { quest };
+                quest.enabled = false;
+                Assert.IsFalse(config.MetaQuestSetup, "Off by default.");
+                StringAssert.Contains("so this profile's CI builds lack them. Turn on Meta Quest Setup",
+                    OpenXRPlugin.MetaQuestSetupWarning(true, config, false, ids, features, false));
+                Assert.IsNull(OpenXRPlugin.MetaQuestSetupWarning(false, config, false, ids, features, false), "Not a Meta Quest profile.");
+                Assert.IsNull(OpenXRPlugin.MetaQuestSetupWarning(true, config, true, ids, features, false), "OpenXR's step has run.");
+                Assert.IsNull(OpenXRPlugin.MetaQuestSetupWarning(true, config, null, ids, features, false), "OpenXR without the step.");
+
+                config.EnabledFeatures.Add(quest.GetType().FullName);
+                Assert.IsNull(OpenXRPlugin.MetaQuestSetupWarning(true, config, false, ids, features, false), "On in the build anyway.");
+                config.EnabledFeatures.Clear();
+
+                Assert.IsFalse(config.HasOverrides);
+                config.MetaQuestSetup = true;
+                Assert.IsNull(OpenXRPlugin.MetaQuestSetupWarning(true, config, false, ids, features, false));
+                Assert.IsTrue(config.HasOverrides, "Like an override, the setup needs OpenXR as a provider.");
+            }
+            finally { Object.DestroyImmediate(quest); }
+        }
+
+        [Test] public void IsMetaQuestProfile_ReadsThePlatformIdTheProfileStores()
+        {
+            var create = typeof(BuildProfile).GetMethod("CreateInstance", BindingFlags.Static | BindingFlags.NonPublic,
+                null, new[] { typeof(BuildTarget), typeof(StandaloneBuildSubtarget) }, null);
+            Assert.IsNotNull(create, "Unity's native profile factory changed.");
+            var profile = (BuildProfile)create.Invoke(null, new object[] { BuildTarget.StandaloneWindows64, StandaloneBuildSubtarget.Player });
+            try
+            {
+                Assert.IsFalse(OpenXRPlugin.IsMetaQuestProfile(profile));
+                var so = new SerializedObject(profile);
+                so.FindProperty("m_PlatformId").stringValue = "80657fe557de4d17822398b3a01b8c9e";
+                so.ApplyModifiedPropertiesWithoutUndo();
+                Assert.IsTrue(OpenXRPlugin.IsMetaQuestProfile(profile));
+            }
+            finally { Object.DestroyImmediate(profile); }
         }
     }
 }

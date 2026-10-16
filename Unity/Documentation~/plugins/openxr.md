@@ -77,7 +77,7 @@ Unity's Meta Quest Build Profile type works with Build Forge like a plain Androi
 
 - **OpenXR 1.16** enables the Oculus Touch, Meta Quest Touch Pro and Touch Plus interaction profiles on every domain reload while a Meta Quest profile is active. A Disable override on one of them therefore holds in builds but not in the editor; Build Forge warns about such an override, which exists only with Interaction Profiles enabled.
 - **OpenXR 1.18** enables those three and Meta Quest Support once, when the editor loads with a Meta Quest profile active, and turns them off on the first load without one. It records this as `isMetaQuestInitialized` in `ProjectSettings/BuildProfileUtilityOpenXR.asset`, and only an interactive editor runs it.
-  - A build of a Meta Quest profile therefore enables those features itself while the file says OpenXR has not, as in a CI checkout where it was committed as 0 or not at all, and restores the settings afterwards. CI builds get what the editor would.
+  - With **Meta Quest Setup** on in a Meta Quest profile's foldout (off by default; it shows only for Meta Quest profiles), a build of the profile enables those features itself while the file says OpenXR has not, as in a CI checkout where it was committed as 0 or not at all, and restores the settings afterwards. CI builds then get what the editor would. With it off, the build window and the build log warn when the profile's builds would lack them.
   - In a project whose Android profile is a Meta Quest profile, commit what the editor leaves with that profile active: `isMetaQuestInitialized: 1` with those four features on. Sessions on that profile then change nothing; with 0 committed, each of them turns the features on again. Sessions on other profiles still turn them off until the Meta Quest profile is active again.
   - A plain Android profile warns while the file says OpenXR has enabled them, because the next editor load without a Meta Quest profile turns them off. To keep the features as configured, set `isMetaQuestInitialized: 0` in that file and commit it.
 
@@ -97,6 +97,7 @@ When a profile pins symmetric projection on in the Meta Quest feature, untick th
 | Feature group(s) '*group*' are enabled for *platform* | See [Feature groups](#feature-groups-are-not-supported). |
 | A Meta Quest platform profile is active: Unity re-enables … | OpenXR 1.16, with Interaction Profiles on. |
 | OpenXR enabled the Oculus Touch, … and turns them off again the next time the editor loads without one active | OpenXR 1.18, on a plain Android profile. |
+| OpenXR turns on … for Android when the editor opens with a Meta Quest profile active … so this profile's CI builds lack them | OpenXR 1.18, on a Meta Quest profile with [Meta Quest Setup](#meta-quest-build-profiles) off, while `isMetaQuestInitialized` is 0. Turn the setup on, or commit `BuildProfileUtilityOpenXR.asset` as the editor leaves it: 1, with those features on. |
 
 ## Manifest
 

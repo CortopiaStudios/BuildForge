@@ -30,6 +30,10 @@ namespace BuildForge.Editor.OpenXR
         [Tooltip("Per-feature property pins: every visible property of a feature edited in this profile, one entry each.")]
         [SerializeField] List<FeatureOverride> featureOverrides = new();
 
+        [Tooltip("For a Meta Quest profile: while ProjectSettings/BuildProfileUtilityOpenXR.asset says OpenXR's Meta Quest " +
+                 "setup hasn't run, as in a CI checkout, builds turn on the features that step turns on in the editor.")]
+        [SerializeField] bool metaQuestSetup;
+
         /// <summary>
         /// The allow-list mode: the features in <see cref="EnabledFeatures"/> are on,
         /// every other visible feature is off, and hidden features are left alone.
@@ -38,9 +42,20 @@ namespace BuildForge.Editor.OpenXR
         public List<string> EnabledFeatures => enabledFeatures;
         public List<string> DisabledFeatures => disabledFeatures;
 
-        /// <summary>True when the profile overrides anything: a feature's state, a setting or a feature property.</summary>
+        /// <summary>
+        /// For a Meta Quest profile, off by default: builds turn on the features
+        /// that OpenXR 1.18's Meta Quest setup turns on when the editor opens with
+        /// a Meta Quest profile active, while its flag says it hasn't run. Batch
+        /// builds skip that step.
+        /// </summary>
+        public bool MetaQuestSetup { get => metaQuestSetup; set => metaQuestSetup = value; }
+
+        /// <summary>
+        /// True when the profile overrides anything: a feature's state, a setting
+        /// or a feature property, or turns on Meta Quest Setup.
+        /// </summary>
         public bool HasOverrides => onlyListedFeatures || enabledFeatures.Count > 0 || disabledFeatures.Count > 0
-                                    || settingsOverrides.Count > 0 || featureOverrides.Count > 0;
+                                    || settingsOverrides.Count > 0 || featureOverrides.Count > 0 || metaQuestSetup;
 
         /// <summary>The pinned properties for a feature, or null when the feature has none.</summary>
         public IReadOnlyList<PropertyValueEntry> GetFeatureOverrides(string featureTypeName)

@@ -59,6 +59,11 @@ namespace BuildForge.Editor.OpenXR
                     includeInteractionProfiles));
                 warnings.AddRange(FeatureGroupWarnings(config, openxrSettings, buildTargetGroup, includeInteractionProfiles));
                 warnings.AddRange(MetaQuestPlatformWarnings(config, openxrSettings));
+                var setupWarning = MetaQuestSetupWarning(IsMetaQuestProfile(forgeProfile.BuildProfile), config,
+                    MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds(), openxrSettings.GetFeatures<OpenXRFeature>(),
+                    includeInteractionProfiles);
+                if (setupWarning != null)
+                    warnings.Add(setupWarning);
                 var pendingDisable = MetaQuestUtilityWarning(buildTargetGroup, MetaQuestProfileActive, MetaQuestUtilityInitialized());
                 if (pendingDisable != null)
                     warnings.Add(pendingDisable);
@@ -416,6 +421,39 @@ namespace BuildForge.Editor.OpenXR
                "when the editor loads with a Meta Quest Build Profile active and isMetaQuestInitialized: 0 in " +
                "ProjectSettings/BuildProfileUtilityOpenXR.asset, a step batch builds skip. The settings are restored afterwards.";
 
+        // Unity's platform id for its Meta Quest Build Profile type, as each profile stores it.
+        const string MetaQuestPlatformId = "80657fe557de4d17822398b3a01b8c9e";
+
+        /// <summary>
+        /// Whether the Build Profile is of Unity's Meta Quest type, active or not,
+        /// read from the platform id it stores, as Unity has no public API for it.
+        /// </summary>
+        internal static bool IsMetaQuestProfile(BuildProfile profile)
+            => profile != null && new SerializedObject(profile).FindProperty("m_PlatformId")?.stringValue == MetaQuestPlatformId;
+
+        /// <summary>
+        /// For a Meta Quest profile without Meta Quest Setup, while the setup's flag
+        /// says it hasn't run, as in a CI checkout: names the features OpenXR turns
+        /// on in the editor that this profile's builds would have off. Null when
+        /// none would be missing.
+        /// </summary>
+        internal static string MetaQuestSetupWarning(bool metaQuestProfile, OpenXRProfileConfig config, bool? utilityInitialized,
+            IReadOnlyCollection<string> utilityFeatureIds, IEnumerable<OpenXRFeature> features, bool includeInteractionProfiles)
+        {
+            if (!metaQuestProfile || config.MetaQuestSetup || utilityInitialized != false || utilityFeatureIds == null)
+                return null;
+            var missing = features
+                .Where(f => f != null && utilityFeatureIds.Contains(GetFeatureId(f))
+                            && !(OpenXRSettingsState.ManagedOverride(config, f, includeInteractionProfiles) ?? f.enabled))
+                .Select(f => $"'{FormatFeatureName(GetFeatureUiName(f))}'").ToList();
+            if (missing.Count == 0)
+                return null;
+            return $"OpenXR turns on {string.Join(", ", missing)} for Android when the editor opens with a Meta Quest profile " +
+                   "active, a step batch builds skip, and ProjectSettings/BuildProfileUtilityOpenXR.asset says it hasn't run, so " +
+                   "this profile's CI builds lack them. Turn on Meta Quest Setup in the profile's OpenXR settings, or commit that " +
+                   "file with isMetaQuestInitialized: 1 and the features on, as the editor leaves them.";
+        }
+
         static string GetFeatureId(OpenXRFeature feature)
         {
             var so = new SerializedObject(feature);
@@ -446,8 +484,15 @@ namespace BuildForge.Editor.OpenXR
                 Debug.LogWarning("[Build Forge/OpenXR] No OpenXR settings found for target group.");
                 return;
             }
-            var metaQuestSetup = MetaQuestSetupFeatures(context.BuildTargetGroup, MetaQuestProfileActive,
-                MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds(), settings.GetFeatures<OpenXRFeature>());
+            var metaQuestSetup = config.MetaQuestSetup
+                ? MetaQuestSetupFeatures(context.BuildTargetGroup, MetaQuestProfileActive,
+                    MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds(), settings.GetFeatures<OpenXRFeature>())
+                : new List<OpenXRFeature>();
+            // The build window shows this too; CI builds only have the log.
+            var setupWarning = MetaQuestSetupWarning(MetaQuestProfileActive, config, MetaQuestUtilityInitialized(),
+                MetaQuestUtilityFeatureIds(), settings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles);
+            if (setupWarning != null)
+                Debug.LogWarning("[Build Forge/OpenXR] " + setupWarning);
 
             // Full snapshot, not just the overridden values: Unity's Meta Quest
             // build hook rewrites top-level settings during the build, and the
@@ -567,8 +612,9 @@ namespace BuildForge.Editor.OpenXR
         {
             var config = GetConfig(forgeProfile);
             var settingOverrides = $"{config.GetAllSettingsOverrides().Count} setting override(s)";
+            var setupText = config.MetaQuestSetup && IsMetaQuestProfile(forgeProfile.BuildProfile) ? "; Meta Quest setup in batch builds" : "";
             if (!config.OnlyListedFeatures)
-                return $"enable {config.EnabledFeatures.Count} feature(s), disable {config.DisabledFeatures.Count}, {settingOverrides}";
+                return $"enable {config.EnabledFeatures.Count} feature(s), disable {config.DisabledFeatures.Count}, {settingOverrides}" + setupText;
 
             // The list to review after a package update: a feature it adds is off until the profile lists it.
             var settings = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildPipeline.GetBuildTargetGroup(
@@ -578,7 +624,7 @@ namespace BuildForge.Editor.OpenXR
                 : new List<string>();
             return $"only the {config.EnabledFeatures.Count} listed feature(s); " +
                    (notListed.Count > 0 ? $"off in this build (not listed): {string.Join(", ", notListed)}; " : "") +
-                   settingOverrides;
+                   settingOverrides + setupText;
         }
 
         public void OnDrawProfileGUI(ForgeProfile forgeProfile)
@@ -631,6 +677,22 @@ namespace BuildForge.Editor.OpenXR
                     SetOnlyListedFeatures(config, OpenXRSettingsState.GetManagedFeatures(openxrSettings, includeInteractionProfiles).ToList(),
                         onlyListed);
                     changed = true;
+                }
+
+                if (IsMetaQuestProfile(forgeProfile.BuildProfile))
+                {
+                    var setup = EditorGUILayout.Toggle(new GUIContent("Meta Quest Setup",
+                            "OpenXR turns on the Oculus Touch, Meta Quest Touch Pro and Touch Plus interaction profiles and Meta " +
+                            "Quest Support for Android when the editor opens with a Meta Quest profile active, and records that in " +
+                            "ProjectSettings/BuildProfileUtilityOpenXR.asset. Batch builds skip that step. With this on, a build of " +
+                            "this profile turns them on itself while the file says the step hasn't run, as in a CI checkout, and " +
+                            "restores the settings afterwards."),
+                        config.MetaQuestSetup);
+                    if (setup != config.MetaQuestSetup)
+                    {
+                        config.MetaQuestSetup = setup;
+                        changed = true;
+                    }
                 }
 
                 var features = allFeatures.Where(f => !OpenXRSettingsState.IsInteractionProfile(f))
