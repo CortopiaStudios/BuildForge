@@ -555,6 +555,10 @@ Tests/
 
 Unity's Player Settings UI groups most properties under a catch-all "Other Settings" section. Build Forge could provide an alternative editor with logical groupings (Rendering, Scripting, platform-specific, etc.) when the user opts out of Build Profile Player Settings. This would only be active when the Build Profile has no Player Settings of its own, avoiding two sources of truth.
 
+### OpenXR Features Diff View
+
+A side-by-side view of what each profile's OpenXR overrides change, like the Matrix mode of the [Platform Player Overrides View](#platform-player-overrides-view): one row per OpenXR feature that any profile overrides, one column per Build Profile, and each platform's profiles led by a column with that platform's features as XR Plug-in Management has them. A cell would show whether that profile's builds get the feature on or off, highlighted where that differs from the platform. Today a profile's overrides are visible only in its own OpenXR foldout, and the build window summarizes them in one line, so comparing two profiles of one platform means opening each. The features an Only Listed Features profile turns off by leaving them out, setting overrides and pinned feature properties could join the same view.
+
 ### Build Forge Settings Inheritance
 
 Allow a Build Profile's Build Forge settings to inherit from another Build Profile's, enabling inheritance of plugin configurations and (when using Build Forge-managed Player Settings) settings overrides. A base profile could define shared settings across Dev, Staging, and Release profiles, with children overriding only what's different.
