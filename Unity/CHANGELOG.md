@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-10-16
+
 ### Added
 - **OpenXR Features** under Play Mode Follows Applied Profile in Project Settings > Build Forge, shown while it is on. **Turn on the platform's**, the default, turns on Standalone's OpenXR features that the applied platform has on and turns none off, so features Standalone has on for Play Mode itself, such as hand tracking for a tool that authors hand poses, stay on. **Match the platform's** also turns off those the platform has off, as applying always did before. To keep such a feature out of a Standalone build, give that profile a Disable override
 
