@@ -560,11 +560,11 @@ namespace BuildForge.Tests.OpenXR
             var profile = (BuildProfile)create.Invoke(null, new object[] { BuildTarget.StandaloneWindows64, StandaloneBuildSubtarget.Player });
             try
             {
-                Assert.IsFalse(OpenXRPlugin.IsMetaQuestProfile(profile));
+                Assert.AreEqual(false, OpenXRPlugin.IsMetaQuestProfile(profile));
                 var so = new SerializedObject(profile);
                 so.FindProperty("m_PlatformId").stringValue = "80657fe557de4d17822398b3a01b8c9e";
                 so.ApplyModifiedPropertiesWithoutUndo();
-                Assert.IsTrue(OpenXRPlugin.IsMetaQuestProfile(profile));
+                Assert.AreEqual(true, OpenXRPlugin.IsMetaQuestProfile(profile));
             }
             finally { Object.DestroyImmediate(profile); }
         }
@@ -586,6 +586,30 @@ namespace BuildForge.Tests.OpenXR
                 Object.DestroyImmediate(touch);
                 Object.DestroyImmediate(quest);
             }
+        }
+
+        // OpenXR before 1.18 has no Meta Quest setup to read; from 1.18, or with no known version,
+        // a part Build Forge cannot read is reported instead of taken for a version without it.
+        [Test] public void MetaQuestUtilityUnreadable_TellsAnOpenXRWithoutTheSetupFromOneBuildForgeCannotRead()
+        {
+            var features = new OpenXRFeature[] { controller };
+            var ids = new[] { "com.unity.openxr.feature.metaquest" };
+            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable("1.16.1", null, null, features), "OpenXR 1.16 has no such step.");
+            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable("1.18.0", false, ids, features));
+            StringAssert.Contains("isMetaQuestInitialized", OpenXRPlugin.MetaQuestUtilityUnreadable("1.18.0", null, ids, features));
+            StringAssert.Contains("metaFeatureIds", OpenXRPlugin.MetaQuestUtilityUnreadable("1.19.0-pre.1", true, null, features));
+            StringAssert.Contains("isMetaQuestInitialized", OpenXRPlugin.MetaQuestUtilityUnreadable(null, null, ids, features),
+                "An unknown version is not taken for an old one.");
+        }
+
+        // Fails on an OpenXR version whose Meta Quest setup Build Forge can no longer read, before
+        // a build of a profile with Meta Quest Setup on would stop for it.
+        [Test] public void MetaQuestUtility_IsReadableInTheInstalledOpenXR()
+        {
+            var features = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Android)?.GetFeatures<OpenXRFeature>()
+                           ?? new OpenXRFeature[0];
+            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable(OpenXRPlugin.OpenXRVersion(),
+                OpenXRPlugin.MetaQuestUtilityInitialized(), OpenXRPlugin.MetaQuestUtilityFeatureIds(), features));
         }
 
         static OpenXREditorStateSnapshot Snapshot(string renderMode, string latency, params OpenXRFeatureState[] features)
