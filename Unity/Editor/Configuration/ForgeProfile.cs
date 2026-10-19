@@ -288,6 +288,58 @@ namespace BuildForge.Editor.Configuration
         }
 
         /// <summary>
+        /// The plugin settings in <paramref name="owner"/>'s <paramref name="slotsField"/> that
+        /// Unity cannot load, or loads only in part, because the plugin or a class of its
+        /// settings is gone or was renamed, as "'key' (Type in assembly)", or null when all of
+        /// them load. Reading them gives the plugin's defaults, and a plugin that is gone
+        /// doesn't run, so a build would leave them out.
+        /// </summary>
+        internal static string MissingTypes(UnityEngine.Object owner, string slotsField)
+        {
+            if (owner == null || !UnityEditor.SerializationUtility.HasManagedReferencesWithMissingTypes(owner))
+                return null;
+            // Unity loads a reference whose type is missing as null, which a stored slot
+            // otherwise never is. It goes on reporting the type after the setting was replaced
+            // or removed in the editor, until it next unloads unused assets, so only the
+            // settings that still hold such a null count.
+            var keys = new List<string>();
+            var slots = new SerializedObject(owner).FindProperty(slotsField);
+            for (var i = 0; slots != null && i < slots.arraySize; i++)
+            {
+                var slot = slots.GetArrayElementAtIndex(i);
+                if (HoldsNullReference(slot.FindPropertyRelative("config")))
+                    keys.Add($"'{slot.FindPropertyRelative("key")?.stringValue}'");
+            }
+            if (keys.Count == 0)
+                return null;
+            var types = new List<string>();
+            foreach (var missing in UnityEditor.SerializationUtility.GetManagedReferencesWithMissingTypes(owner))
+                types.Add($"{(string.IsNullOrEmpty(missing.namespaceName) ? "" : missing.namespaceName + ".")}{missing.className} in {missing.assemblyName}");
+            return $"{string.Join(", ", keys)} ({string.Join("; ", types)})";
+        }
+
+        /// <summary>
+        /// Whether the setting is null, or holds a null [SerializeReference] field, as a
+        /// plugin's settings class may have. Cycles end at a depth no settings reach.
+        /// </summary>
+        static bool HoldsNullReference(SerializedProperty config)
+        {
+            if (config == null)
+                return false;
+            if (config.managedReferenceId == ManagedReferenceUtility.RefIdNull)
+                return true;
+            var property = config.Copy();
+            var end = config.GetEndProperty();
+            while (property.Next(property.depth < 64) && !SerializedProperty.EqualContents(property, end))
+            {
+                if (property.propertyType == SerializedPropertyType.ManagedReference
+                    && property.managedReferenceId == ManagedReferenceUtility.RefIdNull)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Whether <paramref name="config"/> is a <paramref name="type"/> whose
         /// serialized values equal a new one's. False for a subclass, since a
         /// reader of <paramref name="type"/> would get a new base instance back,

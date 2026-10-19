@@ -24,6 +24,7 @@ The message names the cause. The common ones:
 | Build Forge could not delete … | A file from the previous build is in use, usually because the player is still running. |
 | Build Forge cannot build '…': a folder is in the way | An old Android export folder sits where the APK goes. |
 | Build Forge plugin … could not be loaded | The plugin's constructor failed, and the error is in parentheses. Fix the plugin, or turn it off in **Project Settings > Build Forge > Installed Plugins**. |
+| Build Forge cannot load the plugin settings … | [Plugin settings that Unity cannot load](#build-forge-cannot-load-the-plugin-settings-) |
 | '…' has no '…' setting on Unity …, or Unity Build Profile '…' stores no … | Unity renamed a Build Profile setting that Build Forge applies or reads. Update Build Forge for your Unity version. |
 | [Build Forge/BuildNumber] … | [Build Number](plugins/build-number.md#when-the-build-stops) |
 | [Build Forge/AndroidKeystoreEnv] … | [Android Keystore Env](plugins/android-keystore-env.md#what-a-build-does) |
@@ -32,6 +33,30 @@ The message names the cause. The common ones:
 | [Build Forge/Android Manifest] … | [Android Manifest](plugins/android-manifest.md#settings) |
 | Could not set XR loaders, or an XR loader warning | [XR Loaders](plugins/xr-loaders.md#warnings) |
 | A variant or variant rule error | [Build variants](variants.md) |
+
+### "Build Forge cannot load the plugin settings …"
+
+A profile's Build Forge settings, or **Project Settings > Build Forge**, hold settings whose class Unity cannot find, so a build would leave them out: the plugin would read its defaults, or not run at all. The message names the settings by their plugin's key, and the class with its assembly. The build window shows the same message before a build. Unity keeps the settings in the file meanwhile.
+
+- **The package that provides the plugin was removed**, or did not install: install it. Unity loads the settings again once it has reloaded scripts.
+- **An update renamed or moved the class**, as Build Forge 0.9.1 moved six plugins into assemblies of their own (see the changelog): correct the class's `type:` line under `references` in the file, for example `asm: BuildForge.Editor` to `asm: BuildForge.Editor.BuildNumber`. Entering the plugin's settings again in the profile also clears the message, and replaces what was saved.
+- **The plugin is gone for good**: remove its settings from the file in a text editor, the entry with its key under `pluginConfigs` and the entry with the same `rid` under `references`:
+
+```yaml
+  pluginConfigs:
+  - key: MyStudio.MyPlugin            # remove these three lines
+    config:
+      rid: 7130472218546188289
+  references:
+    version: 2
+    RefIds:
+    - rid: 7130472218546188289        # and this entry, up to the next "- rid:"
+      type: {class: MyPluginConfig, ns: MyStudio, asm: MyStudio.Editor}
+      data:
+        level: 2
+```
+
+The file is the Build Profile asset the message names, or `ProjectSettings/ForgeSettings.asset` for Project Settings, where the list is called `globalPluginConfigs`. Unity reloads it when it imports the change, for example when the editor regains focus.
 
 ### The log has no pre-build lines
 

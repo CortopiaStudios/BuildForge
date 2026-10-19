@@ -164,7 +164,7 @@ namespace BuildForge.Editor.UI
                 if (stray != null)
                     warnings.Add(stray);
                 // Builds stop for these; the window says so before one starts.
-                var pluginError = ForgePluginRegistry.LoadError();
+                var pluginError = ForgePluginRegistry.LoadError() ?? ForgePluginRegistry.MissingSettingsError(profile);
                 if (pluginError != null)
                     warnings.Add(pluginError);
                 foreach (var plugin in plugins)

@@ -89,6 +89,27 @@ namespace BuildForge.Editor.Core
         }
 
         /// <summary>
+        /// Why builds of the profile stop because plugin settings cannot be loaded, or null:
+        /// settings in the profile or in Project Settings whose type is gone or was renamed
+        /// would be left out of the build.
+        /// </summary>
+        internal static string MissingSettingsError(ForgeProfile profile)
+        {
+            var missing = new List<string>();
+            var inProfile = PluginConfigSlot.MissingTypes(profile, "pluginConfigs");
+            if (inProfile != null)
+                missing.Add($"{inProfile} in Unity Build Profile '{(profile.BuildProfile != null ? profile.BuildProfile.name : profile.name)}'");
+            var inProjectSettings = PluginConfigSlot.MissingTypes(ForgeSettings.instance, "globalPluginConfigs");
+            if (inProjectSettings != null)
+                missing.Add($"{inProjectSettings} in Project Settings > Build Forge");
+            return missing.Count == 0 ? null
+                : $"Build Forge cannot load the plugin settings {string.Join(", ", missing)}: the plugin, or a class of its " +
+                  "settings, is gone or was renamed, so builds would leave the settings out. Install the package that provides " +
+                  "the plugin, correct the class in the asset if an update renamed it, or remove the settings if the plugin is " +
+                  "gone for good; see Troubleshooting.";
+        }
+
+        /// <summary>
         /// Reads the plugin's [ForgePlugin] EnabledByDefault flag.
         /// </summary>
         public static bool IsEnabledByDefault(IForgePlugin plugin)
