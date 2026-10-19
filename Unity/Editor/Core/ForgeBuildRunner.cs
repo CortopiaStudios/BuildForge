@@ -93,6 +93,27 @@ namespace BuildForge.Editor.Core
                                  $"'{BuildProfileDefines.DefineFor(forgeProfile.BuildProfile.name)}' scripting define " +
                                  "(or carries a stale one). Open the Build Forge window once and commit the profile.");
             }
+            // A derived platform this editor has not enabled, such as Meta Quest under an
+            // account that never enabled it, builds with its build target's settings
+            // instead of the profile's, without an error. Activating doesn't change that.
+            // Where Build Forge can't tell, it doesn't build unchecked either.
+            var platformDisabled = BuildProfilePlatform.IsDisabled(forgeProfile.BuildProfile);
+            if (platformDisabled == null)
+                throw new InvalidOperationException(
+                    $"Build Forge cannot tell whether the platform of Unity Build Profile '{forgeProfile.BuildProfile.name}' " +
+                    $"is enabled in Unity {Application.unityVersion}: the Unity lookups it uses for that are missing or failed. " +
+                    "A profile whose platform is disabled builds with its build target's settings instead of its own, so " +
+                    "Build Forge does not build it unchecked. Update Build Forge for this Unity version.");
+            if (platformDisabled == true)
+            {
+                var platform = BuildProfilePlatform.DisplayName(forgeProfile.BuildProfile) ?? "its platform";
+                throw new InvalidOperationException(
+                    $"Unity Build Profile '{forgeProfile.BuildProfile.name}' is for {platform}, which is disabled in this " +
+                    $"editor, so Unity would build it with {BuildProfileUtility.GetBuildTarget(forgeProfile.BuildProfile)}'s " +
+                    "settings instead of the profile's, such as its Debug Symbols. Enable it with Enable Platform on " +
+                    $"{platform} in Unity's Build Profiles window, which applies to the current user, or start the editor " +
+                    "with -enableAllDerivedPlatforms, as on a build machine.");
+            }
             if (activeProfile != forgeProfile.BuildProfile)
             {
                 var activeName = activeProfile != null

@@ -28,6 +28,7 @@ The CLI itself supplies `-batchmode`, `-projectPath` and `-quit`; do not pass th
 
 - The standalone `unity` CLI on the PATH of the account the job runs as. The tested version is **1.0.0-beta.13**, with Unity **6000.3.23f1**, on Windows. Check `unity --version` under the agent's account, pin that version in the agent image, and check again before updating it. Unity Hub may bundle a different CLI version internally; the one on the PATH is what runs.
 - An activated Unity editor of the project's version, with the platform modules the profiles build for (for Android also its SDK, NDK and JDK). Installing and licensing editors is part of setting up the agent; `--non-interactive` only prevents prompts.
+- For a profile of a derived platform, such as Meta Quest: `-enableAllDerivedPlatforms` after `--`, or the platform enabled for the account the job runs as. Unity enables derived platforms per user, with **Enable Platform** in its Build Profiles window, which an agent's account has usually never opened. Without either, Unity would build the profile with Android's settings, so Build Forge stops the build before it starts.
 - `UNITY_EDITOR_VERSION` unset, unless you mean to override the project's editor version.
 - Git, with read access to the Build Forge repository if it is private; see [Installation](installation.md#private-repositories).
 - A full clone if any profile uses the git commit count as its [build number](plugins/build-number.md).
@@ -77,7 +78,8 @@ Unity's own `-version` prints the editor version and exits; it does not set the 
 `-activeBuildProfile` selects a Unity Build Profile, and Build Forge builds the Build Forge settings stored in it. The entry point fails with exit code 1 when:
 
 - no Unity Build Profile is active, for example because `-activeBuildProfile` is missing and Unity was on a platform profile;
-- the active Build Profile has no Build Forge settings, for example because they were never committed.
+- the active Build Profile has no Build Forge settings, for example because they were never committed;
+- the active Build Profile's platform, such as Meta Quest, is disabled in the editor, or Build Forge cannot tell whether it is; see [Requirements on the build machine](#requirements-on-the-build-machine).
 
 ## CI detection
 
@@ -287,4 +289,4 @@ var report = ForgeBuildRunner.RunBuild(forgeProfile, "Internal"); // RunBuild(fo
 var command = ForgeBuildRunner.GetCICommand(forgeProfile, "Internal");
 ```
 
-`RunBuild` returns Unity's `BuildReport`. It throws `InvalidOperationException` when the profile's Unity Build Profile is not the active one, or when the variant is invalid; activate the profile first, in the build window or with `BuildProfile.SetActiveBuildProfile`. `ForgeBuildRunner.IsForgeBuildInProgress` tells other build callbacks whether the current build is Build Forge's.
+`RunBuild` returns Unity's `BuildReport`. It throws `InvalidOperationException` when the profile's Unity Build Profile is not the active one, when its platform is disabled in the editor or Build Forge cannot tell whether it is, or when the variant is invalid; activate the profile first, in the build window or with `BuildProfile.SetActiveBuildProfile`. `ForgeBuildRunner.IsForgeBuildInProgress` tells other build callbacks whether the current build is Build Forge's.

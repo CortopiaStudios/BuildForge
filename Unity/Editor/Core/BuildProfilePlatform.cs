@@ -15,6 +15,7 @@ namespace BuildForge.Editor.Core
     /// profile, its name from Unity's internal BuildTargetDiscovery and its icons from the
     /// internal BuildProfileModuleUtil, the sources of the Build Profiles window. Both are
     /// null when that lookup is unavailable, and callers then show the build target instead.
+    /// Whether the platform is disabled comes from the same sources.
     /// </summary>
     internal static class BuildProfilePlatform
     {
@@ -23,8 +24,14 @@ namespace BuildForge.Editor.Core
         static readonly MethodInfo DisplayNameMethod = PlatformMethod("UnityEditor.BuildTargetDiscovery", "BuildPlatformDisplayName", typeof(string));
         static readonly MethodInfo IconMethod = PlatformMethod("UnityEditor.Build.Profile.BuildProfileModuleUtil", "GetPlatformIcon", typeof(Texture2D));
         static readonly MethodInfo SmallIconMethod = PlatformMethod("UnityEditor.Build.Profile.BuildProfileModuleUtil", "GetPlatformIconSmall", typeof(Texture2D));
+        static readonly MethodInfo ModuleInstalledMethod = PlatformMethod("UnityEditor.Build.Profile.BuildProfileModuleUtil", "IsModuleInstalled", typeof(bool));
+        static readonly MethodInfo InstalledMethod = PlatformMethod("UnityEditor.BuildTargetDiscovery", "BuildPlatformIsInstalled", typeof(bool));
+        static readonly MethodInfo DerivedMethod = PlatformMethod("UnityEditor.BuildTargetDiscovery", "BuildPlatformIsDerivedPlatform", typeof(bool));
         static readonly Dictionary<string, string> DisplayNames = new();
         static readonly Dictionary<(string id, bool small, bool highDpi), Texture2D> Icons = new();
+
+        /// <summary>Answers <see cref="IsDisabled"/> when set: tests cannot disable a platform, since Unity reads that at startup.</summary>
+        internal static Func<BuildProfile, bool?> IsDisabledOverride;
 
         /// <summary>The platform's name as Unity shows it, for example "Meta Quest", "Android™" or "Windows".</summary>
         internal static string DisplayName(BuildProfile profile)
@@ -53,6 +60,30 @@ namespace BuildForge.Editor.Core
             if (!Icons.TryGetValue(key, out var icon))
                 Icons[key] = icon = Invoke(small ? SmallIconMethod : IconMethod, id) as Texture2D;
             return icon;
+        }
+
+        /// <summary>
+        /// Whether the profile's platform is a derived one, such as Meta Quest on Android, that
+        /// this editor has but has not enabled, which the Build Profiles window shows as
+        /// "currently disabled" with an Enable Platform button. Unity enables a derived platform
+        /// per user, with that button, or every one with -enableAllDerivedPlatforms. While it is
+        /// disabled, Unity builds the profile with its build target's settings instead of the
+        /// profile's. Null when Build Forge can't tell, because a lookup it needs is missing or
+        /// fails, as a later Unity version could make it; unlike the name and icon, that has no
+        /// harmless fallback.
+        /// </summary>
+        internal static bool? IsDisabled(BuildProfile profile)
+        {
+            if (IsDisabledOverride != null)
+                return IsDisabledOverride(profile);
+            var id = PlatformId(profile);
+            if (id == null || !(Invoke(DerivedMethod, id) is bool derived))
+                return null;
+            if (!derived)
+                return false;
+            if (!(Invoke(ModuleInstalledMethod, id) is bool loaded) || !(Invoke(InstalledMethod, id) is bool installed))
+                return null;
+            return !loaded && installed;
         }
 
         /// <summary>The platform's id as the profile stores it (<c>m_PlatformId</c>), or null.</summary>

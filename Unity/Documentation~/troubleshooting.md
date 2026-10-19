@@ -61,6 +61,14 @@ The command line has no `-activeBuildProfile`, and Unity was on a platform profi
 
 The Build Profile given to `-activeBuildProfile` has no Build Forge settings. Add them, and check that the Build Profile asset with its Build Forge section is committed.
 
+### "Unity Build Profile '…' is for …, which is disabled in this editor"
+
+The profile's platform is a derived platform, such as Meta Quest, that Unity has not enabled for the user running the editor, so Unity would build it with its build target's settings instead of the profile's, such as Android's Debug Symbols. In an editor, select the platform in Unity's Build Profiles window and click **Enable Platform**. On a build machine, add `-enableAllDerivedPlatforms` after `--` in the job's command; see [Requirements on the build machine](ci.md#requirements-on-the-build-machine).
+
+### "Build Forge cannot tell whether the platform of Unity Build Profile '…' is enabled"
+
+Build Forge checks a profile's platform with Unity's own lookups, which have no public API. This Unity version lacks them or they failed, so Build Forge cannot rule out that Unity would build the profile with its build target's settings instead of its own, and it does not build unchecked. Update Build Forge to a version that supports your Unity version.
+
 ### "Unknown argument", "needs a value", "Unknown build variant"
 
 Build Forge checks its arguments strictly; see [Build Forge's arguments](ci.md#build-forges-arguments). An argument that needs a value and gets none is usually an unset CI variable. Variant names must match exactly, including case, and once a project has variants every build needs `-forgeVariant`.
