@@ -22,7 +22,16 @@ namespace BuildForge.Editor.Core
         /// </summary>
         internal static readonly string[] EnumFields = { "m_CompressionType", "m_LinkTimeOptimization", "m_DebugSymbolLevel" };
 
-        const string Prefix = "m_PlatformBuildProfile.";
+        /// <summary>
+        /// The settings only Android's Build Profiles have (AndroidPlatformBuildSettings); every
+        /// platform's have the others (BuildProfilePlatformSettingsBase), checked on 6000.3.0f1 and
+        /// 6000.6.6f1. A rule's setting is skipped on a platform without it, but missing where it
+        /// belongs means Unity renamed it, and Build Forge stops rather than leave it out.
+        /// </summary>
+        internal static readonly string[] AndroidOnlyFields = { "m_LinkTimeOptimization", "m_DebugSymbolLevel" };
+
+        const string PlatformSettings = "m_PlatformBuildProfile";
+        const string Prefix = PlatformSettings + ".";
         [Serializable] sealed class Snapshot { public bool[] values; public bool[] present; public int[] enumValues; public bool[] enumPresent; }
 
         internal static string Capture(BuildProfile profile)
@@ -172,6 +181,12 @@ namespace BuildForge.Editor.Core
             var dev = so.FindProperty(Prefix + Fields[0]);
             if (dev == null && rule.DevelopmentBuild != VariantOverride.Inherit)
                 return $"'{profile.name}' has no native development build setting. Check its platform module and Unity version ({Application.unityVersion}).";
+            foreach (var (field, value) in Flags(rule.BuildConfiguration))
+                if (value != VariantOverride.Inherit && so.FindProperty(Prefix + field) == null && Belongs(profile, field))
+                    return MissingSetting(profile, field) + " No variant settings were applied.";
+            foreach (var (field, member) in EnumValues(rule.BuildConfiguration))
+                if (member != null && so.FindProperty(Prefix + field) == null && Belongs(profile, field))
+                    return MissingSetting(profile, field) + " No variant settings were applied.";
             foreach (var field in Fields)
             {
                 var property = so.FindProperty(Prefix + field);
@@ -220,13 +235,38 @@ namespace BuildForge.Editor.Core
         }
 
         internal static bool IsDevelopment(BuildProfile profile)
-            => new SerializedObject(profile).FindProperty(Prefix + Fields[0])?.boolValue
-                ?? EditorUserBuildSettings.development;
+            => ProfileFlag(profile, Fields[0], EditorUserBuildSettings.development);
 
         /// <summary>The profile's Script Debugging option; Unity uses it only in development builds.</summary>
         internal static bool IsScriptDebugging(BuildProfile profile)
-            => new SerializedObject(profile).FindProperty(Prefix + "m_AllowDebugging")?.boolValue
-                ?? EditorUserBuildSettings.allowDebugging;
+            => ProfileFlag(profile, "m_AllowDebugging", EditorUserBuildSettings.allowDebugging);
+
+        /// <summary>
+        /// A flag every platform has (see <see cref="Fields"/>), from the profile. Only a profile
+        /// without platform settings, as a test creates, falls back to the editor's own; settings
+        /// that lack the field throw, since Unity renamed it and the editor's value need not be the
+        /// profile's.
+        /// </summary>
+        static bool ProfileFlag(BuildProfile profile, string field, bool editorValue)
+        {
+            var so = new SerializedObject(profile);
+            var property = so.FindProperty(Prefix + field);
+            if (property != null)
+                return property.boolValue;
+            var settings = so.FindProperty(PlatformSettings);
+            if (settings != null && settings.managedReferenceValue == null)
+                return editorValue;
+            throw new InvalidOperationException(MissingSetting(profile, field));
+        }
+
+        /// <summary>Whether Unity keeps <paramref name="field"/> in this profile's platform settings.</summary>
+        static bool Belongs(BuildProfile profile, string field)
+            => Array.IndexOf(AndroidOnlyFields, field) < 0 || BuildProfileUtility.GetBuildTarget(profile) == BuildTarget.Android;
+
+        static string MissingSetting(BuildProfile profile, string field)
+            => $"'{profile.name}' has no '{field}' setting on Unity {Application.unityVersion}, although " +
+               $"{(Array.IndexOf(AndroidOnlyFields, field) < 0 ? "every" : "an Android")} Build Profile should have it, so " +
+               "Build Forge cannot apply or read it. Update Build Forge for this Unity version.";
 
         /// <summary>
         /// The development options the rule turns on that a build of this profile

@@ -223,12 +223,62 @@ namespace BuildForge.Tests.Editor
             finally { UnityEngine.Object.DestroyImmediate(profile); }
         }
 
-        internal static BuildProfile CreateNativeProfile()
+        internal static BuildProfile CreateNativeProfile(BuildTarget target = BuildTarget.StandaloneWindows64)
         {
             var method = typeof(BuildProfile).GetMethod("CreateInstance", BindingFlags.Static | BindingFlags.NonPublic,
                 null, new[] { typeof(BuildTarget), typeof(StandaloneBuildSubtarget) }, null);
             Assert.IsNotNull(method, "Unity's native profile factory changed.");
-            return (BuildProfile)method.Invoke(null, new object[] { BuildTarget.StandaloneWindows64, StandaloneBuildSubtarget.Player });
+            return (BuildProfile)method.Invoke(null, new object[] { target, StandaloneBuildSubtarget.Player });
+        }
+
+        static SerializedProperty Setting(BuildProfile profile, string field)
+            => new SerializedObject(profile).FindProperty("m_PlatformBuildProfile." + field);
+
+        // Where Unity keeps each setting a rule can set: every platform has the flags and the
+        // compression, only Android the other two. A Unity version that renames one fails here
+        // before a build would leave the setting out.
+        [Test] public void TheSettingsARuleSets_AreWhereBuildForgeExpectsThem()
+        {
+            var common = VariantBuildSettings.Fields.Concat(VariantBuildSettings.EnumFields)
+                .Except(VariantBuildSettings.AndroidOnlyFields).ToList();
+            var windows = CreateNativeProfile();
+            try
+            {
+                foreach (var field in common)
+                    Assert.IsNotNull(Setting(windows, field), $"A Windows profile has no {field}.");
+                foreach (var field in VariantBuildSettings.AndroidOnlyFields)
+                    Assert.IsNull(Setting(windows, field), $"A Windows profile has {field} now: update AndroidOnlyFields.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(windows); }
+
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android))
+                Assert.Ignore("This editor has no Android Build Support.");
+            var android = CreateNativeProfile(BuildTarget.Android);
+            try
+            {
+                foreach (var field in common.Concat(VariantBuildSettings.AndroidOnlyFields))
+                    Assert.IsNotNull(Setting(android, field), $"An Android profile has no {field}.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(android); }
+        }
+
+        // Missing where the platform has it means Unity renamed the setting, so the build stops;
+        // on a platform without it, the rule's value is skipped. A bare profile has no platform
+        // settings at all, and its Development Build is the editor's own.
+        [Test] public void ARulesSettingMissingWhereItBelongs_StopsTheBuild_AndIsSkippedElsewhere()
+        {
+            var bare = ScriptableObject.CreateInstance<BuildProfile>();
+            try
+            {
+                var compression = Rule("Release", VariantOverride.Inherit);
+                compression.BuildConfiguration.Compression = VariantCompression.LZ4HC;
+                StringAssert.Contains("has no 'm_CompressionType' setting", VariantBuildSettings.ValidationError(bare, compression));
+                var linkTimeOptimization = Rule("Release", VariantOverride.Inherit);
+                linkTimeOptimization.BuildConfiguration.LinkTimeOptimization = VariantLinkTimeOptimization.Thin;
+                Assert.IsNull(VariantBuildSettings.ValidationError(bare, linkTimeOptimization), "Not an Android profile, so it is skipped.");
+                Assert.AreEqual(EditorUserBuildSettings.development, VariantBuildSettings.IsDevelopment(bare));
+            }
+            finally { UnityEngine.Object.DestroyImmediate(bare); }
         }
 
         [Test]

@@ -76,6 +76,7 @@ A rule's **Build Configuration** sets Unity build settings for the variant's bui
 - The IL2CPP settings and Strip Engine Code matter only to IL2CPP builds.
 - The Player Settings are written for the platform being built, to the Build Profile's own Player Settings when it has them, otherwise to Project Settings > Player. They are restored exactly as Unity stored them, so `ProjectSettings.asset` and the Build Profile are unchanged after the build.
 - Link Time Optimization and Debug Symbols exist only on Android Build Profiles. Other platforms' builds leave them out, and the build window lists only the settings the selected profile's builds get.
+- When a profile's platform has a setting but Build Forge cannot find Unity's field for it, as after Unity renamed one, the build stops before it starts and names the field, instead of leaving the setting out. Update Build Forge for that Unity version.
 - **Default** in Compression Method is Unity's Default: no LZ4 compression (in an APK, ZIP). Inherit keeps the profile's choice.
 
 A typical pair: `Release` with C++ Compiler Configuration **Master** and Compression Method **LZ4HC** for the store build, and `Development` with Script Debugging and Autoconnect Profiler on, C++ Compiler Configuration **Debug** and Managed Stripping Level **Minimal**.

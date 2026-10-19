@@ -24,6 +24,7 @@ The message names the cause. The common ones:
 | Build Forge could not delete … | A file from the previous build is in use, usually because the player is still running. |
 | Build Forge cannot build '…': a folder is in the way | An old Android export folder sits where the APK goes. |
 | Build Forge plugin … could not be loaded | The plugin's constructor failed, and the error is in parentheses. Fix the plugin, or turn it off in **Project Settings > Build Forge > Installed Plugins**. |
+| '…' has no '…' setting on Unity …, or Unity Build Profile '…' stores no … | Unity renamed a Build Profile setting that Build Forge applies or reads. Update Build Forge for your Unity version. |
 | [Build Forge/BuildNumber] … | [Build Number](plugins/build-number.md#when-the-build-stops) |
 | [Build Forge/AndroidKeystoreEnv] … | [Android Keystore Env](plugins/android-keystore-env.md#what-a-build-does) |
 | OpenXR feature '…' did not accept its configured override, or OpenXR kept '…' enabled | [OpenXR](plugins/openxr.md#builds-and-apply) |

@@ -270,7 +270,7 @@ Unity build callbacks, such as `IPostGenerateGradleAndroidProject` for changes t
 |---|---|
 | Plugin contract | `IForgePlugin`, `IForgeManifestContributor`, `IForgeEditorApplicable`, `IForgeGradleProcessor`, `ForgePluginAttribute`, `ForgeBuildContext` |
 | Configuration | `ForgeProfile`, `ForgeSettings` |
-| Utilities | `BuildProfileUtility` (a Build Profile's build target, whether it is a Dedicated Server), `BuildEnvironment` (`IsCI`), `GitHelper` (runs git in the project) |
+| Utilities | `BuildProfileUtility` (a Build Profile's build target, whether it is a Dedicated Server; both throw when Unity stores no such value in the profile), `BuildEnvironment` (`IsCI`), `GitHelper` (runs git in the project) |
 | Builds | `ForgeBuildRunner` (`RunBuild`, `GetCICommand`, `IsForgeBuildInProgress`), `BuildForge.CommandLine` (the `-executeMethod` entry point) |
 | Runtime | `BuildManifest`, `ManifestSection`, `ManifestEntry`, `BuildManifestLoader` |
 

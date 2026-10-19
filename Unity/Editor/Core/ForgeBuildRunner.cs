@@ -819,29 +819,35 @@ namespace BuildForge.Editor.Core
     /// </summary>
     public static class BuildProfileUtility
     {
-        /// <summary>The build target the Build Profile builds for; the active one when it cannot be read.</summary>
+        /// <summary>
+        /// The build target the Build Profile builds for. Throws when the profile stores
+        /// none, as a Unity version that renamed the field would, rather than guess.
+        /// </summary>
         public static BuildTarget GetBuildTarget(BuildProfile profile)
         {
-            var so = new SerializedObject(profile);
-            var platformProp = so.FindProperty("m_BuildTarget");
-            if (platformProp != null)
-            {
-                return (BuildTarget)platformProp.intValue;
-            }
-
-            return EditorUserBuildSettings.activeBuildTarget;
+            var platformProp = new SerializedObject(profile).FindProperty("m_BuildTarget");
+            if (platformProp == null)
+                throw new InvalidOperationException(
+                    $"Unity Build Profile '{profile.name}' stores no m_BuildTarget in Unity {Application.unityVersion}, so " +
+                    "Build Forge cannot tell what it builds. Update Build Forge for this Unity version.");
+            return (BuildTarget)platformProp.intValue;
         }
 
         /// <summary>
         /// True for a Dedicated Server profile, whose per-platform Player Settings
         /// Unity keys by NamedBuildTarget.Server rather than the Standalone group.
+        /// Throws for a Standalone profile that stores no subtarget, rather than guess.
         /// </summary>
         public static bool IsDedicatedServer(BuildProfile profile)
         {
+            if (BuildPipeline.GetBuildTargetGroup(GetBuildTarget(profile)) != BuildTargetGroup.Standalone)
+                return false;
             var subtarget = new SerializedObject(profile).FindProperty("m_Subtarget");
-            return subtarget != null
-                && BuildPipeline.GetBuildTargetGroup(GetBuildTarget(profile)) == BuildTargetGroup.Standalone
-                && subtarget.intValue == (int)StandaloneBuildSubtarget.Server;
+            if (subtarget == null)
+                throw new InvalidOperationException(
+                    $"Unity Build Profile '{profile.name}' stores no m_Subtarget in Unity {Application.unityVersion}, so " +
+                    "Build Forge cannot tell a Dedicated Server profile from a player one. Update Build Forge for this Unity version.");
+            return subtarget.intValue == (int)StandaloneBuildSubtarget.Server;
         }
     }
 }
