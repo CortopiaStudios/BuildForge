@@ -48,7 +48,7 @@ Edits are written to the Build Profile asset immediately, so the file always mat
     version: 2
     RefIds:
     - rid: 7130472218546188288
-      type: {class: BuildNumberConfig, ns: BuildForge.Editor.Plugins, asm: BuildForge.Editor}
+      type: {class: BuildNumberConfig, ns: BuildForge.Editor.Plugins, asm: BuildForge.Editor.BuildNumber}
       data:
         enabled: 1
         source: 2
