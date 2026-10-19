@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- A build stops before it starts while a Build Forge plugin that is on in Project Settings failed to load, and names the plugin and its error. It used to build without the plugin, with only an error in the console
 - A build of a Meta Quest profile, or another derived platform's, stops before it starts when the editor has not enabled that platform, and says how to: with **Enable Platform** in Unity's Build Profiles window, which applies to one user, or with `-enableAllDerivedPlatforms` on the editor's command line, as on a build machine. Unity built such a profile with its build target's settings instead of the profile's, Android's for Meta Quest, without an error, so a build machine's builds lacked the profile's Debug Symbols, for example. Where Build Forge cannot tell whether the platform is enabled, because a Unity version lacks the lookups it uses for that, the build stops as well and says so
 
 ## [0.9.3] - 2026-10-16

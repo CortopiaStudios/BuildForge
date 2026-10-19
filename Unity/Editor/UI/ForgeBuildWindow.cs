@@ -163,6 +163,10 @@ namespace BuildForge.Editor.UI
                 var stray = BuildVariants.StrayWarning(profile, ForgeEditorState.IsApplied(profile));
                 if (stray != null)
                     warnings.Add(stray);
+                // Builds stop for these; the window says so before one starts.
+                var pluginError = ForgePluginRegistry.LoadError();
+                if (pluginError != null)
+                    warnings.Add(pluginError);
                 foreach (var plugin in plugins)
                 {
                     if (ForgeSettings.instance.IsPluginDisabledWithDefault(

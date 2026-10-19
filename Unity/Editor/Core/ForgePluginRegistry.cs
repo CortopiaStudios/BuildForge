@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BuildForge.Editor.Configuration;
 using UnityEditor;
 using UnityEngine;
 
@@ -14,6 +15,9 @@ namespace BuildForge.Editor.Core
     {
         static List<IForgePlugin> cachedPlugins;
 
+        /// <summary>The plugins whose creation failed in the last discovery, with the error; tests add to it.</summary>
+        internal static readonly List<(Type Type, string Error)> LoadFailures = new();
+
         /// <summary>
         /// Returns all discovered plugins, sorted by execution order.
         /// </summary>
@@ -23,6 +27,7 @@ namespace BuildForge.Editor.Core
                 return cachedPlugins;
 
             cachedPlugins = new List<IForgePlugin>();
+            LoadFailures.Clear();
 
             var pluginTypes = TypeCache.GetTypesWithAttribute<ForgePluginAttribute>();
 
@@ -49,13 +54,38 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
+                    var error = (e as System.Reflection.TargetInvocationException)?.InnerException?.Message ?? e.Message;
+                    LoadFailures.Add((type, error));
                     Debug.LogError(
-                        $"[Build Forge] Failed to instantiate plugin {type.FullName}: {e.Message}");
+                        $"[Build Forge] Failed to instantiate plugin {type.FullName}: {error}");
                 }
             }
 
             cachedPlugins = cachedPlugins.OrderBy(p => p.Order).ToList();
             return cachedPlugins;
+        }
+
+        /// <summary>
+        /// Why builds stop because a plugin failed to load, or null: a plugin that is on
+        /// in Project Settings but could not be created would not run, and a profile may
+        /// rely on it. One that is off there cannot run anyway and doesn't count.
+        /// </summary>
+        internal static string LoadError()
+        {
+            GetPlugins();
+            return LoadError(LoadFailures,
+                type => ForgeSettings.instance.IsPluginDisabledWithDefault(type.FullName, IsEnabledByDefault(type)));
+        }
+
+        internal static string LoadError(IEnumerable<(Type Type, string Error)> failures, Func<Type, bool> isOff)
+        {
+            var blocking = failures
+                .Where(f => !isOff(f.Type))
+                .Select(f => $"{f.Type.FullName} ({f.Error})")
+                .ToList();
+            return blocking.Count == 0 ? null
+                : $"Build Forge plugin {string.Join(", ", blocking)} could not be loaded, so it would not run in this build. " +
+                  "Fix it, or turn it off in Project Settings > Build Forge > Installed Plugins.";
         }
 
         /// <summary>
