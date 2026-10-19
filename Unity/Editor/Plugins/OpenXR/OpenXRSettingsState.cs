@@ -41,11 +41,7 @@ namespace BuildForge.Editor.OpenXR
             "company", "priority", "targetOpenXRApiVersion", "required", "customRuntimeLoaderName",
         };
 
-        static readonly Type InteractionProfileType =
-            typeof(OpenXRFeature).Assembly.GetType("UnityEngine.XR.OpenXR.Features.OpenXRInteractionFeature");
-
-        public static bool IsInteractionProfile(OpenXRFeature feature)
-            => InteractionProfileType != null && InteractionProfileType.IsAssignableFrom(feature.GetType());
+        public static bool IsInteractionProfile(OpenXRFeature feature) => feature is OpenXRInteractionFeature;
 
         /// <summary>
         /// A feature XR Plug-in Management doesn't show: a vendor package registers

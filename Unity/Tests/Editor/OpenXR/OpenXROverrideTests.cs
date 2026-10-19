@@ -569,6 +569,25 @@ namespace BuildForge.Tests.OpenXR
             finally { Object.DestroyImmediate(profile); }
         }
 
+        // OpenXR's public type: a release that renames it fails to compile instead of letting
+        // a build treat controller profiles like other features and turn unlisted ones off.
+        [Test] public void InteractionProfiles_AreOpenXRsInteractionFeatures()
+        {
+            var touch = ScriptableObject.CreateInstance<OculusTouchControllerProfile>();
+            var quest = CreateMetaQuestFeature();
+            try
+            {
+                Assert.IsTrue(OpenXRSettingsState.IsInteractionProfile(touch));
+                Assert.IsTrue(OpenXRSettingsState.IsInteractionProfile(controller));
+                Assert.IsFalse(OpenXRSettingsState.IsInteractionProfile(quest));
+            }
+            finally
+            {
+                Object.DestroyImmediate(touch);
+                Object.DestroyImmediate(quest);
+            }
+        }
+
         static OpenXREditorStateSnapshot Snapshot(string renderMode, string latency, params OpenXRFeatureState[] features)
         {
             var snapshot = new OpenXREditorStateSnapshot();
