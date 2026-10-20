@@ -177,7 +177,7 @@ namespace BuildForge.Editor.UI
 
             EditorGUILayout.LabelField("Installed Plugins", EditorStyles.boldLabel);
             var plugins = ForgePluginRegistry.GetPlugins();
-            if (plugins.Count == 0)
+            if (plugins.Count == 0 && ForgePluginRegistry.LoadFailures.Count == 0)
             {
                 EditorGUILayout.LabelField("No plugins discovered.", EditorStyles.miniLabel);
             }
@@ -203,6 +203,27 @@ namespace BuildForge.Editor.UI
                         EditorGUI.indentLevel--;
                     }
                 }
+            }
+
+            // A plugin that failed to load has nothing to draw, but builds stop while it is on, so it
+            // gets its toggle here too, with the error.
+            foreach (var (type, error) in ForgePluginRegistry.LoadFailures.OrderBy(f => f.Type.Name, System.StringComparer.OrdinalIgnoreCase))
+            {
+                var typeName = type.FullName;
+                var isDisabled = ForgeSettings.instance.IsPluginDisabledWithDefault(typeName, ForgePluginRegistry.IsEnabledByDefault(type));
+                var newEnabled = EditorGUILayout.Toggle(new GUIContent($"{type.Name} (failed to load)", typeName), !isDisabled);
+                if (newEnabled == isDisabled)
+                {
+                    ForgeSettings.instance.SetPluginDisabled(typeName, !newEnabled);
+                    isDisabled = !newEnabled;
+                }
+
+                EditorGUI.indentLevel++;
+                EditorGUILayout.HelpBox(isDisabled
+                        ? $"{typeName} could not be loaded ({error}). It is off, so builds go on without it."
+                        : $"{typeName} could not be loaded ({error}). Builds stop while it is on: fix it, or turn it off here.",
+                    isDisabled ? MessageType.Info : MessageType.Error);
+                EditorGUI.indentLevel--;
             }
 
             // Show optional plugins that require packages not yet installed

@@ -23,7 +23,7 @@ The message names the cause. The common ones:
 | Build Forge refuses to remove previous build output in … | The destination is unsafe to clean, for example it contains the project. Choose a dedicated folder; see [Remove Previous Build Output](settings.md#remove-previous-build-output). |
 | Build Forge could not delete … | A file from the previous build is in use, usually because the player is still running. |
 | Build Forge cannot build '…': a folder is in the way | An old Android export folder sits where the APK goes. |
-| Build Forge plugin … could not be loaded | The plugin's constructor failed, and the error is in parentheses. Fix the plugin, or turn it off in **Project Settings > Build Forge > Installed Plugins**. |
+| Build Forge plugin … could not be loaded | The plugin's constructor failed, and the error is in parentheses. Fix the plugin, or turn it off in **Project Settings > Build Forge > Installed Plugins**, where it is listed as "(failed to load)". |
 | Build Forge cannot load the plugin settings … | [Plugin settings that Unity cannot load](#build-forge-cannot-load-the-plugin-settings-) |
 | '…' has no '…' setting on Unity …, or Unity Build Profile '…' stores no … | Unity renamed a Build Profile setting that Build Forge applies or reads. Update Build Forge for your Unity version. |
 | [Build Forge/OpenXR] Meta Quest Setup is on for this profile, but Build Forge cannot read … | [OpenXR](plugins/openxr.md#warnings) |
