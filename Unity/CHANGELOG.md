@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.4] - 2026-10-20
+
 ### Changed
 - `BuildProfileUtility.GetBuildTarget` throws when a Build Profile stores no build target, as a Unity version that renamed the field would, instead of returning the editor's active build target, and `BuildProfileUtility.IsDedicatedServer` throws for a Standalone profile that stores no subtarget instead of answering false
 - The Cloud Diagnostics plugin also sets Diagnostics Data (Unity 6.2 and later) for the build, from the same mode as crash reporting, and puts the Unity Build Profile's own value back afterwards. Diagnostics Data, too, makes an Android build upload its IL2CPP symbols and the player report crashes in a project linked to Unity Cloud, so with crash reporting off a build still did both, contrary to what the plugin's manual and tooltip said. A local build with CI Only now has both off. If a Unity version stores no Diagnostics Data in the profile, builds of profiles with the plugin on stop. The manual also says that a build machine, which isn't signed in to a Unity account, needs a token in `USYM_UPLOAD_AUTH_TOKEN`, or Unity's CI route, for the upload
