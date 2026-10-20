@@ -7,6 +7,7 @@ using BuildForge.Runtime;
 using UnityEditor;
 using UnityEditor.AddressableAssets;
 using UnityEditor.AddressableAssets.Settings;
+using UnityEditor.AddressableAssets.Settings.GroupSchemas;
 using UnityEditor.Build.Profile;
 using UnityEngine;
 
@@ -104,7 +105,104 @@ namespace BuildForge.Editor.Addressables
                 messages.Add(MisconfigurationMessage);
             }
 
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            var exclusionError = settings != null ? ExclusionError(config, settings) : null;
+            if (exclusionError != null)
+                messages.Add(exclusionError);
+
             return messages;
+        }
+
+        /// <summary>
+        /// Why the build's exclusions can't all take effect, or null: they name a group or
+        /// label the project doesn't have, renamed or removed, which would exclude nothing,
+        /// or a group this Addressables version can't leave out of a build.
+        /// </summary>
+        internal static string ExclusionError(AddressablesStripperConfig config, AddressableAssetSettings settings)
+        {
+            var groups = settings.groups.Where(g => g != null).ToList();
+            return MissingNamesError(config, groups.Select(g => g.Name).ToList(), settings.GetLabels())
+                   ?? CannotExcludeError(groups.Where(g => config.ExcludedGroups.Contains(g.Name)));
+        }
+
+        internal static string MissingNamesError(AddressablesStripperConfig config, ICollection<string> groups, ICollection<string> labels)
+        {
+            var missingGroups = config.ExcludedGroups.Where(g => !groups.Contains(g)).ToList();
+            var missingLabels = config.ExcludedLabels.Where(l => !labels.Contains(l)).ToList();
+            if (missingGroups.Count == 0 && missingLabels.Count == 0)
+                return null;
+            var names = new List<string>();
+            if (missingGroups.Count > 0)
+                names.Add($"the group{(missingGroups.Count == 1 ? "" : "s")} {string.Join(", ", missingGroups.Select(g => $"'{g}'"))}");
+            if (missingLabels.Count > 0)
+                names.Add($"the label{(missingLabels.Count == 1 ? "" : "s")} {string.Join(", ", missingLabels.Select(l => $"'{l}'"))}");
+            return $"The exclusions name {string.Join(" and ", names)}, which this project's Addressables settings don't have " +
+                   "(renamed or removed), so they would exclude nothing. Remove them in this profile's Addressables Stripper " +
+                   "settings, where they are marked as not found, or exclude the new names. Builds that use them stop until " +
+                   "then, because the content they excluded would otherwise ship.";
+        }
+
+        static string CannotExcludeError(IEnumerable<AddressableAssetGroup> excluded)
+        {
+#if BUILDFORGE_ADDRESSABLES_GROUP_INCLUDE
+            // Every group has its own Include in Build.
+            return null;
+#else
+            var cannot = excluded.Where(g => g.GetSchema<BundledAssetGroupSchema>() == null).Select(g => $"'{g.Name}'").ToList();
+            return cannot.Count == 0 ? null
+                : $"The group{(cannot.Count == 1 ? "" : "s")} {string.Join(", ", cannot)} can't be excluded: " +
+                  $"{(cannot.Count == 1 ? "it has" : "they have")} no Content Packing & Loading schema, whose Include in Build " +
+                  "is what leaves a group out of a build in this Addressables version. Remove " +
+                  $"{(cannot.Count == 1 ? "it" : "them")} from the exclusions, or add the schema.";
+#endif
+        }
+
+        // From Addressables 4.1 a group has its own Include in Build, for every kind of group;
+        // before, the bundled schema had it.
+        internal static bool IncludeInBuild(AddressableAssetGroup group)
+#if BUILDFORGE_ADDRESSABLES_GROUP_INCLUDE
+            => group.IncludeInBuild;
+#else
+            => Schema(group).IncludeInBuild;
+#endif
+
+        static void SetIncludeInBuild(AddressableAssetGroup group, bool include)
+        {
+#if BUILDFORGE_ADDRESSABLES_GROUP_INCLUDE
+            group.IncludeInBuild = include;
+#else
+            Schema(group).IncludeInBuild = include;
+#endif
+        }
+
+#if !BUILDFORGE_ADDRESSABLES_GROUP_INCLUDE
+        static BundledAssetGroupSchema Schema(AddressableAssetGroup group) =>
+            group.GetSchema<BundledAssetGroupSchema>()
+            ?? throw new InvalidOperationException(
+                $"[Build Forge/Addressables] Group '{group.Name}' has no Content Packing & Loading schema, so its Include in Build can't be set.");
+#endif
+
+        /// <summary>Leaves the named groups out of the build; returns their Include in Build, by group name, to put back.</summary>
+        internal static Dictionary<string, bool> ExcludeGroups(AddressableAssetSettings settings, ICollection<string> names)
+        {
+            var captured = new Dictionary<string, bool>();
+            foreach (var group in settings.groups)
+            {
+                if (group == null || !names.Contains(group.Name)) continue;
+                captured[group.Name] = IncludeInBuild(group);
+                SetIncludeInBuild(group, false);
+                Debug.Log($"[Build Forge/Addressables] Excluded group: {group.Name}");
+            }
+            return captured;
+        }
+
+        internal static void RestoreGroups(AddressableAssetSettings settings, Dictionary<string, bool> captured)
+        {
+            foreach (var group in settings.groups)
+            {
+                if (group != null && captured.TryGetValue(group.Name, out var wasIncluded))
+                    SetIncludeInBuild(group, wasIncluded);
+            }
         }
 
         /// <summary>
@@ -143,26 +241,12 @@ namespace BuildForge.Editor.Addressables
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (settings == null) return;
 
-            // Capture and disable excluded groups
-            var capturedGroupStates = new Dictionary<string, bool>();
-            foreach (var group in settings.groups)
-            {
-                if (group == null) continue;
-                if (config.ExcludedGroups.Contains(group.Name))
-                {
-                    capturedGroupStates[group.Name] = true;
-                    // Remove all entries from the group temporarily by disabling it
-                    // We do this by removing it from the build via the include flag
-                    var schema = group.GetSchema<UnityEditor.AddressableAssets.Settings.GroupSchemas.BundledAssetGroupSchema>();
-                    if (schema != null)
-                    {
-                        capturedGroupStates[$"{group.Name}__includeInBuild"] = schema.IncludeInBuild;
-                        schema.IncludeInBuild = false;
-                        Debug.Log($"[Build Forge/Addressables] Excluded group: {group.Name}");
-                    }
-                }
-            }
-            context.SetProperty(CapturedGroupStatesKey, capturedGroupStates);
+            // Before anything changes: an exclusion that can't take effect would ship its content.
+            var exclusionError = ExclusionError(config, settings);
+            if (exclusionError != null)
+                throw new InvalidOperationException($"[Build Forge/Addressables] {exclusionError}");
+
+            context.SetProperty(CapturedGroupStatesKey, ExcludeGroups(settings, config.ExcludedGroups));
 
             // Move entries carrying an excluded label out of the build. Entries
             // in excluded (already disabled) or read-only groups are left alone.
@@ -182,9 +266,8 @@ namespace BuildForge.Editor.Addressables
                 if (toMove.Count > 0)
                 {
                     var tempGroup = settings.CreateGroup(TempGroupName, false, false, false, null,
-                        typeof(UnityEditor.AddressableAssets.Settings.GroupSchemas.BundledAssetGroupSchema));
-                    tempGroup.GetSchema<UnityEditor.AddressableAssets.Settings.GroupSchemas.BundledAssetGroupSchema>()
-                        .IncludeInBuild = false;
+                        typeof(BundledAssetGroupSchema));
+                    SetIncludeInBuild(tempGroup, false);
 
                     var moved = new MovedEntries { TempGroupGuid = tempGroup.Guid };
                     foreach (var entry in toMove)
@@ -213,21 +296,7 @@ namespace BuildForge.Editor.Addressables
             // Restore group states
             var capturedGroupStates = context.GetProperty<Dictionary<string, bool>>(CapturedGroupStatesKey);
             if (capturedGroupStates != null)
-            {
-                foreach (var group in settings.groups)
-                {
-                    if (group == null) continue;
-                    var key = $"{group.Name}__includeInBuild";
-                    if (capturedGroupStates.TryGetValue(key, out var wasIncluded))
-                    {
-                        var schema = group.GetSchema<UnityEditor.AddressableAssets.Settings.GroupSchemas.BundledAssetGroupSchema>();
-                        if (schema != null)
-                        {
-                            schema.IncludeInBuild = wasIncluded;
-                        }
-                    }
-                }
-            }
+                RestoreGroups(settings, capturedGroupStates);
 
             // Move label-excluded entries back and drop the temporary group
             var moved = context.GetProperty<MovedEntries>(MovedEntriesKey);
@@ -309,6 +378,17 @@ namespace BuildForge.Editor.Addressables
                 EditorGUILayout.HelpBox(MisconfigurationMessage, MessageType.Warning);
             }
 
+            var groupNames = settings.groups.Where(g => g != null).Select(g => g.Name).ToList();
+            var labelNames = settings.GetLabels();
+            var notFound = new[] { config.ExcludedGroups }.Concat(config.VariantExclusions.Select(v => v.groups))
+                               .Any(list => list.Any(n => !groupNames.Contains(n)))
+                           || new[] { config.ExcludedLabels }.Concat(config.VariantExclusions.Select(v => v.labels))
+                               .Any(list => list.Any(n => !labelNames.Contains(n)));
+            if (notFound)
+                EditorGUILayout.HelpBox("Exclusions marked as not found name groups or labels this project doesn't have, renamed or " +
+                                        "removed. They would exclude nothing, so builds that use them stop until they are removed.",
+                    MessageType.Error);
+
             // Group exclusions
             EditorGUILayout.LabelField("Exclude Groups", EditorStyles.boldLabel);
             foreach (var group in settings.groups)
@@ -327,6 +407,7 @@ namespace BuildForge.Editor.Addressables
                     changed = true;
                 }
             }
+            changed |= DrawNotFound(config.ExcludedGroups, groupNames, "Group");
 
             EditorGUILayout.Space(4);
 
@@ -347,6 +428,7 @@ namespace BuildForge.Editor.Addressables
                     changed = true;
                 }
             }
+            changed |= DrawNotFound(config.ExcludedLabels, labelNames, "Label");
 
             if (ForgeSettings.instance.BuildVariants.Count > 0)
             {
@@ -370,6 +452,8 @@ namespace BuildForge.Editor.Addressables
                     changed |= ToggleExclusion(group.Name, extra.groups);
                 foreach (var label in settings.GetLabels())
                     changed |= ToggleExclusion(label, extra.labels, "Label: ");
+                changed |= DrawNotFound(extra.groups, groupNames, "Group");
+                changed |= DrawNotFound(extra.labels, labelNames, "Label");
                 EditorGUI.indentLevel--;
             }
 
@@ -407,6 +491,25 @@ namespace BuildForge.Editor.Addressables
 
             if (changed)
                 SaveConfig(forgeProfile, config);
+        }
+
+        /// <summary>Lists the names that match no group or label, each with a Remove button.</summary>
+        static bool DrawNotFound(List<string> values, ICollection<string> existing, string kind)
+        {
+            var changed = false;
+            foreach (var name in values.Where(v => !existing.Contains(v)).ToList())
+            {
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    EditorGUILayout.LabelField($"{kind} '{name}'", "not found");
+                    if (GUILayout.Button("Remove", GUILayout.Width(70)))
+                    {
+                        values.Remove(name);
+                        changed = true;
+                    }
+                }
+            }
+            return changed;
         }
 
         static bool ToggleExclusion(string name, List<string> values, string prefix = "")

@@ -14,7 +14,7 @@ Leaves Addressables groups and labelled entries out of a build, for example spoi
 
 ## What a build does
 
-- An excluded group gets **Include in Build** off for the duration of the build.
+- An excluded group gets **Include in Build** off for the duration of the build. From Addressables 4.1 that is the group's own setting, which every kind of group has, Content Directory groups included. Before 4.1 it is the setting of the group's **Content Packing & Loading** schema, so a group without that schema can't be excluded, and its exclusion stops the build.
 - Entries carrying an excluded label are moved into a temporary group that is not included in the build, named `BuildForge Excluded (temporary, safe to delete)`. Removing only the label would leave the entry in its group, still packed and loadable by address. Entries in excluded or read-only groups stay where they are.
 
 After the build, the groups' flags are restored and the entries moved back; the temporary group is removed. An entry that cannot be moved back is left in the temporary group, with a warning in the log.
@@ -29,6 +29,10 @@ The exclusions exist only while the build runs, so content built before it, for 
 - Addressables' **Build Addressables on Player Build** set to build with the player, in the Addressables settings asset.
 
 The per-user Addressables preference is not taken into account, because what a build contains must not depend on the machine.
+
+## Renamed or removed groups and labels
+
+Exclusions are stored by name. After a group or label is renamed or removed, an exclusion of the old name would exclude nothing, and the content it excluded would ship. A build that uses such an exclusion therefore stops before anything changes, and the foldout lists it as not found, with **Remove**.
 
 ## Renamed or removed variants
 
