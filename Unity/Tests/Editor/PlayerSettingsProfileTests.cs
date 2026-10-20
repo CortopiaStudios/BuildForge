@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using BuildForge.Editor.Core;
 using UnityEditor;
 using UnityEditor.Build.Profile;
@@ -8,6 +9,16 @@ namespace BuildForge.Tests.Editor
 {
     public class PlayerSettingsProfileTests
     {
+        // Every build saves the restored Player Settings, including a profile's own; a Unity
+        // version that keeps them somewhere Build Forge doesn't know fails here first.
+        [Test]
+        public void ThisEditor_KeepsAProfilesOwnPlayerSettingsWhereBuildForgeCanSaveThem()
+        {
+            Assert.IsTrue(PlayerSettingsPersistence.CanSaveProfilePlayerSettings,
+                "Neither BuildProfile.SerializePlayerSettings() (up to 6000.6) nor BuildProfile.buildProfilePlayerSettings " +
+                "(6000.7 and later) exists in this editor.");
+        }
+
         [Test]
         public void StaticPlayerSettingsAPI_TargetsActiveProfileSettings()
         {
@@ -37,9 +48,12 @@ namespace BuildForge.Tests.Editor
                 Assert.AreEqual(99999, prop.intValue,
                     "Static API write should be visible via profile's SerializedObject");
 
-                // GetComponent falls back to global settings when the profile has no overrides.
+                // GetComponent falls back to global settings when the profile has no overrides. The
+                // profile keeps its own in an embedded YAML copy up to 6000.6, in a sub-asset from 6000.7.
                 var embedded = new SerializedObject(profile).FindProperty("m_PlayerSettingsYaml.m_Settings");
-                var path = embedded != null && embedded.arraySize > 0
+                var subasset = typeof(BuildProfile).GetField("buildProfilePlayerSettings",
+                    BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(profile) as UnityEngine.Object;
+                var path = embedded != null && embedded.arraySize > 0 || subasset != null
                     ? AssetDatabase.GetAssetPath(profile) : "ProjectSettings/ProjectSettings.asset";
                 PlayerSettingsPersistence.SaveRestoredSettings();
                 StringAssert.Contains("AndroidBundleVersionCode: 99999", File.ReadAllText(path));

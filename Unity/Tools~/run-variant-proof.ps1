@@ -1,7 +1,9 @@
 param(
     [string]$Editor = 'C:/Program Files/Unity/Hub/Editor/6000.3.23f1/Editor/Unity.exe',
     [string]$ProofProject,
-    [string]$UnityCli = 'unity'
+    [string]$UnityCli = 'unity',
+    # The proof profile gets its own Player Settings, which the builds then restore in the profile.
+    [switch]$ProfilePlayerSettings
 )
 $ErrorActionPreference = 'Stop'
 # This runner launches a Windows standalone player; it does not claim macOS/Linux proof.
@@ -10,9 +12,9 @@ $editorVersion = [regex]::Match((Get-Item -LiteralPath $Editor).VersionInfo.Prod
     '6000\.\d+\.\d+[abf]\d+').Value
 if (-not $editorVersion) { throw "Cannot read the Unity version from $Editor" }
 if (-not $ProofProject) {
-    $ProofProject = Join-Path $env:LOCALAPPDATA "BuildForge/variant-proof-$editorVersion"
+    $ProofProject = Join-Path $env:LOCALAPPDATA "BuildForge/variant-proof-$editorVersion$(if ($ProfilePlayerSettings) { '-profile-player-settings' })"
 }
-Write-Host "Variant proof: Unity $editorVersion on Windows"
+Write-Host "Variant proof: Unity $editorVersion on Windows$(if ($ProfilePlayerSettings) { ', the profile with its own Player Settings' })"
 $packagePath = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path.Replace('\', '/')
 $proofPath = [IO.Path]::GetFullPath($ProofProject).Replace('\', '/')
 if ($proofPath.Contains('"')) { throw 'The proof path cannot contain quotes.' }
@@ -34,7 +36,7 @@ function Invoke-ProofEditor([string]$Arguments, [string]$LogName) {
     $process.WaitForExit()
     if ($process.ExitCode -ne 0) { throw "Unity failed ($($process.ExitCode)); see $proofPath/$LogName.log" }
 }
-Invoke-ProofEditor '-executeMethod VariantProofSetup.Prepare' 'setup'
+Invoke-ProofEditor "-executeMethod VariantProofSetup.Prepare$(if ($ProfilePlayerSettings) { ' -proofProfilePlayerSettings' })" 'setup'
 $savedProject = (Get-FileHash "$proofPath/ProjectSettings/ProjectSettings.asset").Hash
 $savedProfile = $null
 foreach ($variant in @('Development', 'Default')) {

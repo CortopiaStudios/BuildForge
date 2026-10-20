@@ -94,7 +94,10 @@ refuses its Enable/Disable override aborts the build before content generation.
 default), builds and launches Development then Default, and injects pre-build
 failures. Pass `-Editor <path>` to check another installed Editor; the script reads
 that executable's version and pins the host accordingly. Use a separate
-`-ProofProject <path>` for each Editor. The PowerShell proof launches `.exe`
+`-ProofProject <path>` for each Editor. `-ProfilePlayerSettings` gives the proof
+profile its own Player Settings, so the builds restore them in the profile (its
+embedded YAML copy up to 6000.6, its sub-asset from 6000.7) rather than in the
+project's; it uses a project of its own. The PowerShell proof launches `.exe`
 players and is Windows-only; it is not cross-platform validation.
 It checks actual player development mode, compiled aliases, manifest identity,
 product marking, saved settings restoration and a previously applied Development

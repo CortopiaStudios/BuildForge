@@ -410,7 +410,7 @@ Editor/
     UnityYamlParser.cs                    # Line-based YAML parser for Unity assets
     PlayerSettingsDiffComputer.cs          # Computes diffs between profile and platform YAML
     PlayerSettingsMatrix.cs                # All profiles' differences side by side, per platform
-    PlayerSettingsPersistence.cs           # Saves restored Player Settings into the profile's embedded copy
+    PlayerSettingsPersistence.cs           # Saves restored Player Settings, also a profile's own (YAML copy or sub-asset)
     ForgeProfileLookup.cs                  # 1:1 Build Forge settings <-> Unity Build Profile rule
     ForgeProfileEmbedding.cs               # Build Forge settings stored inside the Build Profile asset
     ForgeEditorState.cs                    # Profile switch entry point (baseline, drift, revert)

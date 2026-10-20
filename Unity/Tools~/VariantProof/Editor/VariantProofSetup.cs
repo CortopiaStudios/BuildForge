@@ -52,6 +52,12 @@ public static class VariantProofSetup
         ForgeSettings.instance.SaveSettings();
         PlayerSettings.productName = "Variant Proof";
         PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+        // With -proofProfilePlayerSettings the profile gets its own copy of these, so the builds restore
+        // them in the profile: an embedded YAML copy up to 6000.6, a sub-asset from 6000.7.
+        if (Array.IndexOf(Environment.GetCommandLineArgs(), "-proofProfilePlayerSettings") >= 0)
+            typeof(BuildProfile).Assembly.GetType("UnityEditor.Build.Profile.BuildProfileModuleUtil")
+                .GetMethod("CreatePlayerSettingsFromGlobal", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                .Invoke(null, new object[] { native });
         EditorUtility.SetDirty(native);
         AssetDatabase.SaveAssets();
     }
