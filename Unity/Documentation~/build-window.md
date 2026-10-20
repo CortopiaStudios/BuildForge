@@ -38,7 +38,7 @@ So Revert to Baseline is always in the notices, whichever profile is selected.
 | Product Name | Shown for a variant whose build is marked, for example `My Game (Internal)`. |
 | Output | The resolved output path for the active profile; the template, marked as such, for the others. |
 | Scripting Define(s) | The profile's `BUILD_PROFILE_` define, with Maintain Build Profile Defines on, and the selected variant's define. Hidden when there is neither. |
-| Version | The selected variant's [Version](variants.md#version): for the active profile filled in except for `{BuildNumber}`, for another profile as written. A warning when the profile's builds have no build number. |
+| Version | The selected variant's [Version](variants.md#version): for the active profile filled in except for `{BuildNumber}`, for another profile as written. A warning when the profile's builds have no build number, which stops a CI build. |
 | Build Configuration | The selected variant's [Build Configuration](variants.md#build-configuration) settings that this profile's builds get, with a warning when development options would go unused. |
 | Editor | What is applied: "no plugin settings to apply", "plugin settings applied", or "plugin settings and Play Mode XR applied" when Apply also set [Play Mode's XR](concepts.md#apply-and-re-apply) (with ", drifted" and the variant), "plugin settings not applied (Apply to make Play Mode match)", or "activate, then apply, to iterate on this profile in the editor". |
 | Warnings | Each issue in full: plugins' warnings, a missing `{Variant}` in the output path, a define collision, a variant define saved elsewhere. An invalid variant selection shows as an error. |

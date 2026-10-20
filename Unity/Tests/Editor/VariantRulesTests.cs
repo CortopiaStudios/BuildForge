@@ -86,6 +86,28 @@ namespace BuildForge.Tests.Editor
             StringAssert.Contains("empty version", error);
         }
 
+        // A CI build stops on these before anything changes; the build window warns about a missing number.
+        [Test] public void VersionRuleError_NamesWhatABuildOfTheProfileCannotFillIn()
+        {
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                StringAssert.Contains("no build number", ForgeBuildRunner.VersionRuleError(
+                    "{Version}.{BuildNumber}", forge, "Release", BuildTarget.StandaloneWindows64, "1.4.0"));
+                Assert.IsNull(ForgeBuildRunner.VersionRuleError(
+                    "{Version}.{BuildNumber}", forge, "Release", BuildTarget.Android, "1.4.0"), "Android has its version code.");
+                StringAssert.Contains("empty version", ForgeBuildRunner.VersionRuleError(
+                    "{Version}", forge, "Release", BuildTarget.StandaloneWindows64, ""));
+                Assert.IsNull(ForgeBuildRunner.VersionRuleError(null, forge, "Release", BuildTarget.StandaloneWindows64, "1.4.0"));
+
+                forge.SetPluginConfig("BuildNumber", new BuildForge.Editor.Plugins.BuildNumberConfig { Enabled = true });
+                Assert.IsNull(ForgeBuildRunner.VersionRuleError(
+                    "{Version}.{BuildNumber}", forge, "Release", BuildTarget.StandaloneWindows64, "1.4.0"),
+                    "Build Number gives a Windows build its number.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(forge); }
+        }
+
         [Test] public void BuildNumberFor_UsesThePluginsNumberOnEveryPlatform()
         {
             var context = new ForgeBuildContext(null, null, BuildTarget.StandaloneWindows64, "unused", false);

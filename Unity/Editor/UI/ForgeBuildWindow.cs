@@ -544,9 +544,10 @@ namespace BuildForge.Editor.UI
                         .Replace("{Variant}", variant ?? "")
                     : versionRule;
                 EditorGUILayout.LabelField(new GUIContent("Version"), new GUIContent(shown, versionRule));
-                if (versionRule.Contains("{BuildNumber}") && !HasBuildNumber(profile, target))
+                if (versionRule.Contains("{BuildNumber}") && !ForgeBuildRunner.HasBuildNumber(profile, target))
                     EditorGUILayout.HelpBox("The variant rule's Version uses {BuildNumber}, but this profile's builds have " +
-                                            "no build number, so they keep the version. Enable Build Number for the profile.",
+                                            "no build number, so a local build keeps the version and a CI build stops. " +
+                                            "Enable Build Number for the profile.",
                         MessageType.Warning);
             }
 
@@ -767,17 +768,6 @@ namespace BuildForge.Editor.UI
         /// Whether a build of the profile has a build number: the Build Number
         /// plugin runs for it, or the platform has its own (Android, iOS).
         /// </summary>
-        static bool HasBuildNumber(ForgeProfile profile, BuildTarget target)
-        {
-            if (target == BuildTarget.Android || target == BuildTarget.iOS)
-                return true;
-            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == "BuildForge.Editor.Plugins.BuildNumberPlugin");
-            return plugin != null
-                   && !ForgeSettings.instance.IsPluginDisabledWithDefault(plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin))
-                   && plugin.IsApplicable(profile.BuildProfile)
-                   && plugin.IsEnabled(profile) != false;
-        }
-
         /// <summary>"OpenXR (Android)" for a ledger key, falling back to the raw key.</summary>
         internal static string DescribeDriftKey(string key) => ForgeEditorState.DescribeKey(key);
 

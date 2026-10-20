@@ -34,6 +34,7 @@ The message names the cause. The common ones:
 | [Build Forge/Addressables] … | [Addressables Stripper](plugins/addressables-stripper.md) |
 | [Build Forge/Android Manifest] … | [Android Manifest](plugins/android-manifest.md#settings) |
 | Could not set XR loaders, or an XR loader warning | [XR Loaders](plugins/xr-loaders.md#warnings) |
+| The Version '…' uses {BuildNumber}, but this build has no build number, or The Version '…' gives an empty version | [Version](variants.md#version) |
 | A variant or variant rule error | [Build variants](variants.md) |
 
 ### "Build Forge cannot load the plugin settings …"

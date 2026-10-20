@@ -139,6 +139,17 @@ namespace BuildForge.Editor.Core
             var buildTarget = BuildProfileUtility.GetBuildTarget(buildProfile);
             var outputPath = forgeProfile.GetResolvedOutputPath(buildTarget, resolvedVariant);
 
+            // A CI build doesn't go out with another version than its variant rule's; before
+            // anything changes. Locally the window warns beforehand, and the build warns.
+            if (BuildEnvironment.IsCI)
+            {
+                var versionError = VersionRuleError(BuildVariants.RuleFor(resolvedVariant)?.Version, forgeProfile,
+                    resolvedVariant, buildTarget, PlayerSettings.bundleVersion);
+                if (versionError != null)
+                    throw new InvalidOperationException(
+                        $"{versionError} A CI build stops instead of building with version {PlayerSettings.bundleVersion}.");
+            }
+
             // With Remove Previous Build Output on for this profile, remove the
             // previous build's files before plugin discovery or preparation can
             // fail, in both editor and CI; this build's files are recorded in
@@ -730,9 +741,38 @@ namespace BuildForge.Editor.Core
         }
 
         /// <summary>
+        /// Why a variant rule's Version template can't be filled in for a build of the
+        /// profile, or null: the build has no build number for {BuildNumber}, or the
+        /// version comes out empty.
+        /// </summary>
+        internal static string VersionRuleError(string template, ForgeProfile profile, string variant, BuildTarget target, string version)
+        {
+            if (string.IsNullOrWhiteSpace(template))
+                return null;
+            BuildVariants.FormatVersion(template, version, HasBuildNumber(profile, target) ? "0" : "", variant, out var error);
+            return error;
+        }
+
+        /// <summary>
+        /// Whether a build of the profile has a build number: Android's version code and
+        /// iOS's build number always, other platforms only from the Build Number plugin.
+        /// </summary>
+        internal static bool HasBuildNumber(ForgeProfile profile, BuildTarget target)
+        {
+            if (target == BuildTarget.Android || target == BuildTarget.iOS)
+                return true;
+            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == "BuildForge.Editor.Plugins.BuildNumberPlugin");
+            return plugin != null
+                   && !ForgeSettings.instance.IsPluginDisabledWithDefault(plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin))
+                   && plugin.IsApplicable(profile.BuildProfile)
+                   && plugin.IsEnabled(profile) != false;
+        }
+
+        /// <summary>
         /// Sets Player Settings > Version from the build's variant rule for the
         /// build. Returns the version to restore, or null when the rule left it
-        /// alone; a rule that cannot be filled in warns and keeps the version.
+        /// alone; a rule that cannot be filled in warns and keeps the version, and
+        /// stops a CI build.
         /// </summary>
         static string ApplyVersionRule(ForgeBuildContext context, string variant)
         {
@@ -744,6 +784,9 @@ namespace BuildForge.Editor.Core
                 variant, out var error);
             if (error != null)
             {
+                // Checked before the build on CI already; this is for a number a plugin failed to set.
+                if (context.IsCI)
+                    throw new InvalidOperationException($"{error} A CI build stops instead of building with version {current}.");
                 Debug.LogWarning($"[Build Forge] {error} The build keeps version {current}.");
                 return null;
             }
