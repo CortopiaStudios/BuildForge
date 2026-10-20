@@ -18,6 +18,7 @@ public static class VariantFailureProof
     public static bool InjectPlayerFailure;
     public static UnityEngine.Object TemporaryPreloadedAsset;
     static readonly Type EditorState = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.ForgeEditorState");
+    static readonly Type Persistence = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.PlayerSettingsPersistence");
     const BindingFlags Flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
     public static void Run()
@@ -62,7 +63,9 @@ public static class VariantFailureProof
             InjectPlayerFailure = false;
             TemporaryPreloadedAsset = null;
             PlayerSettings.SetPreloadedAssets(original);
-            AssetDatabase.SaveAssets();
+            // As a build saves: SaveAssets alone leaves the embedded copy of a profile's own Player
+            // Settings (-ProfilePlayerSettings) as it was, up to 6000.6.
+            Persistence.GetMethod("SaveRestoredSettings", Flags).Invoke(null, null);
             AssetDatabase.DeleteAsset(folder);
         }
     }
