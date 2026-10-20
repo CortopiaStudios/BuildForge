@@ -102,7 +102,6 @@ An example, shortened:
         {
             "name": "Git",
             "entries": [
-                { "key": "branch", "value": "main" },
                 { "key": "commit", "value": "3f1c0d2e…" },
                 { "key": "commitShort", "value": "3f1c0d2" }
             ]

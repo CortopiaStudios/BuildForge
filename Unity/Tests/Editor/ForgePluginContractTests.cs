@@ -64,6 +64,16 @@ namespace BuildForge.Tests.Editor
             StringAssert.Contains("CI build", plugin.DescribeBuild(profile, isCI: true));
         }
 
+        // The manifest ships in every player, so the branch name is left out unless the profile asks for it.
+        [Test]
+        public void DescribeBuild_GitMetadata_LeavesTheBranchOutByDefault()
+        {
+            IForgePlugin plugin = new GitMetadataPlugin();
+            Assert.AreEqual("manifest: commit, short commit", plugin.DescribeBuild(profile, isCI: false));
+            profile.SetPluginConfig("Git", new GitMetadataConfig { IncludeBranch = true });
+            Assert.AreEqual("manifest: branch, commit, short commit", plugin.DescribeBuild(profile, isCI: false));
+        }
+
         [Test]
         public void DescribeBuild_BuildNumber_NamesSourceAndOffset()
         {

@@ -6,7 +6,9 @@ namespace BuildForge.Editor.Plugins
     [Serializable]
     internal class GitMetadataConfig
     {
-        [SerializeField] bool includeBranch = true;
+        // Off unless asked for: every player carries the manifest, and a branch name can say
+        // what a build is for.
+        [SerializeField] bool includeBranch;
         [SerializeField] bool includeCommit = true;
         [SerializeField] bool includeShortCommit = true;
         [SerializeField] bool includeDescribe;
