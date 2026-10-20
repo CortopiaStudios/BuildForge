@@ -438,6 +438,57 @@ namespace BuildForge.Tests.Editor
         public void PerPlatformValueName_IsTheNameUnitysPlayerSettingsShow(string property, int value, string expected)
             => Assert.AreEqual(expected, PlayerSettingsDiffView.PerPlatformValueName(property, value));
 
+        // A profile's own Player Settings: an embedded YAML copy up to 6000.6, the document of a
+        // sub-asset in the profile file from 6000.7. Either reads like ProjectSettings.asset's.
+        [Test]
+        public void ProfilePlayerSettings_AreReadFromEitherPlaceUnityKeepsThem()
+        {
+            var embedded = new[]
+            {
+                "MonoBehaviour:",
+                "  m_PlayerSettingsYaml:",
+                "    m_Settings:",
+                "    - line: '| PlayerSettings:'",
+                "    - line: '|   productName: Game'",
+                "    - line: '|   companyName: Studio'",
+                "  requiredComponents: []",
+            };
+            CollectionAssert.AreEqual(new[] { "PlayerSettings:", "  productName: Game", "  companyName: Studio" },
+                PlayerSettingsDiffView.ExtractPlayerSettingsYaml(embedded));
+
+            var subasset = new[]
+            {
+                "%YAML 1.1",
+                "%TAG !u! tag:unity3d.com,2011:",
+                "--- !u!1138963649 &-8117544327063191855",
+                "BuildProfilePlayerSettings:",
+                "  m_ObjectHideFlags: 3",
+                "  m_Name: Player Settings",
+                "  productName: Game",
+                "  companyName: Studio",
+                "--- !u!114 &11400000",
+                "MonoBehaviour:",
+                "  m_PlayerSettingsYaml:",
+                "    m_Settings: []",
+                "  requiredComponents: []",
+            };
+            var lines = PlayerSettingsDiffView.ExtractPlayerSettingsYaml(subasset);
+            CollectionAssert.AreEqual(new[] { "PlayerSettings:", "  m_ObjectHideFlags: 3", "  m_Name: Player Settings",
+                "  productName: Game", "  companyName: Studio" }, lines);
+            var map = UnityYamlParser.ParseToPropertyMap(lines);
+            Assert.AreEqual("Game", map["productName"]);
+
+            // Compared with the project's settings, the sub-asset's object fields don't count.
+            var project = UnityYamlParser.ParseToPropertyMap(new List<string>
+                { "PlayerSettings:", "  m_ObjectHideFlags: 0", "  m_BuildProfilePlayerSettings: {fileID: 0}", "  productName: Game", "  companyName: Other" });
+            CollectionAssert.AreEqual(new[] { "companyName" },
+                PlayerSettingsDiffComputer.ComputeDiff(map, project, BuildTarget.StandaloneWindows64).Select(d => d.PropertyPath));
+
+            Assert.IsNull(PlayerSettingsDiffView.ExtractPlayerSettingsYaml(new[]
+                { "MonoBehaviour:", "  m_PlayerSettingsYaml:", "    m_Settings: []", "  requiredComponents: []" }),
+                "Without Player Settings of its own, the profile uses the project's.");
+        }
+
         [TestCase("buildNumber", 12)]
         [TestCase("scriptingBackend", 99)]
         [TestCase("mobileMTRendering", 2)]

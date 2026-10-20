@@ -495,7 +495,8 @@ namespace BuildForge.Editor.UI
         }
 
         /// <summary>
-        /// Extracts the inner YAML lines from a Build Profile's m_PlayerSettingsYaml.
+        /// A Build Profile's own Player Settings as YAML lines like ProjectSettings.asset's
+        /// PlayerSettings, or null when it has none and uses the project's.
         /// </summary>
         internal static List<string> ExtractPlayerSettingsYaml(BuildProfile profile)
         {
@@ -514,10 +515,45 @@ namespace BuildForge.Editor.UI
                 return null;
             }
 
+            return ExtractPlayerSettingsYaml(fileLines);
+        }
+
+        /// <summary>
+        /// The Player Settings in a Build Profile asset's lines: up to 6000.6 the inner lines of
+        /// its m_PlayerSettingsYaml, from 6000.7 the document of its BuildProfilePlayerSettings
+        /// sub-asset, which Unity migrates them to, leaving m_PlayerSettingsYaml empty. Either
+        /// reads as ProjectSettings.asset's PlayerSettings does.
+        /// </summary>
+        internal static List<string> ExtractPlayerSettingsYaml(IReadOnlyList<string> fileLines)
+            => ExtractEmbeddedPlayerSettingsYaml(fileLines) ?? ExtractPlayerSettingsSubasset(fileLines);
+
+        static List<string> ExtractPlayerSettingsSubasset(IReadOnlyList<string> fileLines)
+        {
+            var result = new List<string>();
+            for (int i = 0; i < fileLines.Count; i++)
+            {
+                if (result.Count == 0)
+                {
+                    if (fileLines[i].TrimEnd() == "BuildProfilePlayerSettings:")
+                        result.Add("PlayerSettings:");
+                    continue;
+                }
+
+                var line = fileLines[i];
+                // A line at column 0, such as the next document's header, ends this one.
+                if (line.Length > 0 && line[0] != ' ' && line[0] != '\t')
+                    break;
+                result.Add(line);
+            }
+            return result.Count > 1 ? result : null;
+        }
+
+        static List<string> ExtractEmbeddedPlayerSettingsYaml(IReadOnlyList<string> fileLines)
+        {
             var innerLines = new List<string>();
             bool inSection = false;
 
-            for (int i = 0; i < fileLines.Length; i++)
+            for (int i = 0; i < fileLines.Count; i++)
             {
                 var line = fileLines[i];
                 var trimmed = line.TrimStart();

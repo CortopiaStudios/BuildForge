@@ -279,6 +279,8 @@ m_PlayerSettingsYaml:
 ```
 Each `- line:` entry contains the actual YAML prefixed with `'| '`. Multi-line values (colors, object references) can span multiple `- line:` entries. The parser must join continuation lines before extracting key-value pairs.
 
+That is up to 6000.6. From 6000.7, Unity keeps a profile's own Player Settings in a `BuildProfilePlayerSettings` sub-asset, a YAML document of its own in the profile file with the same fields as `ProjectSettings.asset`'s `PlayerSettings` plus Unity's object fields (`m_Name: Player Settings` and the prefab links), migrates an embedded copy into it and leaves `m_PlayerSettingsYaml.m_Settings` empty. The Player Overrides window reads that document where the embedded copy is empty; the object fields drop out of the comparison, which only looks at keys both sides have.
+
 ### Object References in YAML
 Two formats exist:
 - `{fileID: N, guid: hex, type: N}` — persistent asset references (used in `.asset` files)
