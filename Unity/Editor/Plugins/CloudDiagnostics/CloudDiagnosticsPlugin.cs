@@ -11,11 +11,11 @@ using UnityEngine;
 namespace BuildForge.Editor.Plugins
 {
     /// <summary>
-    /// Controls Unity Cloud Diagnostics crash reporting per build. Crash reporting
-    /// is what triggers the automatic IL2CPP symbol upload to Unity's symbol
-    /// server at build time — a network round-trip that is pointless for local
-    /// builds. CrashReportingSettings.enabled is set on pre-build from the
-    /// configured mode and restored on post-build.
+    /// Controls Unity Cloud Diagnostics crash reporting per build:
+    /// CrashReportingSettings.enabled is set on pre-build from the configured
+    /// mode and restored on post-build. Crash reporting is one of the two
+    /// settings that make an Android build upload its IL2CPP symbols; the other,
+    /// Diagnostics Data in a project linked to Unity Cloud, is left alone.
     /// </summary>
     [ForgePlugin]
     internal class CloudDiagnosticsPlugin : IForgePlugin
@@ -26,7 +26,7 @@ namespace BuildForge.Editor.Plugins
         bool applied;
 
         public string DisplayName => "Cloud Diagnostics";
-        public string Description => "Enable crash reporting (and its symbol upload) only for CI builds, always, or never.";
+        public string Description => "Turn Unity Cloud Diagnostics crash reporting on only for CI builds, always, or never.";
         public int Order => 500;
 
         public bool IsApplicable(BuildProfile profile) => true;
@@ -78,8 +78,9 @@ namespace BuildForge.Editor.Plugins
 
             var newMode = (CrashReportingMode)EditorGUILayout.EnumPopup(
                 new GUIContent("Crash Reporting",
-                    "When crash reporting is enabled for a build, Unity also uploads the build's IL2CPP " +
-                    "symbols to its symbol server. Disabled builds neither upload symbols nor report crashes. " +
+                    "With crash reporting on, an Android build also uploads its IL2CPP symbols to Unity. " +
+                    "With it off, the build still uploads them while Diagnostics Data (Project Settings > " +
+                    "Services > Diagnostics) is on in a project linked to Unity Cloud. " +
                     "CI is detected via batch mode, -forgeCI, or the FORGE_CI environment variable."),
                 config.CrashReportingMode);
             if (newMode != config.CrashReportingMode)
