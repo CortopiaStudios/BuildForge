@@ -514,6 +514,7 @@ Tests/
     BuildOutputDirectoryTests.cs           # Remove Previous Build Output deletes only the last build's files
     BuildVariantsTests.cs                  # Variant resolution, name validation and define arithmetic
     CloudDiagnosticsConfigTests.cs         # Crash reporting mode resolution
+    CloudDiagnosticsPluginTests.cs         # Crash reporting and its settings file restored per build
     EditorStateApplierTests.cs             # Apply/revert/drift invariant with fake plugins
     EditorStateLedgerTests.cs              # Ledger key/entry helpers
     ForgeBuildInterceptorTests.cs          # Interception of Unity's Build buttons and other builds
@@ -538,6 +539,7 @@ Tests/
     ForgeGradleCallbackTests.cs            # Gradle step dispatch to plugins
     PlayerSettingsProfileTests.cs          # Real Build Profile diffs (skip in a clean host)
     PluginConfigStorageTests.cs            # Config storage contract + YAML round trips
+    PluginLoadFailureTests.cs              # Builds stop for plugins or plugin settings that can't load
     PluginRegistryTests.cs                 # Plugin discovery tests
     PublicApiSurfaceTests.cs               # Locks the public API surface
     Addressables/VariantExclusionTests.cs  # Addressables Stripper exclusions per variant

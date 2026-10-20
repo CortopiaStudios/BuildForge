@@ -2,6 +2,8 @@
 
 Order 500. Sets Unity Cloud Diagnostics crash reporting (`CrashReportingSettings.enabled`) for the build and restores the project's setting afterwards.
 
+A build that changes crash reporting rewrites `ProjectSettings/UnityConnectSettings.asset`, with values that hold only for the build or for the editor session, such as `m_Enabled` off in a build machine's editor. The plugin puts the file back byte for byte afterwards, so the build leaves nothing to commit or revert.
+
 ## Crash reporting and symbol upload
 
 During an Android build, Unity uploads the build's IL2CPP symbols, so that crash reports show function names and C# lines instead of addresses. Unity has no setting for the upload alone. Two settings start it, as long as the build's Debug Symbols aren't None:

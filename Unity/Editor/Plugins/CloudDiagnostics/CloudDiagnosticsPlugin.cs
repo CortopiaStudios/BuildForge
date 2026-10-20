@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
@@ -22,8 +25,14 @@ namespace BuildForge.Editor.Plugins
     {
         const string ConfigKey = "CloudDiagnostics";
 
+        const string ConnectSettingsFile = "ProjectSettings/UnityConnectSettings.asset";
+
+        /// <summary>The file Unity keeps crash reporting's project value in.</summary>
+        internal static string ConnectSettingsPath => Path.Combine(Path.GetDirectoryName(Application.dataPath), ConnectSettingsFile);
+
         bool originalEnabled;
         bool applied;
+        byte[] connectSettingsBefore;
 
         public string DisplayName => "Cloud Diagnostics";
         public string Description => "Turn Unity Cloud Diagnostics crash reporting on only for CI builds, always, or never.";
@@ -54,6 +63,7 @@ namespace BuildForge.Editor.Plugins
             var desired = ResolveEnabled(config.CrashReportingMode, context.IsCI);
 
             originalEnabled = CrashReportingSettings.enabled;
+            connectSettingsBefore = File.Exists(ConnectSettingsPath) ? File.ReadAllBytes(ConnectSettingsPath) : null;
             CrashReportingSettings.enabled = desired;
             applied = true;
 
@@ -68,8 +78,35 @@ namespace BuildForge.Editor.Plugins
 
             CrashReportingSettings.enabled = originalEnabled;
             applied = false;
+            if (connectSettingsBefore != null)
+            {
+                RestoreConnectSettingsFile(connectSettingsBefore);
+                connectSettingsBefore = null;
+            }
 
             Debug.Log("[Build Forge/CloudDiagnostics] Restored crash reporting setting.");
+        }
+
+        /// <summary>
+        /// Puts ProjectSettings/UnityConnectSettings.asset back as it was before the build. A build that
+        /// changes crash reporting can write the file: with crash reporting as the build had it, and with
+        /// values Unity holds only for the session, such as m_Enabled, which a batch-mode editor that isn't
+        /// signed in can have off. Setting crash reporting back doesn't reliably reach the file: in a project
+        /// linked to Unity Cloud, Unity doesn't mark its settings changed. So the file gets its bytes back, and
+        /// the settings object is marked unchanged, so that the runner's save after the plugins doesn't write
+        /// this session's values again. Throws, failing the build's restore, where Unity has no such object.
+        /// </summary>
+        internal static void RestoreConnectSettingsFile(byte[] before)
+        {
+            if (!File.Exists(ConnectSettingsPath) || !File.ReadAllBytes(ConnectSettingsPath).SequenceEqual(before))
+                File.WriteAllBytes(ConnectSettingsPath, before);
+            var connectSettings = Unsupported.GetSerializedAssetInterfaceSingleton("UnityConnectSettings");
+            if (connectSettings == null)
+                throw new InvalidOperationException(
+                    $"[Build Forge/CloudDiagnostics] Unity {Application.unityVersion} has no UnityConnectSettings object, so a " +
+                    $"later save may write {ConnectSettingsFile} again with this session's values. Check the file before " +
+                    "committing it, and update Build Forge for this Unity version.");
+            EditorUtility.ClearDirty(connectSettings);
         }
 
         public void OnDrawProfileGUI(ForgeProfile forgeProfile)
