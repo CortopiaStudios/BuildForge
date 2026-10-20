@@ -113,7 +113,7 @@ Plugins can also contribute data to the build manifest by implementing `IForgeMa
 - **Per-profile enable switch** via `IsEnabled`/`SetEnabled` — return non-null from `IsEnabled` and Build Forge renders the "Enabled" checkbox, grays out the plugin GUI, marks the foldout "(disabled)", and skips the plugin's build hooks when off. Plugins without a switch keep the `null` default
 - **Description** — optional one-line summary shown as a tooltip when hovering the plugin's name in plugin lists (profile inspector, Project Settings, Build window)
 - **Not-applicable reason** via `NotApplicableReason` — a short sentence shown in the inspector when `IsApplicable` returns false (defaults to a generic message)
-- **Build description** via `DescribeBuild(profile, isCI)` — one line saying what the plugin will do in a build of that profile, shown next to it in the build window's "Plugins for this build" list (e.g. "crash reporting off (CI only; local build)")
+- **Build description** via `DescribeBuild(profile, isCI)` — one line saying what the plugin will do in a build of that profile, shown next to it in the build window's "Plugins for this build" list (e.g. "crash reporting and Diagnostics Data off (CI only; local build)")
 - **Global settings** via `OnDrawSettingsGUI` — rendered in Project Settings > Build Forge under the plugin's enable/disable toggle
 
 ### Variants and XR Loader Selection
@@ -446,7 +446,7 @@ Editor/
       AndroidKeystoreEnvPlugin.cs          # Override keystore settings from env vars
       AndroidKeystoreEnvConfig.cs          # Global + per-profile keystore env config
     CloudDiagnostics/
-      CloudDiagnosticsPlugin.cs            # Crash reporting per build: Always, CI Only, Never
+      CloudDiagnosticsPlugin.cs            # Crash reporting and Diagnostics Data per build: Always, CI Only, Never
       CloudDiagnosticsConfig.cs            # Per-profile crash reporting mode
     AndroidManifest/
       AndroidManifestPlugin.cs             # Per-profile custom main manifest, swapped in for the build
@@ -514,7 +514,7 @@ Tests/
     BuildOutputDirectoryTests.cs           # Remove Previous Build Output deletes only the last build's files
     BuildVariantsTests.cs                  # Variant resolution, name validation and define arithmetic
     CloudDiagnosticsConfigTests.cs         # Crash reporting mode resolution
-    CloudDiagnosticsPluginTests.cs         # Crash reporting and its settings file restored per build
+    CloudDiagnosticsPluginTests.cs         # Crash reporting and Diagnostics Data set and restored per build
     EditorStateApplierTests.cs             # Apply/revert/drift invariant with fake plugins
     EditorStateLedgerTests.cs              # Ledger key/entry helpers
     ForgeBuildInterceptorTests.cs          # Interception of Unity's Build buttons and other builds

@@ -29,6 +29,7 @@ The message names the cause. The common ones:
 | [Build Forge/OpenXR] Meta Quest Setup is on for this profile, but Build Forge cannot read … | [OpenXR](plugins/openxr.md#warnings) |
 | [Build Forge/BuildNumber] … | [Build Number](plugins/build-number.md#when-the-build-stops) |
 | [Build Forge/AndroidKeystoreEnv] … | [Android Keystore Env](plugins/android-keystore-env.md#what-a-build-does) |
+| [Build Forge/CloudDiagnostics] … stores no Diagnostics Data setting | [Cloud Diagnostics](plugins/cloud-diagnostics.md#crash-reporting-and-symbol-upload) |
 | OpenXR feature '…' did not accept its configured override, or OpenXR kept '…' enabled | [OpenXR](plugins/openxr.md#builds-and-apply) |
 | [Build Forge/Addressables] … | [Addressables Stripper](plugins/addressables-stripper.md) |
 | [Build Forge/Android Manifest] … | [Android Manifest](plugins/android-manifest.md#settings) |

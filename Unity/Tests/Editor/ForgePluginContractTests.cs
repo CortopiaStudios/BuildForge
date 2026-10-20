@@ -58,9 +58,9 @@ namespace BuildForge.Tests.Editor
             profile.SetPluginConfig("CloudDiagnostics",
                 new CloudDiagnosticsConfig { Enabled = true, CrashReportingMode = CrashReportingMode.CIOnly });
 
-            StringAssert.Contains("crash reporting off", plugin.DescribeBuild(profile, isCI: false));
+            StringAssert.Contains("crash reporting and Diagnostics Data off", plugin.DescribeBuild(profile, isCI: false));
             StringAssert.Contains("local build", plugin.DescribeBuild(profile, isCI: false));
-            StringAssert.Contains("crash reporting on", plugin.DescribeBuild(profile, isCI: true));
+            StringAssert.Contains("crash reporting and Diagnostics Data on", plugin.DescribeBuild(profile, isCI: true));
             StringAssert.Contains("CI build", plugin.DescribeBuild(profile, isCI: true));
         }
 

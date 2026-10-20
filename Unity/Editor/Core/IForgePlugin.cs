@@ -76,7 +76,8 @@ namespace BuildForge.Editor.Core
         /// One short line saying what this plugin will do in a build of
         /// <paramref name="forgeProfile"/>, shown next to the plugin in the
         /// build window's "Plugins for this build" list (e.g. "crash reporting
-        /// off (CI only; local build)", "build number from git commit count + 20").
+        /// and Diagnostics Data off (CI only; local build)", "build number from
+        /// git commit count + 20").
         /// <paramref name="isCI"/> is the CI detection the build will see
         /// (<see cref="ForgeBuildContext.IsCI"/>). Return null (the default)
         /// for no description. Only called for plugins that will run.

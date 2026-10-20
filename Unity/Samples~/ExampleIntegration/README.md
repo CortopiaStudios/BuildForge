@@ -144,7 +144,7 @@ bash build-player.sh --project ./Client --profile "Assets/Settings/Build Profile
 | `-BuildProfile` | `--profile` | The Unity Build Profile asset, relative to the project. Required. |
 | `-Variant` | `--variant` | The variant. Required once the project has variants; leave it out in a project without them. |
 | `-ProjectPath` | `--project` | The Unity project folder, `.` by default. |
-| `-Local` | `--local` | Passes `-forgeCI false`, so a batch build counts as a local build: Build Number with "Env Var on CI, Git Count Locally" takes the commit count, and Cloud Diagnostics with "CI Only" turns crash reporting off. |
+| `-Local` | `--local` | Passes `-forgeCI false`, so a batch build counts as a local build: Build Number with "Env Var on CI, Git Count Locally" takes the commit count, and Cloud Diagnostics with "CI Only" turns crash reporting and Diagnostics Data off. |
 | `-SharedWorkspace` | `--shared-workspace` | Activates the profile in a run of its own before the build, for a workspace that also builds profiles of other platforms. |
 | `-TimeoutSeconds` | `--timeout` | Unity CLI only: stops each editor run after that many seconds. |
 | `-Editor` | `--editor` | Starts this Unity editor executable directly instead of the Unity CLI. |
