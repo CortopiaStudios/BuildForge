@@ -7,7 +7,7 @@ Build Forge does not override Player Settings itself; a profile that needs diffe
 - **Matrix** mode compares every Build Profile that has Player Settings of its own with Project Settings, side by side.
 - **Single Profile** mode shows what one Build Profile changes.
 
-Open it with **Window > Build Forge > Player Overrides**. It opens in Matrix mode the first time and then in the mode you used last; the toolbar switches between the two.
+Open it with **Window > Build Forge > Player Overrides**. It opens in Matrix mode and keeps the mode you switch to while it stays open; the toolbar switches between the two.
 
 Both modes compare the files on disk: the Build Profile assets (Build Forge saves a Build Profile with pending edits before reading it) and `ProjectSettings/ProjectSettings.asset`. After changing Project Settings, save the project and click **Refresh**.
 

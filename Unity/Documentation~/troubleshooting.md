@@ -12,7 +12,7 @@ Builds run on the active Unity Build Profile only. Activate the profile in the b
 
 ### Build or Apply is missing or disabled
 
-The build window shows **Apply**, **Build** and **Build and Run** only for the active profile; for any other profile the action bar has **Activate** instead. A disabled button gives its reason as its tooltip. The usual ones: the profile has nothing to apply, meaning no plugin with editor settings and no variants (Apply); the selected variant is not allowed for the profile; or the editor is in Play Mode, compiling, importing or building. The main toolbar's **Build** and **Build and Run** are disabled for the same reasons, and while the active Build Profile has no Build Forge settings or Unity is on a platform profile.
+The build window shows **Apply**, **Build** and **Build and Run** only for the active profile; for any other profile the action bar has **Activate** instead. A disabled button gives its reason as its tooltip. The usual ones: the profile has nothing to apply, meaning no plugin with editor settings and no variants (Apply); no variant is picked yet, in a project with variants; the selected variant is not allowed for the profile; or the editor is in Play Mode, compiling, importing or building. The main toolbar's **Build** and **Build and Run** are disabled for the same reasons, and while the active Build Profile has no Build Forge settings or Unity is on a platform profile.
 
 ### The build stops before it starts
 
@@ -32,7 +32,7 @@ The message names the cause. The common ones:
 | [Build Forge/AndroidKeystoreEnv] … | [Android Keystore Env](plugins/android-keystore-env.md#what-a-build-does) |
 | [Build Forge/CloudDiagnostics] … stores no Diagnostics Data setting | [Cloud Diagnostics](plugins/cloud-diagnostics.md#crash-reporting-and-symbol-upload) |
 | OpenXR feature '…' did not accept its configured override, or OpenXR kept '…' enabled | [OpenXR](plugins/openxr.md#builds-and-apply) |
-| [Build Forge/Addressables] … | [Addressables Stripper](plugins/addressables-stripper.md) |
+| [Build Forge/Addressables] … | [Addressables Stripper](plugins/addressables-stripper.md); "Addressables build failed" is [Addressables Rebuild](plugins/addressables-rebuild.md)'s |
 | [Build Forge/Android Manifest] … | [Android Manifest](plugins/android-manifest.md#settings) |
 | Could not set XR loaders, or an XR loader warning | [XR Loaders](plugins/xr-loaders.md#warnings) |
 | The Version '…' uses {BuildNumber}, but this build has no build number, or The Version '…' gives an empty version | [Version](variants.md#version) |

@@ -228,7 +228,7 @@ using UnityEditor.Build.Profile;
 
 var buildProfile = BuildProfile.GetActiveBuildProfile();
 var forgeProfile = buildProfile != null ? buildProfile.GetComponent<ForgeProfile>() : null;
-var report = ForgeBuildRunner.RunBuild(forgeProfile); // returns Unity's BuildReport
+var report = ForgeBuildRunner.RunBuild(forgeProfile, "Internal"); // returns Unity's BuildReport; RunBuild(forgeProfile) without variants
 ```
 
 `RunBuild` throws `InvalidOperationException` if the profile's Unity Build Profile is not the active Build Profile — activate it first (`BuildProfile.SetActiveBuildProfile`), for the same reason the CLI fails fast (see CI section).
@@ -307,6 +307,7 @@ Copy the command from the build window's **CI Command** field for the selected p
 - CLI supplies `-batchmode`, `-projectPath` and `-quit`. Do not forward these after `--`; reserved flags are rejected. Build Forge's entry point completes the build and all cleanup synchronously, then explicitly exits with the result. Required plugin work must finish before its hook returns; delayed callbacks and `async void` cannot be used for completion or restoration.
 - `-nographics` omits the graphics device; `-silent-crashes` suppresses crash dialogs; `-logFile -` sends the Editor log to CI stdout. Replace `-` with a path to retain a separate log file. `-cacheServerWaitForUploadCompletion` waits for pending Accelerator uploads at shutdown. Verify Accelerator connectivity under the actual CI account.
 - `-activeBuildProfile` selects the **Unity Build Profile** before compilation. It must have Build Forge settings, exactly one set; otherwise the build fails. Those settings supply output paths, signing, plugin configuration and content policy.
+- A profile of a derived platform, such as Meta Quest, needs `-enableAllDerivedPlatforms` after `--`, or the platform enabled for the account the job runs as: Unity enables derived platforms per user, and without either it would build the profile with its base platform's settings, so Build Forge stops the build. The generated command leaves it out.
 - A workspace that also builds profiles of other platforms, such as a job with a profile parameter, activates the profile first, in a run of its own: `-executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile "<path>"`, then the build command, as the **Shared workspace** command shows. Across a platform change, Unity 6000.3.23's `-activeBuildProfile` compiles the new profile's defines for the previous platform first, which fails when code under them needs a platform-only assembly. See the manual's Command line and CI page.
 - `-forgeVariant "Internal"` selects the variant, which every build of a project with variants needs: without it the build fails and lists the variants rather than picking one. An unknown or unsupported variant fails, and so does an empty value, such as an unset CI variable produces, or the argument in a project without variants.
 - Optional `-forgeVersion "1.2.3"` and `-forgeVersionCode 42` override Unity's bundle version and Android version code for this build. They are restored afterwards, including on failure. Unity's `-version` flag prints the Editor version and exits; it is not a build-version override.
@@ -395,6 +396,7 @@ Runtime/
   BuildManifestLoader.cs                   # Loads manifest from StreamingAssets
 
 Editor/
+  AssemblyInfo.cs                          # Internals visible to the plugin and test assemblies
   CommandLineBuild.cs                      # CI entry points (BuildForge.CommandLine.Build and Activate)
   Core/
     ForgeBuildRunner.cs                    # Build orchestrator with try/finally
@@ -457,6 +459,7 @@ Editor/
       XRVendors.cs                         # Known vendors' packages and manifest entries; package detection
       VendorManifestStripper.cs            # Removes vendor entries from the Gradle project, finds leftovers
     OpenXR/                                # Conditional on com.unity.xr.openxr
+      AssemblyInfo.cs                      # Internals visible to the OpenXR tests
       OpenXRPlugin.cs                      # Feature toggle + settings overrides per profile
       OpenXRProfileConfig.cs               # Per-profile OpenXR configuration data
       OpenXRGlobalConfig.cs                # Global OpenXR plugin settings
@@ -465,6 +468,7 @@ Editor/
       OpenXREditorStateSnapshot.cs         # Baseline/expected snapshot for profile switching
       SerializedPropertySnapshot.cs        # Property-path capture/apply (OpenXR feature pins)
     Addressables/                          # Conditional on com.unity.addressables
+      AssemblyInfo.cs                      # Internals visible to the Addressables tests
       AddressablesStripperPlugin.cs        # Strip groups/labels from builds
       AddressablesStripperConfig.cs        # Per-profile stripper config
       AddressablesRebuildPlugin.cs         # Rebuild Addressables before building
@@ -498,7 +502,7 @@ Samples~/
 
 Tests/
   Editor/
-    Fixtures/                              # Test data (ProjectSettings.txt)
+    Fixtures/                              # Test data (ProjectSettings.txt, PerPlatformGlobal.txt, PerPlatformProfile.txt)
     ActivationSummaryTests.cs              # Activate's summary line and active-profile mismatch warnings
     AndroidKeystoreEnvConfigTests.cs       # Keystore env resolution and validation
     AndroidKeystoreEnvPluginTests.cs       # Keystore settings during and after a build
@@ -542,6 +546,7 @@ Tests/
     PluginLoadFailureTests.cs              # Builds stop for plugins or plugin settings that can't load
     PluginRegistryTests.cs                 # Plugin discovery tests
     PublicApiSurfaceTests.cs               # Locks the public API surface
+    Addressables/GroupExclusionTests.cs    # Addressables Stripper group exclusion and names it can't find
     Addressables/VariantExclusionTests.cs  # Addressables Stripper exclusions per variant
     OpenXR/OpenXROverrideTests.cs          # OpenXR feature overrides and feature groups
     OpenXR/SerializedPropertySnapshotTests.cs # Property capture/apply round trips (with the OpenXR tests)

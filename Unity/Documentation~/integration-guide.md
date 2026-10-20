@@ -88,6 +88,7 @@ Developers who build from scripts call the same entry point in batch mode, which
 Copy each profile's command from the build window's **CI Command** field: **One workspace per job**, or **Shared workspace** when one workspace builds profiles of several platforms. See [Command line and CI](ci.md) for the details; in short:
 
 - run it from the repository root, one Unity process per workspace;
+- for a Meta Quest profile, or another derived platform's, add `-enableAllDerivedPlatforms` after `--`, unless the agent's account has the platform enabled: without either, the build stops;
 - provide `BUILD_NUMBER` and the signing variables from the CI secret store;
 - check out the full history when a profile uses the git commit count;
 - clean the output folder, or keep the workspace, before each build;
@@ -106,7 +107,7 @@ Keep the old job until the new one has produced artifacts that pass the comparis
 ### Unity
 
 - **A Meta Quest Build Profile changes shared Android features.** OpenXR 1.18 turns the Meta controller profiles and Meta Quest Support for Android on when the editor loads with a Meta Quest profile active, and off at the first load without one. It records which in `isMetaQuestInitialized` in `ProjectSettings/BuildProfileUtilityOpenXR.asset`. What to commit depends on the project's Android profile:
-  - **A Meta Quest profile:** commit what the editor leaves with that profile active, `isMetaQuestInitialized: 1` with those features on. Sessions on it then change neither file, while with 0 committed every one of them turns the features on again. Sessions on another profile still turn them off until the Meta Quest profile is active again; builds don't depend on that.
+  - **A Meta Quest profile:** commit what the editor leaves with that profile active, `isMetaQuestInitialized: 1` with those features on. Sessions on it then change neither file, while with 0 committed every one of them turns the features on again. Sessions on another profile still turn them off until the Meta Quest profile is active again. A build takes what is committed, unless the profile has **Meta Quest Setup** on, which turns those features on for the build while the file says the setup hasn't run; without it, the plugin warns while `isMetaQuestInitialized` is 0.
   - **A plain Android profile:** commit `isMetaQuestInitialized: 0`. A project moved from the Meta Quest type to a plain Android profile kept it at 1, so the next editor load turned the Meta controller profiles off, which would have shipped a build without controller bindings. Build Forge warns while it is 1.
 - **`-buildTarget` does not leave an active Build Profile of the same platform.** With a custom Android profile active, `-buildTarget Android` keeps it. Use `-activeBuildProfile` to choose a Build Profile, and Unity's Build Profiles window to go back to a platform profile.
 - **A Build Profile renamed outside the editor breaks the next batch start** on machines whose `Library/` still names the old path; see [Troubleshooting](troubleshooting.md#failed-to-read-the-specified-build-profile).

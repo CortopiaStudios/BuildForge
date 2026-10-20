@@ -102,7 +102,7 @@ If the editor crashes during a build, the suffixed identifier can stay in Player
 
 ## 6. Adapting it
 
-- **Move it into your own code.** Copy the two `.cs` files into one of your editor assemblies and change the namespace. The settings stored in Build Profiles name the class, its namespace and its assembly; after a rename, Unity keeps them as an unknown type until the old type returns. Use Unity's `[MovedFrom]` attribute on the class when you rename it, or configure the plugin again.
+- **Move it into your own code.** Copy the two `.cs` files into one of your editor assemblies and change the namespace. The settings stored in Build Profiles name the class, its namespace and its assembly; after a rename, Unity keeps them as an unknown type until the old type returns, and builds of those profiles stop until then. Use Unity's `[MovedFrom]` attribute on the class when you rename it, or configure the plugin again.
 - **iOS.** The same change applies to the bundle identifier through `NamedBuildTarget.iOS`, but a build with another bundle identifier needs a provisioning profile that covers it.
 - **Other per-variant changes** follow the same pattern: record the original in `OnPreBuild`, change it, restore it in `OnPostBuild`. See the manual's [Writing plugins](../../Documentation~/custom-plugins.md).
 
@@ -154,4 +154,4 @@ Both exit with the build's result: 0 on success, otherwise the Unity CLI's 6 or 
 
 ## Removing the sample
 
-Delete the sample's folder. Build Profiles that stored the plugin's settings keep them; Unity warns about an unknown managed type for that entry until it is removed from the Build Profile asset, or the plugin returns.
+Delete the sample's folder. Build Profiles that stored the plugin's settings keep them, and Build Forge stops builds of those profiles, naming the settings, until the entry is removed from the Build Profile asset or the plugin returns; see the manual's Troubleshooting page.

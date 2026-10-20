@@ -7,12 +7,10 @@ here — see ARCHITECTURE.md (decisions, pitfalls), Development~/LEARNINGS.md
 
 ## Remaining before 1.0 (rough order)
 
-1. **Docs cluster** — deliberately deferred until after converting a real
-   project (the migration experience should inform them):
-   - README migration guide (from custom build scripts to Build Forge)
-   - Plugin authoring guide (namespaces, asmdef setup, InternalsVisibleTo
-     is NOT available to third parties — public API only)
-   - CI arguments doc completeness pass
+1. **Docs cluster** — written after converting real projects: the migration
+   guide is `Documentation~/integration-guide.md`, the plugin authoring guide
+   `Documentation~/custom-plugins.md` (public API only; InternalsVisibleTo is
+   not available to third parties), the CI arguments `Documentation~/ci.md`.
 2. **CI** (agreed, after 1.0 structural work settles): GitHub Actions
    workflow reusing the `Tools~` scaffold recipe. License handled ONCE as a
    repo secret — either a `.ulf` (manual activation) or a Unity Cloud

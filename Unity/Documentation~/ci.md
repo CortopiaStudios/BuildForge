@@ -188,7 +188,7 @@ Build Forge needs both `-activeBuildProfile` at editor startup and its own `-exe
 
 ## Examples
 
-The **Example Integration** sample's `CI` folder has complete files for these; the excerpts here show the essentials.
+The **Example Integration** sample's `CI` folder has complete files for these; the excerpts here show the essentials. On Windows they leave out the step that starts Unity's licensing client before each `unity run` ([why](#start-the-licensing-client-before-each-build-windows)), which the sample's files have.
 
 ### Jenkins pipeline (Windows agent)
 
@@ -289,4 +289,4 @@ var report = ForgeBuildRunner.RunBuild(forgeProfile, "Internal"); // RunBuild(fo
 var command = ForgeBuildRunner.GetCICommand(forgeProfile, "Internal");
 ```
 
-`RunBuild` returns Unity's `BuildReport`. It throws `InvalidOperationException` when the profile's Unity Build Profile is not the active one, when its platform is disabled in the editor or Build Forge cannot tell whether it is, when the variant is invalid, or, on CI, when the variant rule's [Version](variants.md#version) can't be filled in; activate the profile first, in the build window or with `BuildProfile.SetActiveBuildProfile`. `ForgeBuildRunner.IsForgeBuildInProgress` tells other build callbacks whether the current build is Build Forge's.
+`RunBuild` returns Unity's `BuildReport`. It throws `InvalidOperationException` when the profile's Unity Build Profile is not the active one, when its platform is disabled in the editor or Build Forge cannot tell whether it is, when a plugin that is on failed to load or plugin settings can't be loaded, when the variant is invalid, or, on CI, when the variant rule's [Version](variants.md#version) can't be filled in; activate the profile first, in the build window or with `BuildProfile.SetActiveBuildProfile`. `ForgeBuildRunner.IsForgeBuildInProgress` tells other build callbacks whether the current build is Build Forge's.

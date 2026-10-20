@@ -87,6 +87,8 @@ Unity's Meta Quest Build Profile type works with Build Forge like a plain Androi
 
 In an OpenXR 1.18 project, switching between a Meta Quest profile and another Android profile therefore changes `OpenXR Package Settings.asset` and `BuildProfileUtilityOpenXR.asset`. Give each Android profile an Enable or Disable override for Meta Quest Support, so its builds do not depend on which profile was active last.
 
+On a build machine, a Meta Quest profile's build needs the platform enabled for the account the job runs as, or `-enableAllDerivedPlatforms` on the editor's command line; without either, Build Forge stops the build. See [Command line and CI](../ci.md#requirements-on-the-build-machine).
+
 When a profile pins symmetric projection on in the Meta Quest feature, untick the original Quest in that feature's target devices: OpenXR's validation rejects symmetric projection while it is targeted, and the build fails.
 
 ## Warnings
@@ -103,6 +105,7 @@ When a profile pins symmetric projection on in the Meta Quest feature, untick th
 | OpenXR enabled the Oculus Touch, … and turns them off again the next time the editor loads without one active | OpenXR 1.18, on a plain Android profile. |
 | OpenXR turns on … for Android when the editor opens with a Meta Quest profile active … so this profile's CI builds lack them | OpenXR 1.18, on a Meta Quest profile with [Meta Quest Setup](#meta-quest-build-profiles) off, while `isMetaQuestInitialized` is 0. Turn the setup on, or commit `BuildProfileUtilityOpenXR.asset` as the editor leaves it: 1, with those features on. |
 | Meta Quest Setup is on for this profile, but Build Forge cannot read … | OpenXR 1.18 or later changed the internal setup state Build Forge reads, so it cannot tell which features to turn on, and builds of the profile stop. Turn Meta Quest Setup off for the profile, or update Build Forge. |
+| Build Forge cannot tell whether Unity Build Profile '*profile*' is a Meta Quest profile | Unity stores no platform id in the profile, as a Unity version that renamed the field would. Update Build Forge. |
 | Build Forge cannot read … so it cannot check OpenXR's own Meta Quest setup | The same, on an Android profile without the setup: the two warnings above cannot appear. Update Build Forge. |
 
 ## Manifest
