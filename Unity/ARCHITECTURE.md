@@ -150,6 +150,14 @@ While `ForgeSettings.InterceptBuilds` is on (the default), player builds that Bu
 
 The handler slot holds one delegate: registering over another script's handler replaces it, with Unity's warning "The get build player options handler in BuildPlayerWindow is being reassigned!". And Unity's public default, `DefaultBuildMethods.GetBuildPlayerOptions`, always asks for a location, while its internal path passes on whether to, so Build And Run can reuse the last location. So the handler is registered at load only while interception is on, in an interactive editor, and then only blocks. Turned off later, it hands over to the public default until the next domain reload, so Build And Run asks for a location in between; turned on later, Unity's buttons are stopped by the pre-build callback, after the location prompt, until the next reload registers the handler.
 
+Unity's buttons are stopped rather than turned into Build Forge builds. The same handler could start one with the main toolbar's variant and end Unity's flow as it does now. It doesn't, because:
+
+1. **The variant would be invisible where the click happens.** Unity's Build Profiles window shows nothing of Build Forge's variant, and Build Forge can't disable Unity's button or give it a tooltip. The build would use a session selection nobody sees at the click, and the variant's rules can override options the window shows right beside the button, such as Development Build. Build Forge builds only what its window, its toolbar or a command line names.
+2. **There is no location prompt.** Unity's Build asks where to put the player; a Build Forge build writes to the profile's output path.
+3. **What blocks the toolbar's Build would show only after the click.** No variant picked, a variant the profile doesn't allow, an active profile without Build Forge settings, a busy editor: the toolbar disables its button and says why, while Unity's button could only answer with a dialog once clicked.
+4. **It covers only Unity's two buttons.** Every other `BuildPipeline.BuildPlayer` call, such as older build scripts or the Test Framework's player runs, still has to be stopped in `OnPreprocessBuild`, so interception and its dialog stay either way.
+5. **It would change what Unity's own buttons build on a fresh install.** Interception only stops builds. Starting a Build Forge build instead would change build output without the user enabling it, which Plugin Default States rules out.
+
 ### Plugin Default States
 All discovered plugins are enabled globally by default in Project Settings. This makes sense for plugins installed by the user (e.g. OpenXR, Addressables) — if you installed the package, you want its plugin active. The global toggle is an escape hatch, not the primary activation mechanism.
 
