@@ -21,11 +21,18 @@ namespace BuildForge.Editor.OpenXR
     {
         const string LogPrefix = "[Build Forge/OpenXR]";
 
-        /// <summary>Top-level properties that are structure, not settings.</summary>
+        /// <summary>
+        /// Top-level properties that are structure, not settings, and hidden values
+        /// OpenXR derives from other settings and recomputes itself: the custom
+        /// loader from the enabled features, the old multiview flag from its mode,
+        /// and that mode's migration marker. Kept out of snapshots, which would
+        /// otherwise report drift whenever OpenXR recomputes them.
+        /// </summary>
         public static readonly HashSet<string> SkipSettingsProperties = new()
         {
-            "m_ObjectHideFlags", "m_Script", "m_Name", "m_EditorClassIdentifier",
+            "m_ObjectHideFlags", "m_Script", "m_Name", "m_EditorClassIdentifier", "m_Enabled", "m_EditorHideFlags",
             "m_Features",
+            "customLoaderName", "m_optimizeMultiviewRenderRegions", "m_hasMigratedMultiviewRenderRegionSetting",
         };
 
         /// <summary>
@@ -104,6 +111,8 @@ namespace BuildForge.Editor.OpenXR
 
             var snapshot = new OpenXREditorStateSnapshot();
 
+            // Hidden settings too: a profile can override one, and Unity's Meta Quest build
+            // step writes the multiview render regions mode, which the inspector hides.
             var so = new SerializedObject(settings);
             var iterator = so.GetIterator();
             if (iterator.Next(true))
@@ -119,7 +128,7 @@ namespace BuildForge.Editor.OpenXR
                         propertyName = iterator.name,
                         value = GetPropertyValueAsString(iterator),
                     });
-                } while (iterator.NextVisible(false));
+                } while (iterator.Next(false));
             }
 
             foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))

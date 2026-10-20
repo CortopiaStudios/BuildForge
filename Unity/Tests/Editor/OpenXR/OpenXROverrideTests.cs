@@ -659,6 +659,40 @@ namespace BuildForge.Tests.OpenXR
             Assert.IsNull(OpenXRSettingsState.Merge(baseline, expected, "not json"));
         }
 
+        // Hidden settings are in the snapshot too, so a build puts back what it wrote there, such as
+        // the multiview render regions mode Unity's Meta Quest build step copies from MetaQuestFeature;
+        // values OpenXR derives itself are left out.
+        [Test] public void Snapshot_HoldsHiddenSettings_ButNotTheOnesOpenXRDerives()
+        {
+            const string hidden = "m_multiviewRenderRegionsOptimizationMode";
+            var settings = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(settings, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var snapshot = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, false);
+            var names = snapshot.settings.Select(s => s.propertyName).ToList();
+            CollectionAssert.DoesNotContain(names, "customLoaderName");
+            CollectionAssert.DoesNotContain(names, "m_Enabled");
+
+            var so = new SerializedObject(settings);
+            var property = so.FindProperty(hidden);
+            if (property == null)
+                Assert.Ignore("This OpenXR has no multiview render regions mode.");
+            CollectionAssert.Contains(names, hidden);
+            var before = property.intValue;
+            try
+            {
+                property.intValue = before == 0 ? 1 : 0;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, snapshot);
+                Assert.AreEqual(before, new SerializedObject(settings).FindProperty(hidden).intValue);
+            }
+            finally
+            {
+                var reset = new SerializedObject(settings);
+                reset.FindProperty(hidden).intValue = before;
+                reset.ApplyModifiedPropertiesWithoutUndo();
+            }
+        }
+
         // The same on the host's Standalone settings: the Apply turned on one
         // controller profile, a pull another, and restoring the merge keeps the pull's.
         [Test] public void Merge_OnRealSettings_RestoresWhatTheApplyChangedOnly()
