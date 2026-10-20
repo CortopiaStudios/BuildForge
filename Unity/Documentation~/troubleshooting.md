@@ -72,7 +72,7 @@ The player was built, but restoring a setting or cleaning up failed. The errors 
 
 ### The editor crashed during a build
 
-Restore the files the build changed from version control, typically `ProjectSettings/`, the XR settings under `Assets/XR/` and the Build Profile that was built. If a profile was applied to the editor, **Revert to Baseline** restores its plugin settings, because their baselines are on disk.
+Restore the files the build changed from version control, typically `ProjectSettings/`, the XR settings under `Assets/XR/` and the Build Profile that was built, with the [Addressables Stripper](plugins/addressables-stripper.md) also `Assets/AddressableAssetsData/`, and with [Android Manifest](plugins/android-manifest.md) also `Assets/Plugins/Android/AndroidManifest.xml`. Don't delete an Addressables group named `BuildForge Excluded (do not delete)`: it holds entries the Stripper moved out of their groups. If a profile was applied to the editor, **Revert to Baseline** restores its plugin settings, because their baselines are on disk.
 
 ## Command line and CI
 

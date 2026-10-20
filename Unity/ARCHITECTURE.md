@@ -251,6 +251,10 @@ For a variant build, also restore the Unity Build Profile asset that was built, 
 ```
 git checkout -- "Assets/Settings/Build Profiles/"
 ```
+With the Addressables Stripper, also restore the Addressables settings: its changes are saved during the build, by Addressables (creating the temporary group saves) and by the build's own save, so they are on disk while it runs, and the temporary group holds the entries it moved, so deleting that group would delete them. With Android Manifest, also restore the main manifest it swapped:
+```
+git checkout -- Assets/AddressableAssetsData/ Assets/Plugins/Android/AndroidManifest.xml
+```
 
 Editor crashes mid-build are rare. Version control is the safety net. (If a profile was applied to the editor at the time, "Revert to Baseline" in the Build window restores the pre-apply state of the plugin-managed settings — see "Editor State".)
 

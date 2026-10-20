@@ -15,9 +15,11 @@ Leaves Addressables groups and labelled entries out of a build, for example spoi
 ## What a build does
 
 - An excluded group gets **Include in Build** off for the duration of the build. From Addressables 4.1 that is the group's own setting, which every kind of group has, Content Directory groups included. Before 4.1 it is the setting of the group's **Content Packing & Loading** schema, so a group without that schema can't be excluded, and its exclusion stops the build.
-- Entries carrying an excluded label are moved into a temporary group that is not included in the build, named `BuildForge Excluded (temporary, safe to delete)`. Removing only the label would leave the entry in its group, still packed and loadable by address. Entries in excluded or read-only groups stay where they are.
+- Entries carrying an excluded label are moved into a temporary group that is not included in the build, named `BuildForge Excluded (do not delete)`. Removing only the label would leave the entry in its group, still packed and loadable by address. Entries in excluded or read-only groups stay where they are.
 
 After the build, the groups' flags are restored and the entries moved back; the temporary group is removed. An entry that cannot be moved back is left in the temporary group, with a warning in the log.
+
+These changes are saved during the build, by Addressables and by the build's own save. After an editor crash or a killed build, the excluded groups stay excluded and the moved entries stay in the temporary group, and every later build, of any profile, leaves them out. Restore `Assets/AddressableAssetsData/` from version control. Don't delete the temporary group: that deletes the entries in it.
 
 An excluded asset that a shipped asset references is still packed as a dependency; Addressables packs dependencies whatever group they are in.
 

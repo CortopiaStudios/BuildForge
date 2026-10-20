@@ -29,7 +29,8 @@ namespace BuildForge.Editor.Addressables
         internal const string ConfigKey = "AddressablesStripper";
         const string CapturedGroupStatesKey = "BuildForge.Addressables.CapturedGroupStates";
         const string MovedEntriesKey = "BuildForge.Addressables.MovedEntries";
-        const string TempGroupName = "BuildForge Excluded (temporary, safe to delete)";
+        // Left behind only by a crash during a build, holding the entries it moved: deleting it deletes them.
+        internal const string TempGroupName = "BuildForge Excluded (do not delete)";
 
         /// <summary>Where a label-excluded entry came from, so it can be moved back.</summary>
         class MovedEntry
@@ -322,7 +323,8 @@ namespace BuildForge.Editor.Addressables
                         settings.RemoveGroup(tempGroup);
                     else
                         Debug.LogWarning($"[Build Forge/Addressables] {stranded} label-excluded entries could not be " +
-                            $"moved back to their original group; they were left in '{tempGroup.Name}'.");
+                            $"moved back to their original group; they were left in '{tempGroup.Name}'. Move them back, or " +
+                            "restore Assets/AddressableAssetsData/ from version control: deleting the group deletes them.");
                 }
                 settings.SetDirty(AddressableAssetSettings.ModificationEvent.BatchModification, null, true, true);
             }
