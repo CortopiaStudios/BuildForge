@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using BuildForge.Editor.Core;
 using UnityEditor;
@@ -396,26 +397,112 @@ namespace BuildForge.Editor.OpenXR
             };
         }
 
-        public static void SetPropertyFromString(SerializedProperty prop, string value)
+        /// <summary>Writes a value into a simple property; false, leaving it as it was, for a value it can't take.</summary>
+        public static bool SetPropertyFromString(SerializedProperty prop, string value)
         {
+            value ??= "";
             switch (prop.propertyType)
             {
                 case SerializedPropertyType.Integer:
-                    if (int.TryParse(value, out var i)) prop.intValue = i;
-                    break;
+                    if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var i)) return false;
+                    prop.intValue = i;
+                    return true;
                 case SerializedPropertyType.Boolean:
-                    prop.boolValue = value == "1" || value.ToLower() == "true";
-                    break;
+                    if (value == "1" || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase)) { prop.boolValue = true; return true; }
+                    if (value == "0" || string.Equals(value, "false", StringComparison.OrdinalIgnoreCase)) { prop.boolValue = false; return true; }
+                    return false;
                 case SerializedPropertyType.Float:
-                    if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var f)) prop.floatValue = f;
-                    break;
+                    if (!float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var f)) return false;
+                    prop.floatValue = f;
+                    return true;
                 case SerializedPropertyType.String:
                     prop.stringValue = value;
-                    break;
+                    return true;
                 case SerializedPropertyType.Enum:
-                    if (int.TryParse(value, out var e)) prop.intValue = e;
-                    break;
+                    if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var e)) return false;
+                    prop.intValue = e;
+                    return true;
+                default:
+                    return false;
             }
+        }
+
+        /// <summary>
+        /// An override or pin of a profile that doesn't match OpenXR any more, with why;
+        /// <see cref="Remove"/> takes it out of the profile.
+        /// </summary>
+        internal sealed class StaleEntry
+        {
+            public string Description;
+            public Action<OpenXRProfileConfig> Remove;
+            /// <summary>The setting, for an entry of the settings overrides; null otherwise.</summary>
+            public string SettingName;
+        }
+
+        /// <summary>
+        /// The profile's overrides and pins that can't be applied to the group's settings:
+        /// a setting or feature OpenXR doesn't have, as after an update renamed it, or a value
+        /// it can't take. Builds and Apply stop on them rather than go out without them. Only
+        /// pins Apply would write are checked: those of the features the profile turns on.
+        /// </summary>
+        public static List<StaleEntry> StaleEntries(OpenXRProfileConfig config, OpenXRSettings settings, bool includeInteractionProfiles)
+        {
+            var stale = new List<StaleEntry>();
+            var so = new SerializedObject(settings);
+            foreach (var ovr in config.GetAllSettingsOverrides().ToList())
+            {
+                var name = ovr.propertyName;
+                var prop = string.IsNullOrEmpty(name) ? null : so.FindProperty(name);
+                var problem = prop == null ? "OpenXR has no such setting"
+                    : !IsSimpleProperty(prop.propertyType) ? "not a setting Build Forge can set"
+                    : !SetPropertyFromString(prop, ovr.value) ? $"'{ovr.value}' is not a valid {prop.propertyType} value"
+                    : null;
+                if (problem != null)
+                    stale.Add(new StaleEntry { Description = $"Setting '{name}': {problem}", Remove = c => c.SetSettingOverride(name, null), SettingName = name });
+            }
+
+            var installed = new HashSet<string>(settings.GetFeatures<OpenXRFeature>().Where(f => f != null).Select(f => f.GetType().FullName));
+            foreach (var typeName in config.EnabledFeatures.Where(t => !installed.Contains(t)).ToList())
+                stale.Add(new StaleEntry
+                {
+                    Description = $"Feature '{typeName}' ({(config.OnlyListedFeatures ? "listed" : "Enable")}): not installed for this platform",
+                    Remove = c => c.EnabledFeatures.Remove(typeName),
+                });
+            // Only Listed Features doesn't use Disabled Features.
+            if (!config.OnlyListedFeatures)
+                foreach (var typeName in config.DisabledFeatures.Where(t => !installed.Contains(t)).ToList())
+                    stale.Add(new StaleEntry
+                    {
+                        Description = $"Feature '{typeName}' (Disable): not installed for this platform",
+                        Remove = c => c.DisabledFeatures.Remove(typeName),
+                    });
+            foreach (var typeName in config.GetAllFeatureOverrides().Select(o => o.featureTypeName).Where(t => !installed.Contains(t)).ToList())
+                stale.Add(new StaleEntry
+                {
+                    Description = $"Settings of feature '{typeName}': not installed for this platform",
+                    Remove = c => c.SetFeatureOverrides(typeName, null),
+                });
+
+            foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))
+            {
+                if (Override(config, feature) != true) continue;
+                var typeName = feature.GetType().FullName;
+                var pins = config.GetFeatureOverrides(typeName);
+                if (pins == null) continue;
+                var fso = new SerializedObject(feature);
+                foreach (var entry in pins.ToList())
+                {
+                    var problem = SerializedPropertySnapshot.Problem(fso, entry);
+                    if (problem == null) continue;
+                    var path = entry.path;
+                    stale.Add(new StaleEntry
+                    {
+                        Description = $"Setting '{path}' of feature '{feature.name}': {problem}",
+                        Remove = c => c.SetFeatureOverrides(typeName, c.GetFeatureOverrides(typeName)?.Where(e => e.path != path).ToList()),
+                    });
+                }
+            }
+            return stale;
         }
     }
 }

@@ -27,6 +27,7 @@ The message names the cause. The common ones:
 | Build Forge cannot load the plugin settings … | [Plugin settings that Unity cannot load](#build-forge-cannot-load-the-plugin-settings-) |
 | '…' has no '…' setting on Unity …, or Unity Build Profile '…' stores no … | Unity renamed a Build Profile setting that Build Forge applies or reads. Update Build Forge for your Unity version. |
 | [Build Forge/OpenXR] Meta Quest Setup is on for this profile, but Build Forge cannot read … | [OpenXR](plugins/openxr.md#warnings) |
+| [Build Forge/OpenXR] This profile's OpenXR overrides for … hold … that OpenXR … can't take | [Overrides that no longer match OpenXR](plugins/openxr.md#overrides-that-no-longer-match-openxr) |
 | [Build Forge/BuildNumber] … | [Build Number](plugins/build-number.md#when-the-build-stops) |
 | [Build Forge/AndroidKeystoreEnv] … | [Android Keystore Env](plugins/android-keystore-env.md#what-a-build-does) |
 | [Build Forge/CloudDiagnostics] … stores no Diagnostics Data setting | [Cloud Diagnostics](plugins/cloud-diagnostics.md#crash-reporting-and-symbol-upload) |

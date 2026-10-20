@@ -38,7 +38,7 @@ When a feature is set to **Enable**, its own settings editor (Unity's editor for
 
 Some features copy their own values into the OpenXR settings during the build. Unity's Meta Quest build step, for one, copies symmetric projection, buffer discard optimization and the space warp motion vector format from the Meta Quest feature. An override of such a setting in the Settings list would not reach the player.
 
-The Settings list therefore hides the settings that a feature enabled in this profile's build also declares. Set them in that feature's own settings instead: enable the feature in the profile and edit them there. An override of such a setting can still come from a hand-edited profile file; the plugin then warns in the build window, in the foldout and in the build log. A profile that disables the feature can override the setting, because a disabled feature's build steps do not run.
+The Settings list therefore hides the settings that a feature enabled in this profile's build also declares. Set them in that feature's own settings instead: enable the feature in the profile and edit them there. An override of such a setting can still come from a hand-edited profile file; the plugin then warns in the build window, in the foldout and in the build log, and the foldout lists the override with **Remove**, as it does an override of a setting that OpenXR hides from the inspector. A profile that disables the feature can override the setting, because a disabled feature's build steps do not run.
 
 ### No Override
 
@@ -48,7 +48,7 @@ For profiles that share a platform, give every feature that any of them enables 
 
 ## Builds and Apply
 
-Before the build the plugin takes a snapshot of every OpenXR setting and every managed feature of the platform, then writes the profile's overrides and pins. It then checks that each feature took its override; if one did not, the build stops before anything is built:
+Before the build the plugin takes a snapshot of every OpenXR setting, the ones the inspector hides included, and every managed feature of the platform, then writes the profile's overrides and pins. It then checks that each feature took its override; if one did not, the build stops before anything is built:
 
 - `OpenXR feature '<type>' did not accept its configured override.`
 - `OpenXR kept '<feature>' enabled although this profile disables it: the feature group(s) '<group>', ticked for <platform> in XR Plug-in Management, require it.` See [Feature groups](#feature-groups-are-not-supported). With Only Listed Features it says that the profile doesn't list the feature.
@@ -58,6 +58,10 @@ After the build the snapshot is restored in full. That also undoes what Unity's 
 **Apply** writes the same overrides and pins to the editor, and Revert to Baseline restores the snapshot taken before. Both save the OpenXR settings assets, which are version-controlled; see [Commit settings while nothing is applied](../concepts.md#commit-settings-while-nothing-is-applied).
 
 Play Mode runs on Standalone's OpenXR settings. For a profile of another platform, **Play Mode Follows Applied Profile** then turns on each Standalone feature that the profile's platform has on, interaction profiles included, so Play Mode uses the platform's controllers and features where Standalone has them. By default it turns no feature off (**OpenXR Features: Turn on the platform's**, under that setting): one the platform has off keeps Standalone's state, so features Standalone has on for Play Mode itself, such as hand tracking for a tool that authors hand poses, stay on. With **Match the platform's**, it turns off the features the platform has off too, so Play Mode has exactly the platform's features where Standalone has them. A feature only one platform has, such as Meta Quest Support, keeps its state either way. Settings overrides and feature pins are not copied. See [Apply](../concepts.md#apply-and-re-apply).
+
+### Overrides that no longer match OpenXR
+
+Overrides and pins are stored by name. After an OpenXR or vendor package update renamed or removed a setting or a feature, or with a value the setting can't take, the profile holds entries that can't be written: a settings override of a setting OpenXR doesn't have, an Enable or Disable override of a feature that isn't installed for the platform, pinned feature settings of such a feature, or a pin of a setting the feature doesn't have, with a value it can't take, or of an asset that is gone. A build or Apply of the profile then stops before it changes anything, since it would otherwise go out without them; the build window shows the error beforehand. The foldout lists each entry with **Remove**.
 
 ## Interaction profiles
 
@@ -90,7 +94,7 @@ When a profile pins symmetric projection on in the Meta Quest feature, untick th
 | Warning | Meaning |
 |---|---|
 | OpenXR is not enabled as a plug-in provider in XR Plug-in Management for *platform* | The profile has OpenXR overrides, and they have no effect until OpenXR is a provider. With [XR Loaders](xr-loaders.md) enabled, its list is checked. A profile without overrides, such as one for a target without OpenXR, gets no warning. |
-| OpenXR feature '*type*' is configured for Enable but is not installed for this target | The feature's package is missing, or the type was renamed. |
+| This profile's OpenXR overrides for *platform* hold … that OpenXR … can't take | See [Overrides that no longer match OpenXR](#overrides-that-no-longer-match-openxr). Builds and Apply of the profile stop. |
 | OpenXR interaction profile '*type*' has an override that is ignored | Interaction Profiles are not managed per profile. |
 | OpenXR feature '*feature*' is hidden | An Enable or Disable override on a hidden feature, which its package turns on and off itself; turning it off can break the package. Set it to No Override. With Only Listed Features, a hidden feature in the list has no effect. |
 | OpenXR setting override '*setting*' may not reach the player | See [Settings that a feature controls](#settings-that-a-feature-controls). |

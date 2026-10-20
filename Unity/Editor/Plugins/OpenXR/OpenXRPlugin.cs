@@ -54,6 +54,10 @@ namespace BuildForge.Editor.OpenXR
             if (openxrSettings != null)
             {
                 var includeInteractionProfiles = GetGlobalConfig().ShowInteractionProfileOverrides;
+                var staleError = StaleEntriesError(OpenXRSettingsState.StaleEntries(config, openxrSettings, includeInteractionProfiles),
+                    buildTargetGroup);
+                if (staleError != null)
+                    warnings.Add(staleError);
                 warnings.AddRange(OverrideWarnings(config, openxrSettings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles));
                 warnings.AddRange(FeatureControlledSettingWarnings(config, openxrSettings.GetFeatures<OpenXRFeature>(),
                     includeInteractionProfiles));
@@ -81,6 +85,21 @@ namespace BuildForge.Editor.OpenXR
         }
 
         /// <summary>
+        /// Why builds and Apply of the profile stop because of overrides or pins that no
+        /// longer match OpenXR, or null.
+        /// </summary>
+        internal static string StaleEntriesError(IReadOnlyList<OpenXRSettingsState.StaleEntry> stale, BuildTargetGroup group)
+        {
+            if (stale.Count == 0)
+                return null;
+            var version = OpenXRVersion();
+            return $"This profile's OpenXR overrides for {group} hold {stale.Count} {(stale.Count == 1 ? "entry" : "entries")} that " +
+                   $"OpenXR{(version != null ? " " + version : "")} can't take: {string.Join("; ", stale.Select(s => s.Description))}. Builds and " +
+                   "Apply of this profile stop until they are removed in its OpenXR section, where they are listed, because they " +
+                   "would otherwise go out without them.";
+        }
+
+        /// <summary>
         /// Overrides without OpenXR as a provider have no effect. A profile
         /// without overrides gets no warning: a profile of a target that doesn't
         /// use OpenXR needs none.
@@ -99,9 +118,6 @@ namespace BuildForge.Editor.OpenXR
             var available = features.Where(f => f != null).GroupBy(f => f.GetType().FullName)
                 .ToDictionary(group => group.Key, group => group.First());
             var warnings = new List<string>();
-            foreach (var typeName in config.EnabledFeatures)
-                if (!available.ContainsKey(typeName))
-                    warnings.Add($"OpenXR feature '{typeName}' is configured for Enable but is not installed for this target.");
             if (!includeInteractionProfiles)
                 foreach (var feature in available.Values.Where(OpenXRSettingsState.IsInteractionProfile))
                     if (config.EnabledFeatures.Contains(feature.GetType().FullName)
@@ -164,7 +180,7 @@ namespace BuildForge.Editor.OpenXR
                     warnings.Add($"OpenXR setting override '{ovr.propertyName}' may not reach the player: the " +
                         $"'{FormatFeatureName(GetFeatureUiName(owner))}' feature also declares it and can overwrite " +
                         "it during the build. Enable the feature in this profile and set it there, and remove the " +
-                        "override from the profile asset (the inspector does not show it).");
+                        "override, which this profile's OpenXR section lists with Remove.");
             }
             return warnings;
         }
@@ -556,6 +572,10 @@ namespace BuildForge.Editor.OpenXR
                 Debug.LogWarning("[Build Forge/OpenXR] No OpenXR settings found for target group.");
                 return;
             }
+            var staleError = StaleEntriesError(OpenXRSettingsState.StaleEntries(config, settings, includeInteractionProfiles),
+                context.BuildTargetGroup);
+            if (staleError != null)
+                throw new InvalidOperationException("[Build Forge/OpenXR] " + staleError);
             var setupError = MetaQuestSetupError(config, context.BuildTargetGroup, MetaQuestProfileActive, settings.GetFeatures<OpenXRFeature>());
             if (setupError != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + setupError);
@@ -631,7 +651,15 @@ namespace BuildForge.Editor.OpenXR
 
         public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group)
         {
-            OpenXRSettingsState.Apply(GetConfig(forgeProfile), group, GetGlobalConfig().ShowInteractionProfileOverrides);
+            var config = GetConfig(forgeProfile);
+            var includeInteractionProfiles = GetGlobalConfig().ShowInteractionProfileOverrides;
+            var settings = OpenXRSettings.GetSettingsForBuildTargetGroup(group);
+            var staleError = settings != null
+                ? StaleEntriesError(OpenXRSettingsState.StaleEntries(config, settings, includeInteractionProfiles), group)
+                : null;
+            if (staleError != null)
+                throw new InvalidOperationException("[Build Forge/OpenXR] " + staleError);
+            OpenXRSettingsState.Apply(config, group, includeInteractionProfiles);
         }
 
         public void RestoreEditorState(BuildTargetGroup group, string json)
@@ -725,6 +753,24 @@ namespace BuildForge.Editor.OpenXR
             {
                 foreach (var warning in Validate(forgeProfile))
                     EditorGUILayout.HelpBox(warning, MessageType.Warning);
+            }
+
+            // Validate's error names them; here each can be removed, and so can a settings override
+            // the Settings list doesn't show: of a hidden setting, or of one a feature controls.
+            if (openxrSettings != null)
+            {
+                var includeInteractionProfiles = GetGlobalConfig().ShowInteractionProfileOverrides;
+                var stale = OpenXRSettingsState.StaleEntries(config, openxrSettings, includeInteractionProfiles);
+                foreach (var entry in stale)
+                    changed |= DrawRemovable(entry.Description, () => entry.Remove(config));
+                var shown = ShownSettings(openxrSettings, CollectFeaturePropertyNames(openxrSettings, config, includeInteractionProfiles));
+                foreach (var ovr in config.GetAllSettingsOverrides().ToList())
+                {
+                    var name = ovr.propertyName;
+                    if (shown.Contains(name) || stale.Any(s => s.SettingName == name)) continue;
+                    changed |= DrawRemovable($"Setting '{name}' = {ovr.value}: not shown in the Settings list",
+                        () => config.SetSettingOverride(name, null));
+                }
             }
 
             // Top-level settings overrides
@@ -843,6 +889,38 @@ namespace BuildForge.Editor.OpenXR
         }
 
         #region Settings Overrides
+
+        /// <summary>One line with a Remove button; true when it was clicked and <paramref name="remove"/> ran.</summary>
+        static bool DrawRemovable(string text, Action remove)
+        {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField(new GUIContent(text, text), EditorStyles.wordWrappedLabel);
+                if (!GUILayout.Button("Remove", GUILayout.Width(70)))
+                    return false;
+            }
+            remove();
+            return true;
+        }
+
+        /// <summary>The settings the Settings list offers an override for (see DrawSettingsOverrides).</summary>
+        static HashSet<string> ShownSettings(OpenXRSettings openxrSettings, HashSet<string> featurePropertyNames)
+        {
+            var shown = new HashSet<string>();
+            var iterator = new SerializedObject(openxrSettings).GetIterator();
+            if (!iterator.Next(true))
+                return shown;
+            do
+            {
+                if (iterator.depth != 0 || OpenXRSettingsState.SkipSettingsProperties.Contains(iterator.name)) continue;
+                var nameWithoutPrefix = iterator.name.StartsWith("m_") ? iterator.name.Substring(2) : iterator.name;
+                if (featurePropertyNames.Contains(iterator.name) || featurePropertyNames.Contains(nameWithoutPrefix)) continue;
+                if (iterator.propertyType == SerializedPropertyType.Enum || iterator.propertyType == SerializedPropertyType.Boolean ||
+                    iterator.propertyType == SerializedPropertyType.Integer || iterator.propertyType == SerializedPropertyType.Float)
+                    shown.Add(iterator.name);
+            } while (iterator.NextVisible(false));
+            return shown;
+        }
 
         // Rows hidden because a feature this profile's build runs with controls the value.
         static HashSet<string> CollectFeaturePropertyNames(OpenXRSettings openxrSettings, OpenXRProfileConfig config,

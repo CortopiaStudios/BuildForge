@@ -162,6 +162,27 @@ namespace BuildForge.Editor.OpenXR
             }
         }
 
+        /// <summary>
+        /// Why the entry can't be applied to the object, or null: the property is gone, the
+        /// value can't be read for its type, or the asset it refers to is gone. Writes into
+        /// <paramref name="so"/> without applying it, so entries are checked in their order,
+        /// an array size before its elements, as <see cref="Apply"/> writes them.
+        /// </summary>
+        public static string Problem(SerializedObject so, PropertyValueEntry entry)
+        {
+            var p = string.IsNullOrEmpty(entry.path) ? null : so.FindProperty(entry.path);
+            if (p == null)
+                return "the feature has no such setting";
+            if (p.propertyType == SerializedPropertyType.ObjectReference && !string.IsNullOrEmpty(entry.value))
+            {
+                if (!GlobalObjectId.TryParse(entry.value, out var id))
+                    return $"'{entry.value}' is not an asset reference";
+                if (GlobalObjectId.GlobalObjectIdentifierToObjectSlow(id) == null)
+                    return "the asset it refers to is gone";
+            }
+            return TryDecodeInto(p, entry.value) ? null : $"'{entry.value}' is not a valid {p.propertyType} value";
+        }
+
         /// <summary>Writes a string produced by <see cref="Encode"/> into the property. False when it cannot be parsed.</summary>
         public static bool TryDecodeInto(SerializedProperty p, string value)
         {

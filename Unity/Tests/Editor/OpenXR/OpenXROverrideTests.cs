@@ -103,10 +103,94 @@ namespace BuildForge.Tests.OpenXR
             }
         }
 
-        [Test] public void MissingEnabledFeatureIsReported()
+        // Overrides and pins that OpenXR can't take, as after an update renamed a setting or a feature:
+        // builds and Apply stop on them, and each can be removed.
+        [Test] public void StaleEntries_NameWhatOpenXRCannotTake_AndRemoveThem()
         {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var installed = standalone.GetFeature<KHRSimpleControllerProfile>();
+            Assert.That(installed, Is.Not.Null);
+            var boolSetting = FirstVisibleSetting(standalone, SerializedPropertyType.Boolean);
+            var installedType = installed.GetType().FullName;
+
+            config.SetSettingOverride("m_noSuchSetting", "1");
+            config.SetSettingOverride(boolSetting, "yes");
             config.EnabledFeatures.Add("Missing.Vendor.Feature");
-            Assert.That(OpenXRPlugin.OverrideWarnings(config, new[] { controller }, true)[0], Does.Contain("not installed"));
+            config.DisabledFeatures.Add("Missing.Vendor.Other");
+            config.SetFeatureOverrides("Missing.Vendor.Feature", new List<PropertyValueEntry> { new PropertyValueEntry { path = "m_x", value = "1" } });
+            config.EnabledFeatures.Add(installedType);
+            config.SetFeatureOverrides(installedType, new List<PropertyValueEntry> { new PropertyValueEntry { path = "m_noSuchField", value = "1" } });
+
+            var stale = OpenXRSettingsState.StaleEntries(config, standalone, true);
+            var text = string.Join("; ", stale.Select(e => e.Description));
+            StringAssert.Contains("Setting 'm_noSuchSetting': OpenXR has no such setting", text);
+            StringAssert.Contains($"Setting '{boolSetting}': 'yes' is not a valid Boolean value", text);
+            StringAssert.Contains("Feature 'Missing.Vendor.Feature' (Enable): not installed", text);
+            StringAssert.Contains("Feature 'Missing.Vendor.Other' (Disable): not installed", text);
+            StringAssert.Contains("Settings of feature 'Missing.Vendor.Feature': not installed", text);
+            StringAssert.Contains("Setting 'm_noSuchField' of feature", text);
+            Assert.AreEqual(6, stale.Count, text);
+            StringAssert.Contains("Builds and Apply of this profile stop", OpenXRPlugin.StaleEntriesError(stale, BuildTargetGroup.Standalone));
+
+            foreach (var entry in stale)
+                entry.Remove(config);
+            CollectionAssert.IsEmpty(OpenXRSettingsState.StaleEntries(config, standalone, true));
+            Assert.IsNull(config.GetSettingOverride(boolSetting));
+            CollectionAssert.AreEqual(new[] { installedType }, config.EnabledFeatures, "The installed feature's override stays.");
+            Assert.IsNull(config.GetFeatureOverrides(installedType), "Its only pin was stale.");
+        }
+
+        [Test] public void StaleEntries_LeaveValidOverridesAlone()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var installed = standalone.GetFeature<KHRSimpleControllerProfile>();
+            var boolSetting = FirstVisibleSetting(standalone, SerializedPropertyType.Boolean);
+            config.SetSettingOverride(boolSetting, "1");
+            config.EnabledFeatures.Add(installed.GetType().FullName);
+            config.SetFeatureOverrides(installed.GetType().FullName,
+                SerializedPropertySnapshot.Capture(new SerializedObject(installed), OpenXRSettingsState.SkipFeatureProperties));
+            config.OnlyListedFeatures = true;
+            config.DisabledFeatures.Add("Missing.Vendor.Unused");
+
+            CollectionAssert.IsEmpty(OpenXRSettingsState.StaleEntries(config, standalone, true).Select(e => e.Description),
+                "Only Listed Features doesn't use Disabled Features.");
+        }
+
+        // A build and an Apply stop before they change anything.
+        [Test] public void StaleEntries_StopTheBuildAndApply()
+        {
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                config.SetSettingOverride("m_noSuchSetting", "1");
+                forge.SetPluginConfig("OpenXR", config);
+                var plugin = new OpenXRPlugin();
+                var before = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson();
+
+                var build = Assert.Throws<System.InvalidOperationException>(() => plugin.OnPreBuild(
+                    new ForgeBuildContext(null, forge, BuildTarget.StandaloneWindows64, "unused", true)));
+                StringAssert.Contains("m_noSuchSetting", build.Message);
+                var apply = Assert.Throws<System.InvalidOperationException>(() => plugin.ApplyToEditor(forge, BuildTargetGroup.Standalone));
+                StringAssert.Contains("m_noSuchSetting", apply.Message);
+                Assert.AreEqual(before, OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson());
+            }
+            finally { Object.DestroyImmediate(forge); }
+        }
+
+        static string FirstVisibleSetting(OpenXRSettings settings, SerializedPropertyType type)
+        {
+            var iterator = new SerializedObject(settings).GetIterator();
+            iterator.Next(true);
+            do
+            {
+                if (iterator.depth == 0 && iterator.propertyType == type
+                    && !OpenXRSettingsState.SkipSettingsProperties.Contains(iterator.name))
+                    return iterator.name;
+            } while (iterator.NextVisible(false));
+            Assert.Fail($"OpenXR's settings have no visible {type} setting.");
+            return null;
         }
 
         [Test] public void ManifestReportsActualFeatureState()
