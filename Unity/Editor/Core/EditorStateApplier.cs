@@ -249,23 +249,48 @@ namespace BuildForge.Editor.Core
         /// can be resumed after a build. What was restored becomes the entry's
         /// baseline, so changes kept because they were made after the Apply (see
         /// <see cref="RestoreEntry"/>) stay kept when the profile is reverted later.
+        /// When an entry can't be restored, the build doesn't run, so the entries
+        /// already restored get <paramref name="appliedProfile"/>'s settings again
+        /// before this throws: a stopped build leaves the editor as it was.
         /// </summary>
-        public static void SuspendForBuild(List<EditorStateEntry> entries, Func<string, IForgeEditorApplicable> resolve)
+        public static void SuspendForBuild(List<EditorStateEntry> entries, Func<string, IForgeEditorApplicable> resolve,
+            ForgeProfile appliedProfile, string variant)
         {
             var failures = new List<Exception>();
+            var restoredEntries = new List<EditorStateEntry>();
             for (int i = entries.Count - 1; i >= 0; i--)
             {
                 var failure = RestoreEntry(entries[i], resolve, out var restored);
                 if (failure != null)
                     failures.Add(failure);
                 else
+                {
                     entries[i].baselineJson = restored;
+                    restoredEntries.Add(entries[i]);
+                }
             }
 
-            if (failures.Count > 0)
-                throw new AggregateException(
-                    "Could not restore the applied editor settings before the build. Use Revert to Baseline in the " +
-                    "Build Forge window: it restores what it can and offers to stop tracking the rest.", failures);
+            if (failures.Count == 0)
+                return;
+
+            var reapplied = "";
+            if (restoredEntries.Count > 0)
+            {
+                if (appliedProfile != null)
+                {
+                    var reapply = ResumeAfterBuild(restoredEntries, appliedProfile, resolve, variant);
+                    failures.AddRange(reapply.Failures);
+                    reapplied = reapply.Failures.Count == 0
+                        ? " The settings it had restored were applied again."
+                        : " Some of the settings it had restored could not be applied again.";
+                }
+                else
+                    reapplied = " The applied profile is gone, so the settings it had restored stay as they were before the Apply.";
+            }
+            throw new AggregateException(
+                "Could not restore the applied editor settings before the build, so the build did not start." + reapplied +
+                " Use Revert to Baseline in the Build Forge window: it restores what it can and offers to stop tracking the rest.",
+                failures);
         }
 
         /// <summary>

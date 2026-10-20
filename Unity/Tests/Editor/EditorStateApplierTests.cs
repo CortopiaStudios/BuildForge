@@ -350,7 +350,7 @@ namespace BuildForge.Tests.Editor
         {
             Apply(profileA, BuildTargetGroup.Android);
 
-            EditorStateApplier.SuspendForBuild(entries, Resolve);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null);
             Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
             Assert.AreEqual(1, entries.Count);
 
@@ -365,7 +365,7 @@ namespace BuildForge.Tests.Editor
         public void Resume_WithNullProfile_ClearsEntriesAndSignals()
         {
             Apply(profileA, BuildTargetGroup.Android);
-            EditorStateApplier.SuspendForBuild(entries, Resolve);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null);
 
             var result = EditorStateApplier.ResumeAfterBuild(entries, null, Resolve);
 
@@ -374,26 +374,48 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
         }
 
+        // An entry that can't be restored stops the build, after the others were restored; those
+        // get the applied profile's settings again, so the stopped build leaves the editor as it was.
         [Test]
-        public void Suspend_RestoreFailure_ThrowsAfterOtherEntriesAndRetainsRecoveryState()
+        public void Suspend_RestoreFailure_ReappliesTheRestoredEntries_AndThrows()
         {
             Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone);
             plugin.ThrowOnRestoreGroup = BuildTargetGroup.Standalone;
             LogAssert.Expect(LogType.Error, new Regex("Standalone: restore failed"));
 
             var error = Assert.Throws<AggregateException>(
-                () => EditorStateApplier.SuspendForBuild(entries, Resolve));
+                () => EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null));
 
             Assert.AreEqual(1, error.InnerExceptions.Count);
-            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android], "Continue restoring the other entries.");
+            StringAssert.Contains("applied again", error.Message);
+            Assert.AreEqual("base+A", plugin.World[BuildTargetGroup.Android], "The restored entry is applied again.");
             Assert.AreEqual("base+A", plugin.World[BuildTargetGroup.Standalone]);
             Assert.AreEqual(2, entries.Count);
             Assert.IsTrue(entries.All(e => e.baselineJson == "base" && e.expectedJson == "base+A"));
+            Assert.IsEmpty(EditorStateApplier.Drift(entries, Resolve));
 
             plugin.ThrowOnRestoreGroup = null;
-            EditorStateApplier.SuspendForBuild(entries, Resolve);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null);
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
             Assert.IsEmpty(EditorStateApplier.ResumeAfterBuild(entries, profileA, Resolve).Failures);
             Assert.IsEmpty(EditorStateApplier.Drift(entries, Resolve), "A later retry can still recover from the ledger.");
+        }
+
+        // Without the applied profile there is nothing to apply again: the restored entry stays
+        // restored, the ledger is kept, and the message says so.
+        [Test]
+        public void Suspend_RestoreFailure_WithTheAppliedProfileGone_KeepsTheLedger()
+        {
+            Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone);
+            plugin.ThrowOnRestoreGroup = BuildTargetGroup.Standalone;
+            LogAssert.Expect(LogType.Error, new Regex("Standalone: restore failed"));
+
+            var error = Assert.Throws<AggregateException>(
+                () => EditorStateApplier.SuspendForBuild(entries, Resolve, null, null));
+
+            StringAssert.Contains("applied profile is gone", error.Message);
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
+            Assert.AreEqual(2, entries.Count);
         }
 
         [Test]
@@ -423,7 +445,7 @@ namespace BuildForge.Tests.Editor
             });
             LogAssert.Expect(LogType.Warning, new Regex("Gone\\|Android: plugin not found"));
 
-            Assert.Throws<AggregateException>(() => EditorStateApplier.SuspendForBuild(entries, Resolve));
+            Assert.Throws<AggregateException>(() => EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null));
 
             Assert.AreEqual("baseline", entries.Single().baselineJson);
         }
@@ -432,7 +454,7 @@ namespace BuildForge.Tests.Editor
         public void Resume_ApplyFailure_DoesNotAcceptFailedStateAndContinuesOtherEntries()
         {
             Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone);
-            EditorStateApplier.SuspendForBuild(entries, Resolve);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null);
             plugin.ThrowOnApplyGroup = BuildTargetGroup.Android;
             LogAssert.Expect(LogType.Error, new Regex("Android: re-apply after build failed"));
 
@@ -450,7 +472,7 @@ namespace BuildForge.Tests.Editor
         public void Resume_CaptureFailure_ReportsFailureWithoutReplacingExpectedState()
         {
             Apply(profileA, BuildTargetGroup.Android);
-            EditorStateApplier.SuspendForBuild(entries, Resolve);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null);
             plugin.ThrowOnCaptureGroup = BuildTargetGroup.Android;
             LogAssert.Expect(LogType.Error, new Regex("re-apply after build failed"));
 
@@ -551,7 +573,7 @@ namespace BuildForge.Tests.Editor
             keyed.Set(BuildTargetGroup.Android, "x", "2");
             LogAssert.Expect(LogType.Log, KeptLog);
 
-            EditorStateApplier.SuspendForBuild(entries, resolve);
+            EditorStateApplier.SuspendForBuild(entries, resolve, profileA, null);
 
             Assert.AreEqual("x=2", keyed.State(BuildTargetGroup.Android));
             Assert.AreEqual("x=2", entries.Single().baselineJson);

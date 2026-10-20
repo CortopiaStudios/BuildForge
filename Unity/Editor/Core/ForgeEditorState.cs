@@ -687,15 +687,16 @@ namespace BuildForge.Editor.Core
 
             Debug.Log($"[Build Forge] Suspending applied profile '{(applied != null ? applied.ProfileName : "(missing)")}' " +
                 $"for the build of '{(building != null ? building.DisplayName : "?")}'.");
-            // Suspending can replace baselines, keeping changes made after the Apply.
-            var baselines = settings.EditorState.Select(e => e.baselineJson).ToList();
+            // Suspending can replace baselines, keeping changes made after the Apply, and
+            // one that fails re-applies what it restored, which recaptures the expected state.
+            var before = settings.EditorState.Select(e => (e.baselineJson, e.expectedJson)).ToList();
             try
             {
-                EditorStateApplier.SuspendForBuild(settings.EditorState, ResolvePlugin);
+                EditorStateApplier.SuspendForBuild(settings.EditorState, ResolvePlugin, applied, AppliedVariant);
             }
             finally
             {
-                if (!baselines.SequenceEqual(settings.EditorState.Select(e => e.baselineJson)))
+                if (!before.SequenceEqual(settings.EditorState.Select(e => (e.baselineJson, e.expectedJson))))
                     settings.SaveState();
                 InvalidateDriftCache();
             }

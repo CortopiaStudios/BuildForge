@@ -117,7 +117,7 @@ namespace BuildForge.Tests.XRManagement
             EditorStateApplier.Apply(entries, new[] { pair }, profile, Resolve, null);
             CollectionAssert.AreEqual(new XRLoader[] { questLoader }, standalone.Manager.activeLoaders);
 
-            EditorStateApplier.SuspendForBuild(entries, Resolve);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profile, null);
             CollectionAssert.AreEqual(new XRLoader[] { pcLoader }, standalone.Manager.activeLoaders, "Builds run on the baseline.");
 
             var result = EditorStateApplier.ResumeAfterBuild(entries, profile, Resolve);

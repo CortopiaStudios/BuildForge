@@ -133,7 +133,7 @@ namespace BuildForge.Tests.XRManagement
             CollectionAssert.AreEqual(new XRLoader[] { second }, manager.activeLoaders);
 
             plugin.SetEnabled(profile, false);
-            EditorStateApplier.SuspendForBuild(entries, Resolve);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profile, null);
             var result = EditorStateApplier.ResumeAfterBuild(entries, profile, Resolve);
 
             Assert.IsEmpty(result.Failures);
