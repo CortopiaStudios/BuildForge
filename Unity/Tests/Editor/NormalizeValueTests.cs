@@ -57,9 +57,17 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
-        public void Whitespace_Collapsed()
+        public void LineBreaksAndTheirIndentation_AreFolded()
         {
-            Assert.AreEqual("a b c", PlayerSettingsDiffComputer.NormalizeValue("  a   b   c  "));
+            Assert.AreEqual("show: 1 mode: 0", PlayerSettingsDiffComputer.NormalizeValue("  show: 1\n    mode: 0  "));
+            Assert.AreEqual("show: 1 mode: 0", PlayerSettingsDiffComputer.NormalizeValue("show: 1 \r\n\tmode: 0"));
+        }
+
+        [Test]
+        public void SpacesInsideAValue_AreSignificant()
+        {
+            Assert.AreEqual("a   b   c", PlayerSettingsDiffComputer.NormalizeValue("  a   b   c  "));
+            Assert.AreNotEqual(PlayerSettingsDiffComputer.NormalizeValue("My  Game"), PlayerSettingsDiffComputer.NormalizeValue("My Game"));
         }
 
         [Test]

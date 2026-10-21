@@ -244,6 +244,17 @@ namespace BuildForge.Tests.Editor
         }
 
         [Test]
+        public void SpacingInsideAValue_IsADifference()
+        {
+            var profile = new Dictionary<string, string> { ["productName"] = "My  Game" };
+            var platform = new Dictionary<string, string> { ["productName"] = "My Game" };
+
+            var diffs = PlayerSettingsDiffComputer.ComputeDiff(profile, platform, BuildTarget.StandaloneWindows64);
+
+            Assert.AreEqual("productName", diffs.Single().PropertyPath);
+        }
+
+        [Test]
         public void WhitespaceNormalized_NoDiff()
         {
             var profile = new Dictionary<string, string>

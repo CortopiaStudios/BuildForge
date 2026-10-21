@@ -85,7 +85,9 @@ namespace BuildForge.Editor.Core
             if (trimmed == "[]" || trimmed == "")
                 return "__empty__";
 
-            var collapsed = Regex.Replace(trimmed, @"\s+", " ");
+            // Only the layout Unity gives nested values goes: a line break with the indentation
+            // around it. Spaces inside a value are part of it, so "My  Game" differs from "My Game".
+            var collapsed = Regex.Replace(trimmed, @"[ \t]*\r?\n[ \t]*", " ");
 
             // Null object references serialize as {fileID: 0} in ProjectSettings.asset
             // but {instanceID: 0} in Build Profile YAML. Same meaning — canonicalize so

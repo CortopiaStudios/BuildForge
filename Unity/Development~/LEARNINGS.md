@@ -95,7 +95,7 @@ Unity wraps each player-settings line in a YAML single-quoted scalar: `- line: '
 
 ### Null-Reference Representation Mismatch
 
-`ProjectSettings.asset` serializes null object references as `{fileID: 0}`. Build Profile YAML uses `{instanceID: 0}`. Both mean null. Without canonicalizing one to the other during normalization, any property containing a null reference (including *nested* in a struct, like `m_AndroidBanners` → `banner: {instanceID: 0}`) shows as a diff. The top-level null check isn't enough — the canonicalization must happen inside the whitespace-collapsed string so nested refs are caught: `Regex.Replace(collapsed, @"\{instanceID:\s*0\}", "{fileID: 0}")`.
+`ProjectSettings.asset` serializes null object references as `{fileID: 0}`. Build Profile YAML uses `{instanceID: 0}`. Both mean null. Without canonicalizing one to the other during normalization, any property containing a null reference (including *nested* in a struct, like `m_AndroidBanners` → `banner: {instanceID: 0}`) shows as a diff. The top-level null check isn't enough — the canonicalization must happen inside the normalized string so nested refs are caught: `Regex.Replace(collapsed, @"\{instanceID:\s*0\}", "{fileID: 0}")`.
 
 ### Float Parsing and Locale
 
