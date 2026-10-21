@@ -106,7 +106,7 @@ Build Forge's log lines start with `[Build Forge]`, plugins' with `[Build Forge/
 
 ## Version overrides
 
-`-forgeVersion` and `-forgeVersionCode` set the version and the Android version code for one build. They are written through Unity's Player Settings API, so they reach the active Build Profile's own Player Settings when it has them, and both are restored afterwards, also when the build fails.
+`-forgeVersion` and `-forgeVersionCode` set the version and the Android version code for one build. They are written through Unity's Player Settings API, so they reach the active Build Profile's own Player Settings when it has them, and both are restored afterwards, also when the build fails. They are set only after the checks a build runs before it changes anything have passed, such as for a disabled platform, a plugin that failed to load or a build that did not finish, so a run one of those stops sets and saves nothing; on CI, the check of a variant rule's Version uses the `-forgeVersion` value.
 
 If [Build Number](plugins/build-number.md) is enabled for the profile, it sets the version code after the command line has, so the plugin's number is the one built.
 

@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using NUnit.Framework;
@@ -107,6 +109,58 @@ namespace BuildForge.Tests.Editor
             }
             finally
             {
+                EditorJsonUtility.FromJsonOverwrite(previousSettings, ForgeSettings.instance);
+                UnityEngine.Object.DestroyImmediate(forge);
+                UnityEngine.Object.DestroyImmediate(native);
+            }
+        }
+
+        // The command line runs the build's checks before its version overrides, so a run that
+        // a check stops sets no version, saves nothing and leaves no marker.
+        [Test]
+        public void ACommandLineBuildStoppedByACheck_SetsNoVersion_AndLeavesNoMarker()
+        {
+            var previousSettings = EditorJsonUtility.ToJson(ForgeSettings.instance);
+            var native = VariantRulesTests.CreateNativeProfile();
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            var version = PlayerSettings.bundleVersion;
+            var versionCode = PlayerSettings.Android.bundleVersionCode;
+            ForgePluginRegistry.GetPlugins();
+            var failure = (typeof(InterruptedBuildMarkerTests), "Its constructor threw.");
+            ForgePluginRegistry.LoadFailures.Add(failure);
+            var logs = new List<string>();
+            Application.LogCallback collect = (message, stackTrace, type) => logs.Add(message);
+            Application.logMessageReceived += collect;
+            try
+            {
+                var settings = new SerializedObject(ForgeSettings.instance);
+                settings.FindProperty("buildVariants").arraySize = 0;
+                settings.FindProperty("variantRules").arraySize = 0;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                var fp = new SerializedObject(forge);
+                fp.FindProperty("buildProfile").objectReferenceValue = native;
+                fp.ApplyModifiedPropertiesWithoutUndo();
+                UnityEngine.TestTools.LogAssert.Expect(LogType.Error,
+                    new System.Text.RegularExpressions.Regex("Build failed with exception: .*could not be loaded"));
+
+                var exitCode = ForgeBuildRunner.RunCommandLineBuild(forge, null, version + "-cli",
+                    (versionCode == 42 ? 43 : 42).ToString());
+
+                Assert.AreEqual(1, exitCode);
+                Assert.AreEqual(version, PlayerSettings.bundleVersion);
+                Assert.AreEqual(versionCode, PlayerSettings.Android.bundleVersionCode);
+                Assert.IsFalse(File.Exists(InterruptedBuildMarker.FilePath));
+                Assert.IsFalse(logs.Any(line => line.Contains("Overriding") || line.Contains("Restored original version settings")),
+                    "Nothing was set, so nothing was put back and saved.");
+            }
+            finally
+            {
+                Application.logMessageReceived -= collect;
+                ForgePluginRegistry.LoadFailures.Remove(failure);
+                if (PlayerSettings.bundleVersion != version)
+                    PlayerSettings.bundleVersion = version;
+                if (PlayerSettings.Android.bundleVersionCode != versionCode)
+                    PlayerSettings.Android.bundleVersionCode = versionCode;
                 EditorJsonUtility.FromJsonOverwrite(previousSettings, ForgeSettings.instance);
                 UnityEngine.Object.DestroyImmediate(forge);
                 UnityEngine.Object.DestroyImmediate(native);

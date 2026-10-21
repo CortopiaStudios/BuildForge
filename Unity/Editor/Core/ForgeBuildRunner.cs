@@ -91,70 +91,9 @@ namespace BuildForge.Editor.Core
         {
             context = null;
 
-            if (forgeProfile == null)
-                throw new ArgumentNullException(nameof(forgeProfile));
-
-            if (forgeProfile.BuildProfile == null)
-                throw new InvalidOperationException(
-                    $"ForgeProfile '{forgeProfile.ProfileName}' has no Unity Build Profile assigned.");
-
-            var resolvedVariant = BuildVariants.Resolve(variant, ForgeSettings.instance.BuildVariants, out var variantError);
-            variantError ??= BuildVariants.ProfileError(forgeProfile, resolvedVariant);
-            if (variantError != null)
-                throw new InvalidOperationException(variantError);
+            CheckBeforeBuild(forgeProfile, variant, PlayerSettings.bundleVersion,
+                out var resolvedVariant, out var buildTarget, out var outputPath);
             var buildName = resolvedVariant != null ? $"{forgeProfile.DisplayName} ({resolvedVariant})" : forgeProfile.DisplayName;
-
-            // The static PlayerSettings API reads and writes the ACTIVE profile's
-            // settings, so building a non-active profile would let its Player
-            // Settings overrides silently shadow plugin and CLI writes.
-            var activeProfile = BuildProfile.GetActiveBuildProfile();
-            // A derived platform this editor has not enabled, such as Meta Quest under an
-            // account that never enabled it, builds with its build target's settings
-            // instead of the profile's, without an error. Activating doesn't change that.
-            // Where Build Forge can't tell, it doesn't build unchecked either.
-            var platformDisabled = BuildProfilePlatform.IsDisabled(forgeProfile.BuildProfile);
-            if (platformDisabled == null)
-                throw new InvalidOperationException(
-                    $"Build Forge cannot tell whether the platform of Unity Build Profile '{forgeProfile.BuildProfile.name}' " +
-                    $"is enabled in Unity {Application.unityVersion}: the Unity lookups it uses for that are missing or failed. " +
-                    "A profile whose platform is disabled builds with its build target's settings instead of its own, so " +
-                    "Build Forge does not build it unchecked. Update Build Forge for this Unity version.");
-            if (platformDisabled == true)
-            {
-                var platform = BuildProfilePlatform.DisplayName(forgeProfile.BuildProfile) ?? "its platform";
-                throw new InvalidOperationException(
-                    $"Unity Build Profile '{forgeProfile.BuildProfile.name}' is for {platform}, which is disabled in this " +
-                    $"editor, so Unity would build it with {BuildProfileUtility.GetBuildTarget(forgeProfile.BuildProfile)}'s " +
-                    "settings instead of the profile's, such as its Debug Symbols. Enable it with Enable Platform on " +
-                    $"{platform} in Unity's Build Profiles window, which applies to the current user, or start the editor " +
-                    "with -enableAllDerivedPlatforms, as on a build machine.");
-            }
-            var pluginError = ForgePluginRegistry.BlockingError(forgeProfile);
-            if (pluginError != null)
-                throw new InvalidOperationException(pluginError);
-            // An Apply or a build that did not finish left recorded editor settings in an
-            // unknown state, which this build would build on, and keep, without saying so.
-            var interrupted = ForgeEditorState.InterruptedError();
-            if (interrupted != null)
-                throw new InvalidOperationException(interrupted);
-            // A build that did not finish may have left project files holding its changes.
-            var unfinishedBuild = InterruptedBuildMarker.Error();
-            if (unfinishedBuild != null)
-                throw new InvalidOperationException(unfinishedBuild);
-            var defineError = StaleDefineError(forgeProfile.BuildProfile, BuildEnvironment.IsCI);
-            if (defineError != null)
-                throw new InvalidOperationException(defineError);
-            if (activeProfile != forgeProfile.BuildProfile)
-            {
-                var activeName = activeProfile != null
-                    ? $"'{activeProfile.name}'"
-                    : "a platform profile (no Unity Build Profile is active)";
-                throw new InvalidOperationException(
-                    $"Unity Build Profile '{forgeProfile.BuildProfile.name}' must be active before building; " +
-                    $"the active profile is {activeName}. Activate it via the Build Forge window's " +
-                    "'Activate' button or the main toolbar's profile dropdown, BuildProfile.SetActiveBuildProfile(), or the -activeBuildProfile " +
-                    "command line argument.");
-            }
 
             // Variant state saved on another machine: the build recomputes the
             // defines, so this is for the log (CI has no window to show it in).
@@ -163,22 +102,6 @@ namespace BuildForge.Editor.Core
                 Debug.LogWarning($"[Build Forge] {stray}");
 
             var buildProfile = forgeProfile.BuildProfile;
-            var buildTarget = BuildProfileUtility.GetBuildTarget(buildProfile);
-            var outputPathError = ForgeProfile.OutputPathError(forgeProfile.OutputPath);
-            if (outputPathError != null)
-                throw new InvalidOperationException(outputPathError);
-            var outputPath = forgeProfile.GetResolvedOutputPath(buildTarget, resolvedVariant);
-
-            // A CI build doesn't go out with another version than its variant rule's; before
-            // anything changes. Locally the window warns beforehand, and the build warns.
-            if (BuildEnvironment.IsCI)
-            {
-                var versionError = VersionRuleError(BuildVariants.RuleFor(resolvedVariant)?.Version, forgeProfile,
-                    resolvedVariant, buildTarget, PlayerSettings.bundleVersion);
-                if (versionError != null)
-                    throw new InvalidOperationException(
-                        $"{versionError} A CI build stops instead of building with version {PlayerSettings.bundleVersion}.");
-            }
 
             // With Remove Previous Build Output on for this profile, remove the
             // previous build's files before plugin discovery or preparation can
@@ -452,6 +375,98 @@ namespace BuildForge.Editor.Core
             return report;
         }
 
+        /// <summary>
+        /// The checks a build of the profile makes before it changes anything, in that order;
+        /// throws on the first that fails. <paramref name="version"/> is the version the build
+        /// will have, for a CI build's check of the variant rule's Version: the command line
+        /// checks before it sets its -forgeVersion, so a run a check stops changes nothing.
+        /// Returns the variant, build target and output path the build uses.
+        /// </summary>
+        internal static void CheckBeforeBuild(ForgeProfile forgeProfile, string variant, string version,
+            out string resolvedVariant, out BuildTarget buildTarget, out string outputPath)
+        {
+            if (forgeProfile == null)
+                throw new ArgumentNullException(nameof(forgeProfile));
+
+            if (forgeProfile.BuildProfile == null)
+                throw new InvalidOperationException(
+                    $"ForgeProfile '{forgeProfile.ProfileName}' has no Unity Build Profile assigned.");
+
+            resolvedVariant = BuildVariants.Resolve(variant, ForgeSettings.instance.BuildVariants, out var variantError);
+            variantError ??= BuildVariants.ProfileError(forgeProfile, resolvedVariant);
+            if (variantError != null)
+                throw new InvalidOperationException(variantError);
+
+            // The static PlayerSettings API reads and writes the ACTIVE profile's
+            // settings, so building a non-active profile would let its Player
+            // Settings overrides silently shadow plugin and CLI writes.
+            var activeProfile = BuildProfile.GetActiveBuildProfile();
+            // A derived platform this editor has not enabled, such as Meta Quest under an
+            // account that never enabled it, builds with its build target's settings
+            // instead of the profile's, without an error. Activating doesn't change that.
+            // Where Build Forge can't tell, it doesn't build unchecked either.
+            var platformDisabled = BuildProfilePlatform.IsDisabled(forgeProfile.BuildProfile);
+            if (platformDisabled == null)
+                throw new InvalidOperationException(
+                    $"Build Forge cannot tell whether the platform of Unity Build Profile '{forgeProfile.BuildProfile.name}' " +
+                    $"is enabled in Unity {Application.unityVersion}: the Unity lookups it uses for that are missing or failed. " +
+                    "A profile whose platform is disabled builds with its build target's settings instead of its own, so " +
+                    "Build Forge does not build it unchecked. Update Build Forge for this Unity version.");
+            if (platformDisabled == true)
+            {
+                var platform = BuildProfilePlatform.DisplayName(forgeProfile.BuildProfile) ?? "its platform";
+                throw new InvalidOperationException(
+                    $"Unity Build Profile '{forgeProfile.BuildProfile.name}' is for {platform}, which is disabled in this " +
+                    $"editor, so Unity would build it with {BuildProfileUtility.GetBuildTarget(forgeProfile.BuildProfile)}'s " +
+                    "settings instead of the profile's, such as its Debug Symbols. Enable it with Enable Platform on " +
+                    $"{platform} in Unity's Build Profiles window, which applies to the current user, or start the editor " +
+                    "with -enableAllDerivedPlatforms, as on a build machine.");
+            }
+            var pluginError = ForgePluginRegistry.BlockingError(forgeProfile);
+            if (pluginError != null)
+                throw new InvalidOperationException(pluginError);
+            // An Apply or a build that did not finish left recorded editor settings in an
+            // unknown state, which this build would build on, and keep, without saying so.
+            var interrupted = ForgeEditorState.InterruptedError();
+            if (interrupted != null)
+                throw new InvalidOperationException(interrupted);
+            // A build that did not finish may have left project files holding its changes.
+            var unfinishedBuild = InterruptedBuildMarker.Error();
+            if (unfinishedBuild != null)
+                throw new InvalidOperationException(unfinishedBuild);
+            var defineError = StaleDefineError(forgeProfile.BuildProfile, BuildEnvironment.IsCI);
+            if (defineError != null)
+                throw new InvalidOperationException(defineError);
+            if (activeProfile != forgeProfile.BuildProfile)
+            {
+                var activeName = activeProfile != null
+                    ? $"'{activeProfile.name}'"
+                    : "a platform profile (no Unity Build Profile is active)";
+                throw new InvalidOperationException(
+                    $"Unity Build Profile '{forgeProfile.BuildProfile.name}' must be active before building; " +
+                    $"the active profile is {activeName}. Activate it via the Build Forge window's " +
+                    "'Activate' button or the main toolbar's profile dropdown, BuildProfile.SetActiveBuildProfile(), or the -activeBuildProfile " +
+                    "command line argument.");
+            }
+
+            buildTarget = BuildProfileUtility.GetBuildTarget(forgeProfile.BuildProfile);
+            var outputPathError = ForgeProfile.OutputPathError(forgeProfile.OutputPath);
+            if (outputPathError != null)
+                throw new InvalidOperationException(outputPathError);
+            outputPath = forgeProfile.GetResolvedOutputPath(buildTarget, resolvedVariant);
+
+            // A CI build doesn't go out with another version than its variant rule's; before
+            // anything changes. Locally the window warns beforehand, and the build warns.
+            if (BuildEnvironment.IsCI)
+            {
+                var versionError = VersionRuleError(BuildVariants.RuleFor(resolvedVariant)?.Version, forgeProfile,
+                    resolvedVariant, buildTarget, version);
+                if (versionError != null)
+                    throw new InvalidOperationException(
+                        $"{versionError} A CI build stops instead of building with version {version}.");
+            }
+        }
+
         const string VariantArg = "-forgeVariant";
         const string VersionArg = "-forgeVersion";
         const string VersionCodeArg = "-forgeVersionCode";
@@ -566,12 +581,20 @@ namespace BuildForge.Editor.Core
                 return;
             }
 
+            EditorApplication.Exit(RunCommandLineBuild(profile, variant, version, versionCode));
+        }
+
+        /// <summary>
+        /// The command line's build of the profile once it is found, with its -forgeVersion and
+        /// -forgeVersionCode values (null when not given). Returns the exit code.
+        /// </summary>
+        internal static int RunCommandLineBuild(ForgeProfile profile, string variant, string version, string versionCode)
+        {
             int parsedVersionCode = 0;
             if (!string.IsNullOrEmpty(versionCode) && !int.TryParse(versionCode, out parsedVersionCode))
             {
                 Debug.LogError($"[Build Forge] Invalid {VersionCodeArg}: {versionCode} (must be an integer).");
-                EditorApplication.Exit(1);
-                return;
+                return 1;
             }
 
             string originalVersion = null;
@@ -579,26 +602,22 @@ namespace BuildForge.Editor.Core
             int originalVersionCode = 0;
             bool versionCodeApplied = false;
 
-            // The version overrides change Player Settings before the build: the marker spans
-            // them, so a run stopped before their restore stops the next build too.
-            var overrides = !string.IsNullOrEmpty(version) || !string.IsNullOrEmpty(versionCode);
-            var beganMarker = false;
-            if (overrides)
-            {
-                var unfinishedBuild = InterruptedBuildMarker.Error();
-                if (unfinishedBuild != null)
-                {
-                    Debug.LogError($"[Build Forge] {unfinishedBuild}");
-                    EditorApplication.Exit(1);
-                    return;
-                }
-                beganMarker = InterruptedBuildMarker.Begin(profile.DisplayName, variant);
-            }
-
             int exitCode = 1;
             var versionRestored = true;
+            var beganMarker = false;
             try
             {
+                // The version overrides change Player Settings before the build: the build's checks
+                // run first, with the version it will have, so a run they stop leaves no marker and
+                // sets, and saves, nothing. Then the marker spans the overrides, so a run stopped
+                // before their restore stops the next build too.
+                if (!string.IsNullOrEmpty(version) || !string.IsNullOrEmpty(versionCode))
+                {
+                    CheckBeforeBuild(profile, variant, !string.IsNullOrEmpty(version) ? version : PlayerSettings.bundleVersion,
+                        out _, out _, out _);
+                    beganMarker = InterruptedBuildMarker.Begin(profile.DisplayName, variant);
+                }
+
                 if (!string.IsNullOrEmpty(version))
                 {
                     Debug.Log($"[Build Forge] Overriding bundleVersion: {version}");
@@ -661,7 +680,7 @@ namespace BuildForge.Editor.Core
                     InterruptedBuildMarker.Finish(true, versionRestored);
             }
 
-            EditorApplication.Exit(exitCode);
+            return exitCode;
         }
 
         /// <summary>
