@@ -15,8 +15,8 @@ Build Forge's tests have run with these versions, on Windows:
 | Editor or package | Versions |
 |---|---|
 | Unity | 6000.3.0f1, 6000.3.23f1, 6000.6.0f1, 6000.6.4f1, 6000.6.6f1, 6000.7.0b4 (pre-release, checked) |
-| OpenXR (`com.unity.xr.openxr`) | 1.16.0, 1.16.1, 1.18.0 |
-| Addressables (`com.unity.addressables`) | 2.7.4, 2.9.1, 4.1.0 |
+| OpenXR (`com.unity.xr.openxr`) | 1.16.0, 1.16.1, 1.18.0, 1.18.0-pre.2 (with 6000.7.0b4) |
+| Addressables (`com.unity.addressables`) | 2.7.4, 2.9.1, 2.11.2, 4.1.0 |
 | XR Plug-in Management (`com.unity.xr.management`) | 4.5.3, 4.6.1, 4.7.0, 6.0.0 (with 6000.7.0b4) |
 
 macOS and Linux have not been verified. Newer versions are expected to work. Some of what Build Forge needs has no public API, so it reads Unity's internals; where it cannot read one it needs, as after a Unity version renamed it, a build stops and says what Build Forge cannot read, rather than building something else.
