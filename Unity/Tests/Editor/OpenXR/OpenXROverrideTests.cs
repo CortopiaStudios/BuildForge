@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using BuildForge.Editor.OpenXR;
@@ -10,6 +11,7 @@ using UnityEditor;
 using UnityEditor.Build.Profile;
 using UnityEditor.XR.OpenXR.Features;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.XR.OpenXR;
 using UnityEngine.XR.OpenXR.Features;
 using UnityEngine.XR.OpenXR.Features.Interactions;
@@ -806,6 +808,167 @@ namespace BuildForge.Tests.OpenXR
             }
             finally
             {
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
+
+        // A restore that can't write its snapshot throws before writing anything, so the
+        // entry stays for a retry and a stopped build leaves the editor as it was.
+        [Test] public void Restore_UnreadableSnapshot_Throws()
+            => StringAssert.Contains("can't be read", Assert.Throws<System.InvalidOperationException>(
+                () => OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, null)).Message);
+
+        [Test] public void Restore_ValueOpenXRCannotTake_ThrowsBeforeWritingAnything()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var feature = standalone.GetFeature<KHRSimpleControllerProfile>();
+            Assert.That(feature, Is.Not.Null);
+            var original = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            try
+            {
+                var snapshot = OpenXREditorStateSnapshot.FromJson(original.ToJson());
+                var so = new SerializedObject(standalone);
+                var numeric = snapshot.settings.First(s =>
+                {
+                    var type = so.FindProperty(s.propertyName)?.propertyType;
+                    return type == SerializedPropertyType.Integer || type == SerializedPropertyType.Enum
+                           || type == SerializedPropertyType.Boolean || type == SerializedPropertyType.Float;
+                });
+                numeric.value = "not a number";
+                feature.enabled = !feature.enabled;
+                var changed = feature.enabled;
+
+                var message = Assert.Throws<System.InvalidOperationException>(
+                    () => OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, snapshot)).Message;
+
+                StringAssert.Contains(numeric.propertyName, message);
+                Assert.AreEqual(changed, feature.enabled, "Nothing is written when a value can't be.");
+            }
+            finally
+            {
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
+
+        // There is nothing to restore a removed setting or feature to, and nothing to build with it.
+        [Test] public void Restore_SkipsWhatThisOpenXRNoLongerHas_WithAWarning()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var feature = standalone.GetFeature<KHRSimpleControllerProfile>();
+            var original = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            try
+            {
+                var snapshot = OpenXREditorStateSnapshot.FromJson(original.ToJson());
+                snapshot.settings.Add(new SettingsOverride { propertyName = "m_noSuchSetting", value = "1" });
+                snapshot.features.Add(new OpenXRFeatureState { featureTypeName = "No.Such.Feature", enabled = true, json = "{}" });
+                var before = feature.enabled;
+                feature.enabled = !before;
+                LogAssert.Expect(LogType.Warning, new Regex(
+                    "except what this OpenXR no longer has: setting m_noSuchSetting, feature No.Such.Feature"));
+
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, snapshot);
+
+                Assert.AreEqual(before, feature.enabled, "The rest is restored.");
+            }
+            finally
+            {
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
+
+        // A feature JSON that can't be read stops the restore before the settings, which
+        // come first, are written.
+        [Test] public void Restore_UnreadableFeatureJson_ThrowsBeforeWritingAnything()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var original = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            try
+            {
+                var snapshot = OpenXREditorStateSnapshot.FromJson(original.ToJson());
+                snapshot.features.Single(f => f.featureTypeName == typeof(KHRSimpleControllerProfile).FullName).json = "{ not json";
+                var so = new SerializedObject(standalone);
+                var flag = snapshot.settings.FirstOrDefault(s => so.FindProperty(s.propertyName)?.propertyType == SerializedPropertyType.Boolean);
+                Assert.IsNotNull(flag, "OpenXR's settings have an on/off setting to change.");
+                so.FindProperty(flag.propertyName).boolValue = !so.FindProperty(flag.propertyName).boolValue;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                var changed = so.FindProperty(flag.propertyName).boolValue;
+
+                var message = Assert.Throws<System.InvalidOperationException>(
+                    () => OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, snapshot)).Message;
+
+                StringAssert.Contains("can't be read", message);
+                Assert.AreEqual(changed, new SerializedObject(standalone).FindProperty(flag.propertyName).boolValue,
+                    "Nothing is written when a feature's recorded JSON can't be read.");
+            }
+            finally
+            {
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
+
+        // Unknown is not an installed platform: OpenXR's lookup creates settings for any
+        // supported group that has none yet.
+        [Test] public void Restore_GroupWithoutOpenXRSettings_Throws()
+        {
+            var snapshot = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            Assert.That(snapshot, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            StringAssert.Contains("no OpenXR settings", Assert.Throws<System.InvalidOperationException>(
+                () => OpenXRSettingsState.Restore(BuildTargetGroup.Unknown, snapshot)).Message);
+        }
+
+        // A recorded snapshot the post-build step can't read stops it; nothing recorded,
+        // because the pre-build step stopped before it wrote, is not an error.
+        [Test] public void OnPostBuild_UnreadableRecordedSnapshot_Throws()
+        {
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                var plugin = new OpenXRPlugin();
+                var context = new ForgeBuildContext(null, forge, BuildTarget.StandaloneWindows64, "unused", true);
+                Assert.DoesNotThrow(() => plugin.OnPostBuild(context), "Nothing recorded, nothing to restore.");
+
+                context.SetProperty("BuildForge.OpenXR.Snapshot", "not json");
+                LogAssert.Expect(LogType.Warning, new Regex("Could not parse settings snapshot"));
+
+                StringAssert.Contains("can't be read", Assert.Throws<System.InvalidOperationException>(
+                    () => plugin.OnPostBuild(context)).Message);
+            }
+            finally { Object.DestroyImmediate(forge); }
+        }
+
+        // The on/off state is written as data, after the feature's own JSON, so the
+        // snapshot's state wins where the two differ (a merged snapshot), and neither a
+        // feature group nor a callback can refuse or widen it. Both are OpenXR internals.
+        [Test] public void Restore_WritesTheOnOffStateAsData_OverTheFeaturesJson()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var feature = standalone.GetFeature<KHRSimpleControllerProfile>();
+            Assert.IsNotNull(new SerializedObject(feature).FindProperty(OpenXRSettingsState.EnabledField),
+                "Build Forge restores OpenXRFeature's on/off field by name.");
+            var refusal = typeof(OpenXRFeature).GetField("canSetFeatureDisabled", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(refusal, "OpenXRFeature's feature-group refusal is an OpenXR internal.");
+            var original = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            var originalRefusal = refusal.GetValue(null);
+            try
+            {
+                feature.enabled = true; // turning a feature on is never refused
+                var snapshot = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true); // its JSON says on
+                var state = snapshot.features.Single(f => f.featureTypeName == typeof(KHRSimpleControllerProfile).FullName);
+                state.enabled = false;
+                // As for a feature an enabled feature group requires: the enabled setter refuses to turn it off.
+                refusal.SetValue(null, (System.Func<string, bool>)(_ => false));
+
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, snapshot);
+
+                Assert.IsFalse(feature.enabled, "The snapshot's on/off state wins over the JSON and the refusal.");
+            }
+            finally
+            {
+                refusal.SetValue(null, originalRefusal);
                 OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
             }
         }

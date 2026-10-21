@@ -48,7 +48,11 @@ namespace BuildForge.Editor.OpenXR
     {
         /// <summary>Type.FullName of the feature — the same key OpenXRProfileConfig uses.</summary>
         public string featureTypeName;
-        /// <summary>Kept separately from the JSON so restore can go through the enabled setter last.</summary>
+        /// <summary>
+        /// Kept separately from the JSON so a merged snapshot can pair one side's feature properties
+        /// with the other side's on/off state; Restore writes it as m_enabled after the JSON, not
+        /// through the enabled setter (see OpenXRSettingsState.Restore).
+        /// </summary>
         public bool enabled;
         /// <summary>EditorJsonUtility.ToJson(feature); asset references are written as {fileID, guid, type}, so this is session-stable.</summary>
         public string json;

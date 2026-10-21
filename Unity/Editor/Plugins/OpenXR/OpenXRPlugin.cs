@@ -634,11 +634,12 @@ namespace BuildForge.Editor.OpenXR
 
         public void OnPostBuild(ForgeBuildContext context)
         {
-            var snapshot = OpenXREditorStateSnapshot.FromJson(context.GetProperty<string>(SnapshotKey));
-            if (snapshot == null)
+            // Nothing recorded: the pre-build step stopped or found no settings before it wrote anything.
+            var json = context.GetProperty<string>(SnapshotKey);
+            if (string.IsNullOrEmpty(json))
                 return;
 
-            OpenXRSettingsState.Restore(context.BuildTargetGroup, snapshot);
+            OpenXRSettingsState.Restore(context.BuildTargetGroup, OpenXREditorStateSnapshot.FromJson(json));
             Debug.Log("[Build Forge/OpenXR] OpenXR settings restored.");
         }
 

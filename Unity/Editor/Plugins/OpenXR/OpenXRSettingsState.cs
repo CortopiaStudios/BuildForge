@@ -103,7 +103,11 @@ namespace BuildForge.Editor.OpenXR
 
         // ---------------------------------------------------------------- capture
 
-        /// <summary>Null when the group has no OpenXR settings.</summary>
+        /// <summary>
+        /// Null when the group has no OpenXR settings. Throws when Restore couldn't
+        /// write a feature's on/off state back (see <see cref="RequireEnabledField"/>),
+        /// before anything is written with the snapshot.
+        /// </summary>
         public static OpenXREditorStateSnapshot Capture(BuildTargetGroup group, bool includeInteractionProfiles)
         {
             var settings = OpenXRSettings.GetSettingsForBuildTargetGroup(group);
@@ -134,6 +138,7 @@ namespace BuildForge.Editor.OpenXR
 
             foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))
             {
+                RequireEnabledField(feature);
                 snapshot.features.Add(new OpenXRFeatureState
                 {
                     featureTypeName = feature.GetType().FullName,
@@ -223,23 +228,38 @@ namespace BuildForge.Editor.OpenXR
 
         // ---------------------------------------------------------------- restore
 
-        /// <summary>Writes a captured snapshot back for the group and saves.</summary>
+        /// <summary>
+        /// Writes a captured snapshot back for the group and saves. It checks before
+        /// writing anything and throws, leaving the settings as they are, when the
+        /// snapshot or a feature's recorded JSON can't be read, the group has no OpenXR
+        /// settings, or a recorded value can't be written; so a restore that fails
+        /// writes nothing, and a stopped build leaves the editor as it was. A setting
+        /// or feature this OpenXR no longer has, as after a package was removed or
+        /// updated, is skipped with a warning: there is nothing to restore it to, and
+        /// nothing to build with it.
+        /// A feature's on/off state is written as data, like the rest of its snapshot,
+        /// not through OpenXRFeature.enabled: that setter runs the feature's callback,
+        /// which can write other features and other platforms' settings, and can be
+        /// refused by a feature group, so restores keep to their own snapshot.
+        /// </summary>
         public static void Restore(BuildTargetGroup group, OpenXREditorStateSnapshot snapshot)
         {
             if (snapshot == null)
-                return;
+                throw new InvalidOperationException($"The recorded OpenXR settings for {group} can't be read.");
             var settings = OpenXRSettings.GetSettingsForBuildTargetGroup(group);
             if (settings == null)
-                return;
+                throw new InvalidOperationException($"There are no OpenXR settings for {group} to restore.");
 
-            var so = new SerializedObject(settings);
+            var gone = new List<string>();
+            var check = new SerializedObject(settings);
             foreach (var entry in snapshot.settings)
             {
-                var prop = so.FindProperty(entry.propertyName);
-                if (prop == null) continue;
-                SetPropertyFromString(prop, entry.value);
+                var prop = check.FindProperty(entry.propertyName);
+                if (prop == null) { gone.Add($"setting {entry.propertyName}"); continue; }
+                if (!SetPropertyFromString(prop, entry.value))
+                    throw new InvalidOperationException(
+                        $"OpenXR's {entry.propertyName} for {group} can't take its recorded value '{entry.value}'.");
             }
-            so.ApplyModifiedPropertiesWithoutUndo();
 
             var byType = new Dictionary<string, OpenXRFeature>();
             foreach (var feature in settings.GetFeatures<OpenXRFeature>())
@@ -247,19 +267,66 @@ namespace BuildForge.Editor.OpenXR
                 if (feature == null) continue;
                 byType[feature.GetType().FullName] = feature;
             }
-
+            var features = new List<(OpenXRFeature feature, OpenXRFeatureState state)>();
             foreach (var state in snapshot.features)
             {
-                if (!byType.TryGetValue(state.featureTypeName, out var feature))
-                    continue;
+                if (!byType.TryGetValue(state.featureTypeName, out var feature)) { gone.Add($"feature {state.featureTypeName}"); continue; }
+                // A snapshot recorded before an OpenXR update may meet a feature without the field.
+                RequireEnabledField(feature);
+                if (!string.IsNullOrEmpty(state.json))
+                {
+                    try { JsonUtility.FromJson<JsonObjectProbe>(state.json); }
+                    catch (ArgumentException e)
+                    {
+                        throw new InvalidOperationException(
+                            $"The recorded settings of OpenXR feature {feature.name} for {group} can't be read: {e.Message}", e);
+                    }
+                }
+                features.Add((feature, state));
+            }
+
+            var so = new SerializedObject(settings);
+            foreach (var entry in snapshot.settings)
+            {
+                var prop = so.FindProperty(entry.propertyName);
+                if (prop != null)
+                    SetPropertyFromString(prop, entry.value);
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            foreach (var (feature, state) in features)
+            {
                 OverwriteFeaturePreservingIdentity(feature, state.json);
-                // The JSON already carries m_enabled; go through the setter last so
-                // any feature-set bookkeeping sees the final value.
-                SetEnabled(feature, state.enabled);
+                var featureObject = new SerializedObject(feature);
+                featureObject.FindProperty(EnabledField).boolValue = state.enabled;
+                featureObject.ApplyModifiedPropertiesWithoutUndo();
             }
 
             Flush(settings);
+
+            if (gone.Count > 0)
+                Debug.LogWarning($"{LogPrefix} Restored the OpenXR settings for {group} except what this OpenXR no longer " +
+                                 $"has: {string.Join(", ", gone)}.");
         }
+
+        /// <summary>OpenXRFeature's serialized on/off field, which restores write as data (see <see cref="Restore"/>).</summary>
+        internal const string EnabledField = "m_enabled";
+
+        /// <summary>
+        /// Throws when the feature has no <see cref="EnabledField"/>, which Restore writes
+        /// by name. A private field, renamed once before, so a later OpenXR may not have it.
+        /// </summary>
+        static void RequireEnabledField(OpenXRFeature feature)
+        {
+            if (new SerializedObject(feature).FindProperty(EnabledField) == null)
+                throw new InvalidOperationException(
+                    $"Build Forge can't restore whether OpenXR feature {feature.name} is on: OpenXRFeature has no " +
+                    $"'{EnabledField}' field in this OpenXR version. Update Build Forge for it.");
+        }
+
+        /// <summary>No fields: parsing into it only checks that a recorded feature JSON is a JSON object, without touching the feature.</summary>
+        [Serializable]
+        sealed class JsonObjectProbe { }
 
         // ------------------------------------------------------------------ merge
 

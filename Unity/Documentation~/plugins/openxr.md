@@ -53,7 +53,7 @@ Before the build the plugin takes a snapshot of every OpenXR setting, the ones t
 - `OpenXR feature '<type>' did not accept its configured override.`
 - `OpenXR kept '<feature>' enabled although this profile disables it: the feature group(s) '<group>', ticked for <platform> in XR Plug-in Management, require it.` See [Feature groups](#feature-groups-are-not-supported). With Only Listed Features it says that the profile doesn't list the feature.
 
-After the build the snapshot is restored in full. That also undoes what Unity's Meta Quest build step writes into the settings during the build.
+After the build the snapshot is restored in full. That also undoes what Unity's Meta Quest build step writes into the settings during the build. A restore writes each feature's on/off state as part of the snapshot, so it doesn't run the features' own on/off callbacks, which can change other features and other platforms' settings. If the snapshot can't be written, the restore changes nothing and the error names why. A setting or feature this OpenXR no longer has, for example after a vendor package was removed, is skipped with a warning.
 
 **Apply** writes the same overrides and pins to the editor, and Revert to Baseline restores the snapshot taken before. Both save the OpenXR settings assets, which are version-controlled; see [Commit settings while nothing is applied](../concepts.md#commit-settings-while-nothing-is-applied).
 
