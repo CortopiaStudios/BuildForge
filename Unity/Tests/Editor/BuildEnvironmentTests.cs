@@ -57,6 +57,19 @@ namespace BuildForge.Tests.Editor
             }, lines);
         }
 
+        // Characters a shell reads inside the copied double quotes get a warning; other names don't.
+        [TestCase("C:/Projects/Game", "Assets/Build Profiles/Quest$Beta.asset", "$ (PowerShell and bash)")]
+        [TestCase("C:/Projects/100%", "Assets/Quest.asset", "% (cmd and Jenkins bat)")]
+        [TestCase("C:/Projects/Game", "Assets/It`s.asset", "` (PowerShell and bash)")]
+        [TestCase("C:/Projects/Wow!", "Assets/Quest.asset", "! (interactive bash)")]
+        [TestCase("C:/Projects/Game", "Assets/\u201CQuest\u201D.asset", "\u201C (PowerShell)")]
+        public void ShellCharactersInThePaths_GetAWarning(string project, string profile, string named)
+            => StringAssert.Contains(named, ForgeBuildRunner.ShellCharacterWarning(project, profile));
+
+        [Test]
+        public void OrdinaryPaths_GetNoWarning()
+            => Assert.IsNull(ForgeBuildRunner.ShellCharacterWarning("C:/My Projects/Game (2026)", "Assets/Settings/Build Profiles/Quest 3.asset"));
+
         static readonly string[] NoArgs = { "Unity", "-batchmode" };
 
         [Test]

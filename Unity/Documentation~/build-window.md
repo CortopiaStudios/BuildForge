@@ -43,7 +43,7 @@ So Revert to Baseline is always in the notices, whichever profile is selected.
 | Editor | What is applied: "no plugin settings to apply", "plugin settings applied", or "plugin settings and Play Mode XR applied" when Apply also set [Play Mode's XR](concepts.md#apply-and-re-apply) (with ", drifted" and the variant), "plugin settings not applied (Apply to make Play Mode match)", or "activate, then apply, to iterate on this profile in the editor". |
 | Warnings | Each issue in full: plugins' warnings, a missing `{Variant}` in the output path, a define collision, a variant define saved elsewhere. An invalid variant selection shows as an error. |
 | Plugins for this build | Every plugin in execution order: numbered with what it will do, or greyed with why it is skipped. See [Bundled plugins](plugins/index.md#in-the-build-window). |
-| CI Command | The commands that build this profile and the selected variant on CI, each with a **Copy** button: **One workspace per job**, the build command, and **Shared workspace**, Activate followed by the build, for a workspace that also builds other platforms' profiles. See [Command line and CI](ci.md#changing-platform). |
+| CI Command | The commands that build this profile and the selected variant on CI: **One workspace per job**, the build command, with **Copy**, and **Shared workspace**, Activate followed by the build, for a workspace that also builds other platforms' profiles, with **Activate** and **Build** buttons that copy one command each, for a CI step each. A warning shows when the project or Build Profile path holds a character a shell reads inside the double quotes, such as `$` or `%`. See [Command line and CI](ci.md#changing-platform). |
 
 ### Action bar
 

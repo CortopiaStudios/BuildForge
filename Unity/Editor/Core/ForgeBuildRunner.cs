@@ -660,20 +660,48 @@ namespace BuildForge.Editor.Core
         }
 
         /// <summary>
-        /// The profile's CI commands, with one project path lookup: the build
-        /// command, for a workspace that only builds profiles of this platform,
-        /// and Activate followed by the build, for a workspace that also builds
-        /// other platforms' profiles.
+        /// The profile's CI commands, with one project path lookup: the build command,
+        /// alone for a workspace that only builds profiles of this platform, and Activate,
+        /// which a workspace that also builds other platforms' profiles runs in a step of
+        /// its own before it. <c>ShellWarning</c> is <see cref="ShellCharacterWarning"/>.
         /// </summary>
-        internal static (string OneWorkspace, string SharedWorkspace) GetCICommands(ForgeProfile profile, string variant)
+        internal static (string Build, string Activate, string ShellWarning) GetCICommands(ForgeProfile profile, string variant)
         {
             if (profile == null || profile.BuildProfile == null)
-                return ("", "");
+                return ("", "", null);
 
             var projectPath = CIProjectPath();
             var buildProfilePath = AssetDatabase.GetAssetPath(profile.BuildProfile);
             return (FormatCICommand(projectPath, buildProfilePath, variant),
-                    FormatSharedWorkspaceCICommand(projectPath, buildProfilePath, variant));
+                    FormatActivateCommand(projectPath, buildProfilePath),
+                    ShellCharacterWarning(projectPath, buildProfilePath));
+        }
+
+        // Characters a shell still reads inside double quotes, with the shells that do.
+        static readonly (char Character, string Shells)[] ShellCharacters =
+        {
+            ('$', "PowerShell and bash"), ('`', "PowerShell and bash"), ('%', "cmd and Jenkins bat"),
+            ('!', "interactive bash"), ('"', "every shell"), ('\u201C', "PowerShell"), ('\u201D', "PowerShell"),
+            ('\u201E', "PowerShell"),
+        };
+
+        /// <summary>
+        /// Why the copied CI commands may not reach Unity as shown, or null: the project or
+        /// Build Profile path holds a character that a shell reads even inside the double
+        /// quotes the commands use. No single quoting protects every shell, and double quotes
+        /// work in all of them for other names, so the commands keep them and this warns.
+        /// </summary>
+        internal static string ShellCharacterWarning(string projectPath, string buildProfilePath)
+        {
+            var found = ShellCharacters
+                .Where(c => (projectPath ?? "").IndexOf(c.Character) >= 0 || (buildProfilePath ?? "").IndexOf(c.Character) >= 0)
+                .ToList();
+            if (found.Count == 0)
+                return null;
+            var which = string.Join(", ", found.Select(c => $"{c.Character} ({c.Shells})"));
+            return $"The project or Build Profile path holds {which}, which a shell can read as part of the command " +
+                   "even inside the double quotes, so a pasted command may not reach Unity as shown. Rename the folder " +
+                   "or the Build Profile, or quote the path for your shell by hand.";
         }
 
         static string CIProjectPath() =>
@@ -690,7 +718,11 @@ namespace BuildForge.Editor.Core
             $"unity run \"{projectPath}\" --non-interactive -- {ForwardedActivateArguments}" +
             $" {ForgeEditorState.BuildProfileArg} \"{buildProfilePath}\"";
 
-        /// <summary>Activate, then the build: one command per line.</summary>
+        /// <summary>
+        /// Activate, then the build, one per line, as the build window shows them. Each goes
+        /// into a CI step of its own, the build only after Activate succeeded: pasted as one
+        /// script, the second line would also run after a failed first one.
+        /// </summary>
         internal static string FormatSharedWorkspaceCICommand(string projectPath, string buildProfilePath, string variant) =>
             FormatActivateCommand(projectPath, buildProfilePath) + "\n" + FormatCICommand(projectPath, buildProfilePath, variant);
 

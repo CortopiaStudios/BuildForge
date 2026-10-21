@@ -880,10 +880,16 @@ namespace BuildForge.Editor.UI
                 return;
 
             EditorGUILayout.LabelField("CI Command", EditorStyles.miniBoldLabel);
-            var (oneWorkspace, sharedWorkspace) = ForgeBuildRunner.GetCICommands(selectedProfile, CurrentVariant);
+            var (build, activate, shellWarning) = ForgeBuildRunner.GetCICommands(selectedProfile, CurrentVariant);
             cachedWordWrapStyle ??= new GUIStyle(EditorStyles.textArea) { wordWrap = true };
-            DrawCICommandRow(OneWorkspaceLabel, oneWorkspace, "CI command");
-            DrawCICommandRow(SharedWorkspaceLabel, sharedWorkspace, "shared-workspace CI commands");
+            if (shellWarning != null)
+                EditorGUILayout.HelpBox(shellWarning, MessageType.Warning);
+            DrawCICommandRow(OneWorkspaceLabel, build,
+                (new GUIContent("Copy", "Copy the build command to the clipboard."), build, "build command"));
+            // Two buttons, one per CI step: pasted as one script, the build would also run after a failed Activate.
+            DrawCICommandRow(SharedWorkspaceLabel, activate + "\n" + build,
+                (new GUIContent("Activate", "Copy the Activate command, for a CI step of its own before the build."), activate, "Activate command"),
+                (new GUIContent("Build", "Copy the build command, for the next CI step, run only if Activate succeeded."), build, "build command"));
         }
 
         static readonly GUIContent OneWorkspaceLabel = new GUIContent("One workspace per job",
@@ -891,25 +897,29 @@ namespace BuildForge.Editor.UI
 
         static readonly GUIContent SharedWorkspaceLabel = new GUIContent("Shared workspace",
             "For a workspace that also builds profiles of other platforms, such as a job that builds any profile: " +
-            "Activate switches it to this profile in a run of its own, then the build runs. Unity 6000.3.23 needs " +
-            "this; see the manual's Command line and CI page.");
+            "Activate switches it to this profile in a CI step of its own, and the build runs in the next step, only " +
+            "if Activate succeeded. Unity 6000.3.23 needs this; see the manual's Command line and CI page.");
 
-        void DrawCICommandRow(GUIContent label, string command, string copied)
+        void DrawCICommandRow(GUIContent label, string command, params (GUIContent Button, string Text, string Copied)[] copies)
         {
             EditorGUILayout.LabelField(label, EditorStyles.miniLabel);
-            // Copy-to-clipboard as a compact text button at the right end of the
+            // Copy-to-clipboard as compact text buttons at the right end of the
             // row, like Unity's own windows: the built-in glyphs do not fit
             // ("Clipboard" is an old two-tone icon, "TreeEditor.Duplicate" is the
             // tree editor's branch symbol).
             EditorGUILayout.BeginHorizontal();
             using (new EditorGUI.DisabledScope(true))
                 EditorGUILayout.TextArea(command, cachedWordWrapStyle, GUILayout.ExpandWidth(true));
-            var copy = new GUIContent("Copy", $"Copy the {copied} to the clipboard.");
-            if (GUILayout.Button(copy, EditorStyles.miniButton, GUILayout.Width(44f), GUILayout.Height(20f)))
+            EditorGUILayout.BeginVertical(GUILayout.Width(60f));
+            foreach (var (button, text, copied) in copies)
             {
-                GUIUtility.systemCopyBuffer = command;
-                Debug.Log($"[Build Forge] Copied the {copied} to the clipboard.");
+                if (GUILayout.Button(button, EditorStyles.miniButton, GUILayout.Width(60f), GUILayout.Height(20f)))
+                {
+                    GUIUtility.systemCopyBuffer = text;
+                    Debug.Log($"[Build Forge] Copied the {copied} to the clipboard.");
+                }
             }
+            EditorGUILayout.EndVertical();
             EditorGUILayout.EndHorizontal();
         }
 

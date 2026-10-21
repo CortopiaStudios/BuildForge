@@ -2,7 +2,7 @@
 
 ## The command
 
-The build window shows the commands for the selected profile and variant under **CI Command**: **One workspace per job** is the build command, and **Shared workspace** runs [Activate](#changing-platform) before it, for a workspace that also builds other platforms' profiles. For a Unity project in the repository's `Client` folder, the build command reads:
+The build window shows the commands for the selected profile and variant under **CI Command**: **One workspace per job** is the build command, and **Shared workspace** runs [Activate](#changing-platform) before it, for a workspace that also builds other platforms' profiles. The commands put the project and Build Profile paths in double quotes, which work in PowerShell, bash and cmd; the window warns when a path holds a character a shell reads even there, such as `$` or a backtick in PowerShell and bash, `%` in cmd, or `!` in interactive bash. Rename the folder or the Build Profile, or quote the path for your shell by hand. For a Unity project in the repository's `Client` folder, the build command reads:
 
 ```sh
 unity run "./Client" --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Build -activeBuildProfile "Assets/Settings/Build Profiles/Quest.asset" -forgeVariant "Internal"
@@ -153,7 +153,7 @@ A workspace that builds profiles of more than one platform changes platform betw
 
 `-activeBuildProfile` makes Unity activate the profile while the editor starts, before scripts compile. With Unity 6000.3.23, a start that changes platform this way compiles first for the previous platform, with the new profile's scripting defines. If code under those defines needs an assembly that only exists for the new platform, such as a platform SDK, compilation fails and the editor exits before Build Forge runs, still on the previous profile. The log ends with `Scripts have compiler errors.`, and the same command works in a workspace that is already on the profile's platform. Unity 6000.3.0 and 6000.6.4 switch before compiling and don't have the problem; other versions weren't checked.
 
-In a shared workspace, activate the profile first, in a run of its own. The build window's **Shared workspace** command is this line followed by the build command:
+In a shared workspace, activate the profile first, in a run of its own. The build window's **Shared workspace** row shows this line followed by the build command, with a button to copy each, for a CI step each:
 
 ```sh
 unity run "./Client" --non-interactive -- -nographics -silent-crashes -logFile - -cacheServerWaitForUploadCompletion -executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile "Assets/Settings/Build Profiles/Quest.asset"
