@@ -85,13 +85,13 @@ namespace BuildForge.Tests.XRManagement
         {
             var snapshot = plugin.CaptureEditorState(Group);
             Select();
-            plugin.ApplyToEditor(profile, Group);
+            plugin.ApplyToEditor(profile, Group, null);
             Assert.That(manager.activeLoaders, Is.Empty);
             // A fresh plugin instance can restore the persisted JSON without in-memory state.
             new XRLoaderSelectionPlugin().RestoreEditorState(Group, snapshot);
             CollectionAssert.AreEqual(new XRLoader[] { first, second }, manager.activeLoaders);
             Select(second, first);
-            plugin.ApplyToEditor(profile, Group);
+            plugin.ApplyToEditor(profile, Group, null);
             CollectionAssert.AreEqual(new XRLoader[] { second, first }, manager.activeLoaders);
         }
         [Test]
@@ -113,11 +113,11 @@ namespace BuildForge.Tests.XRManagement
         public void InvalidSelectionIsRejectedBeforeMutation()
         {
             Select(first, first);
-            Assert.That(plugin.Validate(profile), Is.Not.Empty);
-            Assert.Throws<InvalidOperationException>(() => plugin.ApplyToEditor(profile, Group));
+            Assert.That(plugin.Validate(profile, null), Is.Not.Empty);
+            Assert.Throws<InvalidOperationException>(() => plugin.ApplyToEditor(profile, Group, null));
             CollectionAssert.AreEqual(new XRLoader[] { first, second }, manager.activeLoaders);
             Select((XRLoader)null);
-            Assert.That(plugin.Validate(profile), Is.Not.Empty);
+            Assert.That(plugin.Validate(profile, null), Is.Not.Empty);
         }
         // Applied with XR Loaders on, then turned off for the profile: a build
         // suspends the applied profile (baseline back) and resumes it, and the

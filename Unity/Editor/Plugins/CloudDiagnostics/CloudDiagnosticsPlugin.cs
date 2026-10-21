@@ -63,7 +63,7 @@ namespace BuildForge.Editor.Plugins
             SaveConfig(forgeProfile, config);
         }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             var mode = GetConfig(forgeProfile).CrashReportingMode;
             var on = ResolveEnabled(mode, isCI) ? "on" : "off";

@@ -94,9 +94,6 @@ namespace BuildForge.Editor.Addressables
             "the excluded content — would ship. Enable the Addressables Rebuild plugin for this profile, or set " +
             "'Build Addressables on Player Build' to 'Build With Player' in the Addressables settings asset.";
 
-        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile)
-            => Validate(forgeProfile, null);
-
         public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
         {
             var messages = new List<string>();
@@ -355,9 +352,6 @@ namespace BuildForge.Editor.Addressables
 
             manifest.AddSection(section);
         }
-
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
-            => DescribeBuild(forgeProfile, isCI, null);
 
         public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {

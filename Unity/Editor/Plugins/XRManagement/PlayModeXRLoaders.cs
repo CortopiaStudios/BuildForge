@@ -51,7 +51,7 @@ namespace BuildForge.Editor.XRManagement
             return JsonUtility.ToJson(snapshot);
         }
 
-        public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group)
+        public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group, string variant)
             => Mirror(BuildPipeline.GetBuildTargetGroup(BuildProfileUtility.GetBuildTarget(profile.BuildProfile)), group);
 
         internal static void Mirror(BuildTargetGroup sourceGroup, BuildTargetGroup group)

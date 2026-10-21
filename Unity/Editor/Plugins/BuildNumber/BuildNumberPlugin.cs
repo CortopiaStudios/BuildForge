@@ -58,7 +58,7 @@ namespace BuildForge.Editor.Plugins
             "in GitHub Actions: actions/checkout with fetch-depth: 0) or switch the Build Number " +
             "source to an environment variable.";
 
-        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile)
+        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
             => Validate(forgeProfile, BuildEnvironment.IsCI);
 
         /// <param name="isCI">The CI detection a build from this editor sees.</param>
@@ -149,7 +149,7 @@ namespace BuildForge.Editor.Plugins
             manifest.AddSection(section);
         }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             var config = GetConfig(forgeProfile);
             var source = EffectiveSource(config.Source, isCI) == BuildNumberSource.GitCommitCount

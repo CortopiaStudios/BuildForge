@@ -164,7 +164,7 @@ namespace BuildForge.Editor.Plugins
             manifest.AddSection(section);
         }
 
-        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile)
+        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
         {
             var config = Config(forgeProfile);
             var warnings = new List<string>();
@@ -181,7 +181,7 @@ namespace BuildForge.Editor.Plugins
             return warnings;
         }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             var config = Config(forgeProfile);
             var rules = XRVendors.RulesFor(config.excludedPackages, config.extraManifestPrefixes);

@@ -41,7 +41,7 @@ namespace BuildForge.Editor.Addressables
             "would be rebuilt and content built before would ship. Create the settings in Window > Asset Management > " +
             "Addressables > Groups, or turn Addressables Rebuild off for this profile. Builds of this profile stop until then.";
 
-        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile)
+        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
             => AddressableAssetSettingsDefaultObject.Settings == null
                 ? new[] { MissingSettingsMessage }
                 : System.Array.Empty<string>();
@@ -88,7 +88,7 @@ namespace BuildForge.Editor.Addressables
 
         public void OnPostBuild(ForgeBuildContext context) { }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             return GetConfig(forgeProfile).CleanBeforeRebuild
                 ? "clean and rebuild Addressables content before the build"

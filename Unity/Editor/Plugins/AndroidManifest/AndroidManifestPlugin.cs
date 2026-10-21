@@ -154,7 +154,7 @@ namespace BuildForge.Editor.Plugins
                 ?? throw new InvalidOperationException($"{LogPrefix} PlayerSettings has no useCustomMainManifest property.");
         }
 
-        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile)
+        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
         {
             var manifest = Config(forgeProfile).mainManifest;
             if (manifest == null)
@@ -169,7 +169,7 @@ namespace BuildForge.Editor.Plugins
             return warnings;
         }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             var manifest = Config(forgeProfile).mainManifest;
             return manifest == null ? "the project's main manifest" : $"main manifest {AssetDatabase.GetAssetPath(manifest)}";

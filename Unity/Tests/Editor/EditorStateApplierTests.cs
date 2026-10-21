@@ -41,7 +41,7 @@ namespace BuildForge.Tests.Editor
                 return World.TryGetValue(group, out var w) ? w : "base";
             }
 
-            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group)
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant)
             {
                 Calls.Add($"apply:{forgeProfile.name}:{group}");
                 if (ThrowOnApply || ThrowOnApplyGroup == group)
@@ -555,7 +555,7 @@ namespace BuildForge.Tests.Editor
                 return failing == "null" ? null : State(group);
             }
 
-            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group)
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant)
             {
                 Set(group, forgeProfile.name, "on");
                 afterApply = true;
@@ -959,7 +959,7 @@ namespace BuildForge.Tests.Editor
             public ApplicablePostBuildPlugin(string name, List<string> order, bool fails) : base(name, order, fails) { }
 
             public string CaptureEditorState(BuildTargetGroup group) => null;
-            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) { }
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant) { }
             public void RestoreEditorState(BuildTargetGroup group, string json) { }
         }
 
@@ -1003,7 +1003,7 @@ namespace BuildForge.Tests.Editor
             public ChainPlugin(string state, Func<string> apply) { State = state; this.apply = apply; }
 
             public string CaptureEditorState(BuildTargetGroup group) => State;
-            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) => State = apply();
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant) => State = apply();
             public void RestoreEditorState(BuildTargetGroup group, string json)
             {
                 if (FailRestore)
@@ -1033,7 +1033,7 @@ namespace BuildForge.Tests.Editor
             public string DisplayName => "Copy";
             public bool CanMirror(BuildTargetGroup group) => true;
             public string CaptureEditorState(BuildTargetGroup group) => State;
-            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group)
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant)
                 => State = source.World.TryGetValue(sourceGroup, out var w) ? w : "base";
             public void RestoreEditorState(BuildTargetGroup group, string json) => State = json;
         }

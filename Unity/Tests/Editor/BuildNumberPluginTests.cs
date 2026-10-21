@@ -124,7 +124,7 @@ namespace BuildForge.Tests.Editor
             var profile = EnvVarProfile(envName);
             try
             {
-                var warnings = new BuildNumberPlugin().Validate(profile);
+                var warnings = new BuildNumberPlugin().Validate(profile, variant: null);
 
                 Assert.AreEqual(1, warnings.Count);
                 StringAssert.Contains(envName, warnings[0]);
@@ -145,7 +145,7 @@ namespace BuildForge.Tests.Editor
             {
                 Environment.SetEnvironmentVariable(envName, "436");
 
-                CollectionAssert.IsEmpty(new BuildNumberPlugin().Validate(profile));
+                CollectionAssert.IsEmpty(new BuildNumberPlugin().Validate(profile, variant: null));
             }
             finally
             {
@@ -262,8 +262,8 @@ namespace BuildForge.Tests.Editor
             {
                 var plugin = new BuildNumberPlugin();
 
-                Assert.AreEqual("build number from $BUILD_NUMBER (CI build)", plugin.DescribeBuild(profile, isCI: true));
-                Assert.AreEqual("build number from git commit count (local build)", plugin.DescribeBuild(profile, isCI: false));
+                Assert.AreEqual("build number from $BUILD_NUMBER (CI build)", plugin.DescribeBuild(profile, isCI: true, variant: null));
+                Assert.AreEqual("build number from git commit count (local build)", plugin.DescribeBuild(profile, isCI: false, variant: null));
             }
             finally
             {

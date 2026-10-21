@@ -113,7 +113,7 @@ Plugins can also contribute data to the build manifest by implementing `IForgeMa
 - **Per-profile enable switch** via `IsEnabled`/`SetEnabled` — return non-null from `IsEnabled` and Build Forge renders the "Enabled" checkbox, grays out the plugin GUI, marks the foldout "(disabled)", and skips the plugin's build hooks when off. Plugins without a switch keep the `null` default
 - **Description** — optional one-line summary shown as a tooltip when hovering the plugin's name in plugin lists (profile inspector, Project Settings, Build window)
 - **Not-applicable reason** via `NotApplicableReason` — a short sentence shown in the inspector when `IsApplicable` returns false (defaults to a generic message)
-- **Build description** via `DescribeBuild(profile, isCI)` — one line saying what the plugin will do in a build of that profile, shown next to it in the build window's "Plugins for this build" list (e.g. "crash reporting and Diagnostics Data off (CI only; local build)")
+- **Build description** via `DescribeBuild(profile, isCI, variant)` — one line saying what the plugin will do in a build of that profile, shown next to it in the build window's "Plugins for this build" list (e.g. "crash reporting and Diagnostics Data off (CI only; local build)")
 - **Global settings** via `OnDrawSettingsGUI` — rendered in Project Settings > Build Forge under the plugin's enable/disable toggle
 
 ### Variants and XR Loader Selection

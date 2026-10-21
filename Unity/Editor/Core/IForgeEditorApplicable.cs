@@ -42,13 +42,11 @@ namespace BuildForge.Editor.Core
 
         /// <summary>
         /// Writes the profile's overrides for the given build target group into
-        /// the global project settings and saves them.
+        /// the global project settings and saves them. <paramref name="variant"/>
+        /// is the variant applied with the profile, null in a project without
+        /// variants; use it rather than the editor's compiled defines.
         /// </summary>
-        void ApplyToEditor(Configuration.ForgeProfile forgeProfile, BuildTargetGroup group);
-
-        /// <summary>Applies settings for the requested variant without depending on editor compilation defines.</summary>
-        void ApplyToEditor(Configuration.ForgeProfile forgeProfile, BuildTargetGroup group, string variant)
-            => ApplyToEditor(forgeProfile, group);
+        void ApplyToEditor(Configuration.ForgeProfile forgeProfile, BuildTargetGroup group, string variant);
 
         /// <summary>
         /// Writes a snapshot previously returned by <see cref="CaptureEditorState"/>

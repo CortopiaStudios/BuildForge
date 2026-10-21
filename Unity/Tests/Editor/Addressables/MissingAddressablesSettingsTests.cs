@@ -72,7 +72,7 @@ namespace BuildForge.Tests.Addressables
             rebuild.SetEnabled(profile, true);
 
             Assert.IsTrue(rebuild.IsApplicable(null), "Not skipped, as it was without settings.");
-            CollectionAssert.AreEqual(new[] { AddressablesRebuildPlugin.MissingSettingsMessage }, rebuild.Validate(profile));
+            CollectionAssert.AreEqual(new[] { AddressablesRebuildPlugin.MissingSettingsMessage }, rebuild.Validate(profile, null));
             StringAssert.Contains(AddressablesRebuildPlugin.MissingSettingsMessage,
                 Assert.Throws<InvalidOperationException>(() => rebuild.OnPreBuild(Context())).Message);
         }

@@ -99,7 +99,7 @@ namespace BuildForge.Tests.OpenXR
                     var build = Assert.Throws<System.InvalidOperationException>(() => plugin.OnPreBuild(
                         new ForgeBuildContext(null, forge, BuildTarget.StandaloneWindows64, "unused", true)));
                     var apply = Assert.Throws<System.InvalidOperationException>(
-                        () => plugin.ApplyToEditor(forge, BuildTargetGroup.Standalone));
+                        () => plugin.ApplyToEditor(forge, BuildTargetGroup.Standalone, null));
 
                     foreach (var message in new[] { build.Message, apply.Message })
                     {
@@ -141,7 +141,7 @@ namespace BuildForge.Tests.OpenXR
                     var before = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson();
 
                     var stopped = Assert.Throws<System.InvalidOperationException>(
-                        () => new PlayModeOpenXRFeatures().ApplyToEditor(forge, BuildTargetGroup.Standalone));
+                        () => new PlayModeOpenXRFeatures().ApplyToEditor(forge, BuildTargetGroup.Standalone, null));
 
                     StringAssert.Contains("would turn off OpenXR feature", stopped.Message);
                     StringAssert.Contains($"'{TestFeatureGroup.Name}', ticked for Standalone", stopped.Message);

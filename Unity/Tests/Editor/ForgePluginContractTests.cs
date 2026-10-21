@@ -48,7 +48,7 @@ namespace BuildForge.Tests.Editor
         public void DescribeBuild_WithoutOverride_DefaultsToNull()
         {
             IForgePlugin plugin = new MinimalPlugin();
-            Assert.IsNull(plugin.DescribeBuild(profile, isCI: false));
+            Assert.IsNull(plugin.DescribeBuild(profile, isCI: false, variant: null));
         }
 
         [Test]
@@ -58,10 +58,10 @@ namespace BuildForge.Tests.Editor
             profile.SetPluginConfig("CloudDiagnostics",
                 new CloudDiagnosticsConfig { Enabled = true, CrashReportingMode = CrashReportingMode.CIOnly });
 
-            StringAssert.Contains("crash reporting and Diagnostics Data off", plugin.DescribeBuild(profile, isCI: false));
-            StringAssert.Contains("local build", plugin.DescribeBuild(profile, isCI: false));
-            StringAssert.Contains("crash reporting and Diagnostics Data on", plugin.DescribeBuild(profile, isCI: true));
-            StringAssert.Contains("CI build", plugin.DescribeBuild(profile, isCI: true));
+            StringAssert.Contains("crash reporting and Diagnostics Data off", plugin.DescribeBuild(profile, isCI: false, variant: null));
+            StringAssert.Contains("local build", plugin.DescribeBuild(profile, isCI: false, variant: null));
+            StringAssert.Contains("crash reporting and Diagnostics Data on", plugin.DescribeBuild(profile, isCI: true, variant: null));
+            StringAssert.Contains("CI build", plugin.DescribeBuild(profile, isCI: true, variant: null));
         }
 
         // The manifest ships in every player, so the branch name is left out unless the profile asks for it.
@@ -69,9 +69,9 @@ namespace BuildForge.Tests.Editor
         public void DescribeBuild_GitMetadata_LeavesTheBranchOutByDefault()
         {
             IForgePlugin plugin = new GitMetadataPlugin();
-            Assert.AreEqual("manifest: commit, short commit", plugin.DescribeBuild(profile, isCI: false));
+            Assert.AreEqual("manifest: commit, short commit", plugin.DescribeBuild(profile, isCI: false, variant: null));
             profile.SetPluginConfig("Git", new GitMetadataConfig { IncludeBranch = true });
-            Assert.AreEqual("manifest: branch, commit, short commit", plugin.DescribeBuild(profile, isCI: false));
+            Assert.AreEqual("manifest: branch, commit, short commit", plugin.DescribeBuild(profile, isCI: false, variant: null));
         }
 
         [Test]
@@ -81,19 +81,19 @@ namespace BuildForge.Tests.Editor
             profile.SetPluginConfig("BuildNumber",
                 new BuildNumberConfig { Enabled = true, Source = BuildNumberSource.GitCommitCount, Offset = 20 });
 
-            Assert.AreEqual("build number from git commit count + 20", plugin.DescribeBuild(profile, isCI: false));
+            Assert.AreEqual("build number from git commit count + 20", plugin.DescribeBuild(profile, isCI: false, variant: null));
         }
 
         [Test]
         public void DescribeBuild_XRVendorFilter_WithOnlyExtraPrefixes_NamesTheEntriesItRemoves()
         {
             IForgePlugin plugin = new XRVendorFilterPlugin();
-            Assert.AreEqual("excludes nothing", plugin.DescribeBuild(profile, isCI: false));
+            Assert.AreEqual("excludes nothing", plugin.DescribeBuild(profile, isCI: false, variant: null));
 
             profile.SetPluginConfig(XRVendorFilterPlugin.ConfigKey,
                 new XRVendorFilterConfig { enabled = true, extraManifestPrefixes = { "com.example." } });
 
-            Assert.AreEqual("removes com.example.* manifest entries", plugin.DescribeBuild(profile, isCI: false));
+            Assert.AreEqual("removes com.example.* manifest entries", plugin.DescribeBuild(profile, isCI: false, variant: null));
         }
 
         [Test]

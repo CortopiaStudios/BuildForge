@@ -53,10 +53,10 @@ and Activate removes it together with the aliases the rules own, as builds do.
 Builds recompute the defines either way.
 
 `ForgeBuildContext.Variant` is the build-time source of truth;
-`DevelopmentBuild` exposes the resolved mode. Additive overloads of
-`IForgePlugin.Validate`, `DescribeBuild`, and `IForgeEditorApplicable.ApplyToEditor`
-receive the selected variant. Old implementations still work. Editor hooks must
-use that parameter rather than conditional compilation in the editor assembly.
+`DevelopmentBuild` exposes the resolved mode. `IForgePlugin.Validate`,
+`DescribeBuild`, and `IForgeEditorApplicable.ApplyToEditor` receive the selected
+variant as a parameter. Editor hooks must use that parameter rather than
+conditional compilation in the editor assembly.
 
 Addressables Stripper keeps profile exclusions and adds the selected variant's
 group/label exclusions. Addressables rebuilding is still required for exclusions

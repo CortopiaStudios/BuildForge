@@ -71,7 +71,7 @@ Plugin lifecycle:
 - `NotApplicableReason(BuildProfile)` — short sentence shown in the profile inspector explaining why `IsApplicable` returned false (e.g. "Only applicable to Android build profiles."). Defaults to null, which renders a generic message
 - `IsEnabled(ForgeProfile)` / `SetEnabled(ForgeProfile, bool)` — the per-profile enable switch. `IsEnabled` defaults to null, meaning "no on/off switch" (plugins that are merely unconfigured stay null). When non-null, Build Forge owns the enable UX end to end: the profile inspector renders the "Enabled" checkbox (persisting via `SetEnabled`) and grays out the plugin GUI, the foldout header shows "(disabled)", and the build runner skips the plugin's hooks when false — plugin hooks need no enabled guard of their own
 - `Description` — one-line summary of what the plugin does; shown as a tooltip when hovering the plugin's name in plugin lists (profile inspector, Project Settings, Build window). Defaults to null (no tooltip)
-- `Validate(ForgeProfile)` — return warnings shown in the build window (e.g. Player Settings overrides may shadow plugin writes); each build also logs them, with the core warnings (`ForgeBuildRunner.BuildWarnings`), before it changes any setting, so a CI log has them
+- `Validate(ForgeProfile, string variant)` — return warnings shown in the build window (e.g. Player Settings overrides may shadow plugin writes); each build also logs them, with the core warnings (`ForgeBuildRunner.BuildWarnings`), before it changes any setting, so a CI log has them
 - `OnPreBuild(ForgeBuildContext)` — apply settings, store state for restoration
 - `OnPostBuild(ForgeBuildContext)` — restore settings (runs in `finally`)
 - `OnDrawProfileGUI(ForgeProfile)` — per-profile config UI in the inspector
@@ -82,7 +82,7 @@ Plugins that contribute data to the build manifest also implement `IForgeManifes
 
 Plugins whose overrides are meaningful as persistent editor state (settings-shaped plugins like OpenXR — never build numbers, signing or symbol upload) also implement `IForgeEditorApplicable` (see "Editor State" below):
 - `CaptureEditorState(BuildTargetGroup)` — JSON snapshot of everything the plugin may write for the group, or null when there is nothing to manage
-- `ApplyToEditor(ForgeProfile, BuildTargetGroup)` — write the profile's overrides and save
+- `ApplyToEditor(ForgeProfile, BuildTargetGroup, string variant)` — write the profile's overrides and save
 - `RestoreEditorState(BuildTargetGroup, string)` — write a snapshot back and save
 
 The group is passed explicitly because a third-party plugin cannot derive it from a non-active Build Profile, and because the Unity Build Profile is activated *after* these calls — implementations must use group-explicit APIs, never active-profile statics.
@@ -445,7 +445,7 @@ Would allow a ForgeProfile to have a parent ForgeProfile, inheriting plugin conf
 The apply-from-baseline mechanism and optional XR loader plugin are implemented
 (see "Editor State" under Core Architecture and Development~/VARIANTS-AND-XR.md). The
 loader plugin uses the same baseline machinery. The remaining design item is:
-- **Coverage validation (the lint).** Per plugin, per shared scope (all profiles whose Build Profile shares a `BuildTargetGroup`): any setting overridden by *any* profile should be specified by *every* profile, otherwise it silently inherits the baseline. Fits the existing `Validate(ForgeProfile)` hook as a build-window warning ("'SteamFrame' leaves `symmetricProjection` at No Override, but 'Quest' overrides it"). With the baseline invariant in place this is a lint for intent, not a safety mechanism — holes resolve to the baseline, never to the previously applied profile.
+- **Coverage validation (the lint).** Per plugin, per shared scope (all profiles whose Build Profile shares a `BuildTargetGroup`): any setting overridden by *any* profile should be specified by *every* profile, otherwise it silently inherits the baseline. Fits the existing `Validate` hook as a build-window warning ("'SteamFrame' leaves `symmetricProjection` at No Override, but 'Quest' overrides it"). With the baseline invariant in place this is a lint for intent, not a safety mechanism — holes resolve to the baseline, never to the previously applied profile.
 
 Design change from the original brief: the baseline is captured fresh at every apply (right after the previous profile is reverted) and exists only while a profile is applied, rather than being a permanent declared snapshot with a manual "Reset Baseline". A permanent baseline goes stale the moment someone reverts, hand-edits, and re-applies; the while-applied model cannot.
 

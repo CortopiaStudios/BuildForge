@@ -95,7 +95,7 @@ namespace BuildForge.Editor.Plugins
             }
         }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             var config = GetConfig(forgeProfile);
             var parts = new System.Collections.Generic.List<string>();

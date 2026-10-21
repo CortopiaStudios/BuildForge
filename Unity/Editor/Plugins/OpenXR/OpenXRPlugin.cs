@@ -33,7 +33,7 @@ namespace BuildForge.Editor.OpenXR
         public string Description => "Override OpenXR settings and features per profile.";
         public int Order => 200;
 
-        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile)
+        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
         {
             if (forgeProfile.BuildProfile == null)
                 return Array.Empty<string>();
@@ -871,7 +871,7 @@ namespace BuildForge.Editor.OpenXR
             return OpenXRSettingsState.Capture(group, GetGlobalConfig().ShowInteractionProfileOverrides)?.ToJson();
         }
 
-        public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group)
+        public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant)
         {
             var config = GetConfig(forgeProfile);
             var includeInteractionProfiles = GetGlobalConfig().ShowInteractionProfileOverrides;
@@ -945,7 +945,7 @@ namespace BuildForge.Editor.OpenXR
             }
         }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             var config = GetConfig(forgeProfile);
             var settingOverrides = $"{config.GetAllSettingsOverrides().Count} setting override(s)";
@@ -982,7 +982,7 @@ namespace BuildForge.Editor.OpenXR
             // feature groups, Meta Quest platform interaction-profile conflicts.
             if (forgeProfile.BuildProfile != null)
             {
-                foreach (var warning in Validate(forgeProfile))
+                foreach (var warning in Validate(forgeProfile, null))
                     EditorGUILayout.HelpBox(warning, MessageType.Warning);
             }
 

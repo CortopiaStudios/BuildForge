@@ -79,14 +79,12 @@ namespace BuildForge.Editor.Core
         /// and Diagnostics Data off (CI only; local build)", "build number from
         /// git commit count + 20").
         /// <paramref name="isCI"/> is the CI detection the build will see
-        /// (<see cref="ForgeBuildContext.IsCI"/>). Return null (the default)
-        /// for no description. Only called for plugins that will run.
+        /// (<see cref="ForgeBuildContext.IsCI"/>), and <paramref name="variant"/>
+        /// the variant picked in the build window, null in a project without
+        /// variants. Return null (the default) for no description. Only called
+        /// for plugins that will run.
         /// </summary>
-        string DescribeBuild(Configuration.ForgeProfile forgeProfile, bool isCI) => null;
-
-        /// <summary>Variant-aware description; existing plugins retain their original implementation.</summary>
-        string DescribeBuild(Configuration.ForgeProfile forgeProfile, bool isCI, string variant)
-            => DescribeBuild(forgeProfile, isCI);
+        string DescribeBuild(Configuration.ForgeProfile forgeProfile, bool isCI, string variant) => null;
 
         /// <summary>
         /// Persists the per-profile enable switch; called by the profile
@@ -100,14 +98,12 @@ namespace BuildForge.Editor.Core
         /// Validates the profile configuration and returns a list of warnings.
         /// Called by the build window, which shows them, and at the start of each
         /// build, which logs them; they never stop a build. Return an empty list
-        /// if everything is valid.
+        /// if everything is valid. <paramref name="variant"/> is the variant of
+        /// the build, or the one picked in the build window: null in a project
+        /// without variants, and in the build window until a variant is picked.
         /// </summary>
-        IReadOnlyList<string> Validate(Configuration.ForgeProfile forgeProfile) =>
+        IReadOnlyList<string> Validate(Configuration.ForgeProfile forgeProfile, string variant) =>
             System.Array.Empty<string>();
-
-        /// <summary>Variant-aware validation; the default delegates to the original contract.</summary>
-        IReadOnlyList<string> Validate(Configuration.ForgeProfile forgeProfile, string variant)
-            => Validate(forgeProfile);
 
         /// <summary>
         /// Draw plugin configuration UI in the Build Forge section of the Build Profile editor

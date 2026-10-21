@@ -72,8 +72,6 @@ namespace BuildForge.Samples.ExampleIntegration
             forgeProfile.SetPluginConfig(ConfigKey, config);
         }
 
-        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile) => Validate(forgeProfile, null);
-
         // Shown in the build window. Warnings do not stop builds; OnPreBuild throws
         // for the problems that must.
         public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
@@ -102,8 +100,6 @@ namespace BuildForge.Samples.ExampleIntegration
                   "variant (renamed or removed). Update or remove it in the plugin's variants; builds of this profile stop " +
                   "until then, because the renamed variant would otherwise get the production application identifier.";
         }
-
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI) => DescribeBuild(forgeProfile, isCI, null);
 
         // One line in the build window's "Plugins for this build" list.
         public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)

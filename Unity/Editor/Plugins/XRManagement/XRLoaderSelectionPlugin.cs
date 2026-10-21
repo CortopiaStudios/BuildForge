@@ -58,7 +58,7 @@ namespace BuildForge.Editor.XRManagement
             return config.enabled && pluginOn ? config.loaders : Manager(group)?.activeLoaders ?? Array.Empty<XRLoader>();
         }
 
-        public IReadOnlyList<string> Validate(ForgeProfile profile)
+        public IReadOnlyList<string> Validate(ForgeProfile profile, string variant)
         {
             var config = Config(profile);
             if (!config.enabled) return Array.Empty<string>();
@@ -84,7 +84,7 @@ namespace BuildForge.Editor.XRManagement
             return JsonUtility.ToJson(snapshot);
         }
 
-        public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group)
+        public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group, string variant)
         {
             // Turned off for this profile: leave the current loaders alone. Apply
             // and builds skip a disabled plugin, but resuming after a build
@@ -92,7 +92,7 @@ namespace BuildForge.Editor.XRManagement
             var config = Config(profile);
             if (!config.enabled)
                 return;
-            var errors = Validate(profile);
+            var errors = Validate(profile, variant);
             if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
             SetLoaders(group, config.loaders);
         }
@@ -125,7 +125,7 @@ namespace BuildForge.Editor.XRManagement
         public void OnPreBuild(ForgeBuildContext context)
         {
             context.SetProperty(SnapshotKey, CaptureEditorState(context.BuildTargetGroup));
-            ApplyToEditor(context.ForgeProfile, context.BuildTargetGroup);
+            ApplyToEditor(context.ForgeProfile, context.BuildTargetGroup, context.Variant);
         }
         public void OnPostBuild(ForgeBuildContext context)
             => RestoreEditorState(context.BuildTargetGroup, context.GetProperty<string>(SnapshotKey));
@@ -135,7 +135,7 @@ namespace BuildForge.Editor.XRManagement
             section.Add("loaders", string.Join(";", EffectiveLoaders(context.ForgeProfile, context.BuildTargetGroup).Select(l => l.GetType().FullName)));
             manifest.AddSection(section);
         }
-        public string DescribeBuild(ForgeProfile profile, bool isCI)
+        public string DescribeBuild(ForgeProfile profile, bool isCI, string variant)
             => Config(profile).loaders.Count == 0 ? "disable XR for this profile" : "use " + string.Join(", ", Config(profile).loaders.Select(l => l == null ? "(missing)" : l.name));
 
         public void OnDrawProfileGUI(ForgeProfile profile)

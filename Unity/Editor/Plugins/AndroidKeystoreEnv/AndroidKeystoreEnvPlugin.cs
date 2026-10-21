@@ -116,7 +116,7 @@ namespace BuildForge.Editor.Plugins
             Debug.Log("[Build Forge/AndroidKeystoreEnv] Restored original signing settings.");
         }
 
-        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI)
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
         {
             var profile = GetProfileConfig(forgeProfile);
             var global = GetGlobalConfig();

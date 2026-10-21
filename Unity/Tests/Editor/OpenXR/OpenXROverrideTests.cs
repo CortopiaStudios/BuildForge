@@ -174,7 +174,7 @@ namespace BuildForge.Tests.OpenXR
                 var build = Assert.Throws<System.InvalidOperationException>(() => plugin.OnPreBuild(
                     new ForgeBuildContext(null, forge, BuildTarget.StandaloneWindows64, "unused", true)));
                 StringAssert.Contains("m_noSuchSetting", build.Message);
-                var apply = Assert.Throws<System.InvalidOperationException>(() => plugin.ApplyToEditor(forge, BuildTargetGroup.Standalone));
+                var apply = Assert.Throws<System.InvalidOperationException>(() => plugin.ApplyToEditor(forge, BuildTargetGroup.Standalone, null));
                 StringAssert.Contains("m_noSuchSetting", apply.Message);
                 Assert.AreEqual(before, OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson());
             }
@@ -1300,7 +1300,7 @@ namespace BuildForge.Tests.OpenXR
                     refusal.SetValue(null, (System.Func<string, bool>)(_ => false));
 
                     var stopped = Assert.Throws<System.InvalidOperationException>(
-                        () => new PlayModeOpenXRFeatures().ApplyToEditor(forge, BuildTargetGroup.Standalone));
+                        () => new PlayModeOpenXRFeatures().ApplyToEditor(forge, BuildTargetGroup.Standalone, null));
 
                     StringAssert.Contains("did not take the state Play Mode Follows Applied Profile copied from Android", stopped.Message);
                 }

@@ -246,7 +246,7 @@ namespace BuildForge.Tests.Editor
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
             public string CaptureEditorState(BuildTargetGroup group) => "{}";
-            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) { }
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant) { }
             public void RestoreEditorState(BuildTargetGroup group, string json) { }
         }
 

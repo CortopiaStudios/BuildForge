@@ -101,12 +101,12 @@ Build Forge finds every class with `[ForgePlugin]` that implements `IForgePlugin
 | `void SetEnabled(ForgeProfile, bool)` | Does nothing | Persists the switch; required when `IsEnabled` is not null. |
 | `void OnPreBuild(ForgeBuildContext)` | Required | Before the player build, in order. |
 | `void OnPostBuild(ForgeBuildContext)` | Required | After the player build, in reverse order, also when the build failed. |
-| `IReadOnlyList<string> Validate(ForgeProfile)` and `Validate(ForgeProfile, string variant)` | No warnings | Warnings in the build window, also logged at the start of each build. |
-| `string DescribeBuild(ForgeProfile, bool isCI)` and `DescribeBuild(ForgeProfile, bool isCI, string variant)` | `null` | One line in the build window's plugin list. |
+| `IReadOnlyList<string> Validate(ForgeProfile, string variant)` | No warnings | Warnings in the build window, also logged at the start of each build. |
+| `string DescribeBuild(ForgeProfile, bool isCI, string variant)` | `null` | One line in the build window's plugin list. |
 | `void OnDrawProfileGUI(ForgeProfile)` | Nothing | The plugin's foldout in the Build Forge section. |
 | `void OnDrawSettingsGUI()` | Nothing | Under the plugin's toggle in Project Settings > Build Forge. |
 
-The variant overloads call the plain ones by default, so implement whichever you need. Three optional interfaces add more: `IForgeManifestContributor`, `IForgeEditorApplicable` and `IForgeGradleProcessor`.
+Three optional interfaces add more: `IForgeManifestContributor`, `IForgeEditorApplicable` and `IForgeGradleProcessor`.
 
 ### The per-profile switch
 
@@ -199,7 +199,7 @@ The build window, the Build Forge section and Project Settings catch an exceptio
 
 `DescribeBuild` returns one line about what the plugin will do in a build of the profile, shown next to it in the build window. `isCI` is the CI detection that build will see, so a plugin whose behavior differs between local and CI builds can say which applies.
 
-Both have variant overloads; the build window passes its selected variant.
+Both take the variant picked in the build window, and a build passes `Validate` the variant it builds. `variant` is null in a project without variants. Until a variant is picked, the build window passes `Validate` null and doesn't ask for build descriptions.
 
 ## Contributing to the manifest
 
@@ -240,7 +240,7 @@ Implement `IForgeEditorApplicable` when a plugin's settings are worth having in 
 | Member | Contract |
 |---|---|
 | `string CaptureEditorState(BuildTargetGroup group)` | A JSON snapshot of everything the plugin may write for the group, or null when there is nothing to manage. Build Forge compares snapshot strings to detect drift, so make them deterministic, for example with sorted lists. |
-| `void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group)` and the overload with `string variant` | Writes the profile's settings for the group and saves them. |
+| `void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group, string variant)` | Writes the profile's settings for the group and saves them. `variant` is the variant applied with the profile, null in a project without variants. |
 | `void RestoreEditorState(BuildTargetGroup group, string json)` | Writes a snapshot back and saves it. Throws when it can't, preferably before writing anything. |
 | `string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)` | Optional. The snapshot that undoes the Apply when the settings changed after it, as in a git pull: for each setting, the baseline's value where the current value is still the one the Apply left, and the current value otherwise. Return null, as the default does, when the plugin can't tell them apart. |
 
@@ -252,7 +252,7 @@ For the profile being built, a build uses `OnPreBuild` and `OnPostBuild`; around
 
 ## Variants in plugins
 
-Read the variant from `ForgeBuildContext.Variant` or the `variant` parameter of the overloads. Do not use `#if BUILD_VARIANT_…` in editor code: the editor's compiled defines reflect what is applied, not the build in progress. Player code uses the defines.
+Read the variant from `ForgeBuildContext.Variant` or the `variant` parameter of `Validate`, `DescribeBuild` and `ApplyToEditor`. Do not use `#if BUILD_VARIANT_…` in editor code: the editor's compiled defines reflect what is applied, not the build in progress. Player code uses the defines.
 
 A plugin that stores variant names should throw from `OnPreBuild` when one of them is no longer a configured variant, since `Validate` never stops a build; see [Warnings and build descriptions](#warnings-and-build-descriptions). [Renaming a variant](variants.md#renaming-a-variant) lists what else a rename touches.
 

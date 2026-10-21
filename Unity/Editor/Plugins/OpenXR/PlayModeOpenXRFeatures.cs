@@ -31,7 +31,7 @@ namespace BuildForge.Editor.OpenXR
         public string CaptureEditorState(BuildTargetGroup group)
             => OpenXRSettingsState.Capture(group, includeInteractionProfiles: true)?.ToJson();
 
-        public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group)
+        public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group, string variant)
         {
             var source = BuildPipeline.GetBuildTargetGroup(Core.BuildProfileUtility.GetBuildTarget(profile.BuildProfile));
             var match = OpenXRPlugin.GetGlobalConfig().MatchPlatformFeaturesInPlayMode;
