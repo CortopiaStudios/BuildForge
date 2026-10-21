@@ -30,6 +30,7 @@
 
 ## Test commands (Unity/)
 - On a machine with a licensed Unity editor: `Unity/Tools~/run-tests.sh` (or `.ps1` on Windows) — generates a disposable host project and runs the EditMode suite via the Unity CLI. Expect 2 conditional skips (`PlayerSettingsProfileTests`) in the clean host on Windows; on macOS and Linux the Windows-only `BuildOutputDirectoryTests` cases skip too.
+- The OpenXR, XR Loaders and Addressables plugins and their tests compile only with their packages, which the plain run leaves out. Run again with `BUILDFORGE_PACKAGES=oldest` and with `BUILDFORGE_PACKAGES=newest`: OpenXR, XR Plug-in Management and Addressables at the oldest versions the plugins support, and at the newest tested, each in a host of its own; the run prints the versions Unity resolved. A full test run is the plain run and both sets, on the floor editor (6000.3.0f1) and the newest editor. Downloading a package version the editor hasn't cached can need a Unity account signed in to the Hub.
 - In environments without an editor/license (e.g. cloud containers), tests cannot run; the user runs them.
 
 ## Release work

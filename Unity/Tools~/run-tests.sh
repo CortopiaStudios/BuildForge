@@ -8,7 +8,15 @@
 #   e.g. Tools~/run-tests.sh --allow-install
 #        Tools~/run-tests.sh --filter UnityYamlParserTests
 #
-# Host project location: ~/.cache/buildforge/test-host
+# Optional packages: the OpenXR, XR Loaders, Addressables Stripper and Addressables
+#   Rebuild plugins, and their tests, compile only with their packages installed, so
+#   the plain host leaves them out. BUILDFORGE_PACKAGES=oldest adds OpenXR,
+#   XR Plug-in Management and Addressables at the oldest versions the plugins
+#   support, BUILDFORGE_PACKAGES=newest at the newest versions they were tested with,
+#   each in a host of its own; the run prints the versions Unity resolved.
+#
+# Host project location: ~/.cache/buildforge/test-host, or test-host-oldest or
+#   test-host-newest with a package set
 #   (override with the BUILDFORGE_TEST_HOST environment variable)
 # Editor version: UNITY_EDITOR_VERSION if set, else the OLDEST installed
 #   6000.3.x editor — the support floor, so an API that only exists in a
@@ -21,8 +29,17 @@ set -euo pipefail
 
 FALLBACK_EDITOR_VERSION="6000.3.0f1"
 
+# Keep in step with run-tests.ps1, the asmdef floors and the manual's Tested with list.
+PACKAGE_SET="${BUILDFORGE_PACKAGES:-}"
+case "$PACKAGE_SET" in
+  "") PACKAGES=() ;;
+  oldest) PACKAGES=(com.unity.xr.openxr=1.16.0 com.unity.xr.management=4.5.3 com.unity.addressables=2.7.4) ;;
+  newest) PACKAGES=(com.unity.xr.openxr=1.18.0 com.unity.xr.management=4.7.0 com.unity.addressables=4.1.0) ;;
+  *) echo "BUILDFORGE_PACKAGES must be 'oldest' or 'newest', not '$PACKAGE_SET'."; exit 2 ;;
+esac
+
 PACKAGE_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-HOST_DIR="${BUILDFORGE_TEST_HOST:-$HOME/.cache/buildforge/test-host}"
+HOST_DIR="${BUILDFORGE_TEST_HOST:-$HOME/.cache/buildforge/test-host${PACKAGE_SET:+-$PACKAGE_SET}}"
 
 # Oldest installed 6000.3.x editor (the support floor). Schema-agnostic on purpose: scan the JSON
 # text for version tokens rather than assuming property names.
@@ -37,11 +54,16 @@ EDITOR_VERSION="${EDITOR_VERSION:-$FALLBACK_EDITOR_VERSION}"
 # Assets/ must exist — Unity's project validation requires it, even empty.
 mkdir -p "$HOST_DIR/Assets" "$HOST_DIR/Packages" "$HOST_DIR/ProjectSettings"
 
+OPTIONAL_PACKAGES=""
+for package in ${PACKAGES[@]+"${PACKAGES[@]}"}; do
+  OPTIONAL_PACKAGES+=$(printf ',\n    "%s": "%s"' "${package%%=*}" "${package#*=}")
+done
+
 cat > "$HOST_DIR/Packages/manifest.json" <<EOF
 {
   "dependencies": {
     "com.cortopiastudios.buildforge": "file:$PACKAGE_DIR",
-    "com.unity.test-framework": "1.5.1"
+    "com.unity.test-framework": "1.5.1"$OPTIONAL_PACKAGES
   },
   "testables": ["com.cortopiastudios.buildforge"]
 }
@@ -51,12 +73,27 @@ EOF
 printf 'm_EditorVersion: %s\n' "$EDITOR_VERSION" \
   > "$HOST_DIR/ProjectSettings/ProjectVersion.txt"
 
-echo "Test host: $HOST_DIR (editor $EDITOR_VERSION)"
+echo "Test host: $HOST_DIR (editor $EDITOR_VERSION${PACKAGE_SET:+, $PACKAGE_SET packages})"
 set +e
 unity test "$HOST_DIR" --mode EditMode --output "$HOST_DIR/test-results.xml" "$@" \
   -- -logFile "$HOST_DIR/editor.log"
 status=$?
 set -e
+
+# What Unity resolved, which an editor can raise above a pin.
+LOCK_FILE="$HOST_DIR/Packages/packages-lock.json"
+if [ -n "$PACKAGE_SET" ] && [ -f "$LOCK_FILE" ]; then
+  echo "Packages ($PACKAGE_SET):"
+  for package in "${PACKAGES[@]}"; do
+    name="${package%%=*}"; pinned="${package#*=}"
+    # The "version" line right after the package's own key.
+    version=$(awk -v key="\"$name\": {" 'found && /"version"/ { gsub(/[",]/, "", $2); print $2; exit } index($0, key) { found = 1 }' "$LOCK_FILE")
+    if [ -z "$version" ]; then note="not resolved"
+    elif [ "$version" != "$pinned" ]; then note="$version, pinned $pinned"
+    else note="$version"; fi
+    echo "  $name $note"
+  done
+fi
 
 if [ "$status" -ne 0 ] && [ -f "$HOST_DIR/editor.log" ]; then
   echo ""

@@ -28,8 +28,9 @@ here — see ARCHITECTURE.md (decisions, pitfalls), Development~/LEARNINGS.md
 
 ## Release sequence (owner: Patrik, at the very end, in this order)
 
-1. Final verification: full test run + a real Android build via the window
-   and via CLI.
+1. Final verification: full test run (the plain run and both optional-package
+   sets, `BUILDFORGE_PACKAGES=oldest` and `newest`, on 6000.3.0f1 and the newest
+   editor; see AGENTS.md) + a real Android build via the window and via CLI.
 2. CHANGELOG.md: turn `[Unreleased]` into `[1.0.0]` with the release date.
 3. **Asset metadata** is retained with existing GUIDs. Check for missing,
    duplicate or orphaned metadata before release; no wholesale GUID regeneration.
