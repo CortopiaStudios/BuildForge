@@ -98,8 +98,9 @@ namespace BuildForge.Editor.Core
 
         /// <summary>
         /// Validates the profile configuration and returns a list of warnings.
-        /// Called by the build window to show warning icons. Return an empty
-        /// list if everything is valid.
+        /// Called by the build window, which shows them, and at the start of each
+        /// build, which logs them; they never stop a build. Return an empty list
+        /// if everything is valid.
         /// </summary>
         IReadOnlyList<string> Validate(Configuration.ForgeProfile forgeProfile) =>
             System.Array.Empty<string>();

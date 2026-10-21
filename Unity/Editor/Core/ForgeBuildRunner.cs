@@ -203,6 +203,11 @@ namespace BuildForge.Editor.Core
                 .Where(p => p.IsEnabled(forgeProfile) != false)
                 .ToList();
 
+            // What the build window warns about, for a log that is all a CI build has to
+            // show it. Before any setting changes; warnings never stop a build.
+            foreach (var warning in BuildWarnings(forgeProfile, resolvedVariant, plugins))
+                Debug.LogWarning(warning);
+
             var appliedPlugins = new List<IForgePlugin>();
 
             BuildReport report = null;
@@ -841,6 +846,56 @@ namespace BuildForge.Editor.Core
             {
                 Debug.LogWarning($"[Build Forge] Could not reveal the build in the file browser: {e.Message}");
             }
+        }
+
+        /// <summary>
+        /// What the build window warns about for a build of the profile, as log lines:
+        /// <see cref="ProfileWarnings"/> with Build Forge's prefix, and the warnings of the
+        /// plugins that run (<see cref="IForgePlugin.Validate(ForgeProfile, string)"/>), each
+        /// with its plugin's prefix. A Validate that throws becomes a warning too.
+        /// </summary>
+        internal static List<string> BuildWarnings(ForgeProfile profile, string variant, IEnumerable<IForgePlugin> plugins)
+        {
+            var lines = ProfileWarnings(profile,
+                    ForgeSettings.instance.MaintainBuildProfileDefines ? ForgeProfileLookup.FindAll() : new List<ForgeProfile>())
+                .Select(warning => $"[Build Forge] {warning}")
+                .ToList();
+            foreach (var plugin in plugins)
+            {
+                IReadOnlyList<string> warnings;
+                try
+                {
+                    warnings = plugin.Validate(profile, variant);
+                }
+                catch (Exception e)
+                {
+                    lines.Add($"[Build Forge/{plugin.DisplayName}] Checking the profile's settings failed: {e.Message}");
+                    continue;
+                }
+                if (warnings != null)
+                    lines.AddRange(warnings.Select(warning => $"[Build Forge/{plugin.DisplayName}] {warning}"));
+            }
+            return lines;
+        }
+
+        /// <summary>
+        /// Build Forge's own warnings about a profile, which the build window shows and
+        /// builds log: an output path without {Variant} once there are variants, and a
+        /// define collision with another of <paramref name="all"/> while Build Forge
+        /// maintains the profiles' defines.
+        /// </summary>
+        internal static List<string> ProfileWarnings(ForgeProfile profile, IReadOnlyList<ForgeProfile> all)
+        {
+            var warnings = new List<string>();
+            if (ForgeSettings.instance.BuildVariants.Count > 0 && !profile.OutputPath.Contains("{Variant}"))
+                warnings.Add("The output path has no {Variant} placeholder, so the variants' builds overwrite each other.");
+            if (ForgeSettings.instance.MaintainBuildProfileDefines)
+            {
+                var collision = BuildProfileDefines.CollisionWarning(profile, all);
+                if (collision != null)
+                    warnings.Add(collision);
+            }
+            return warnings;
         }
 
         /// <summary>

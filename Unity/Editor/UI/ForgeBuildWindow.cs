@@ -151,15 +151,7 @@ namespace BuildForge.Editor.UI
             {
                 if (profile.BuildProfile == null) continue;
                 BuildProfileDefines.EnsureDeferred(profile.BuildProfile);
-                var warnings = new List<string>();
-                if (ForgeSettings.instance.BuildVariants.Count > 0 && !profile.OutputPath.Contains("{Variant}"))
-                    warnings.Add("The output path has no {Variant} placeholder, so the variants' builds overwrite each other.");
-                if (ForgeSettings.instance.MaintainBuildProfileDefines)
-                {
-                    var collision = BuildProfileDefines.CollisionWarning(profile, allProfiles);
-                    if (collision != null)
-                        warnings.Add(collision);
-                }
+                var warnings = ForgeBuildRunner.ProfileWarnings(profile, allProfiles);
                 var stray = BuildVariants.StrayWarning(profile, ForgeEditorState.IsApplied(profile));
                 if (stray != null)
                     warnings.Add(stray);

@@ -69,7 +69,7 @@ Plugin lifecycle:
 - `NotApplicableReason(BuildProfile)` — short sentence shown in the profile inspector explaining why `IsApplicable` returned false (e.g. "Only applicable to Android build profiles."). Defaults to null, which renders a generic message
 - `IsEnabled(ForgeProfile)` / `SetEnabled(ForgeProfile, bool)` — the per-profile enable switch. `IsEnabled` defaults to null, meaning "no on/off switch" (plugins that are merely unconfigured stay null). When non-null, Build Forge owns the enable UX end to end: the profile inspector renders the "Enabled" checkbox (persisting via `SetEnabled`) and grays out the plugin GUI, the foldout header shows "(disabled)", and the build runner skips the plugin's hooks when false — plugin hooks need no enabled guard of their own
 - `Description` — one-line summary of what the plugin does; shown as a tooltip when hovering the plugin's name in plugin lists (profile inspector, Project Settings, Build window). Defaults to null (no tooltip)
-- `Validate(ForgeProfile)` — return warnings shown in the build window (e.g. Player Settings overrides may shadow plugin writes)
+- `Validate(ForgeProfile)` — return warnings shown in the build window (e.g. Player Settings overrides may shadow plugin writes); each build also logs them, with the core warnings (`ForgeBuildRunner.BuildWarnings`), before it changes any setting, so a CI log has them
 - `OnPreBuild(ForgeBuildContext)` — apply settings, store state for restoration
 - `OnPostBuild(ForgeBuildContext)` — restore settings (runs in `finally`)
 - `OnDrawProfileGUI(ForgeProfile)` — per-profile config UI in the inspector

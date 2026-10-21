@@ -102,7 +102,7 @@ What depends on it among the bundled plugins: [Build Number](plugins/build-numbe
 
 Treat every nonzero result as a failure, and archive or publish only after 0.
 
-Build Forge's log lines start with `[Build Forge]`, plugins' with `[Build Forge/<plugin>]`. Each build ends with a summary line, such as `[Build Forge] Quest (Internal) — Succeeded | 6m 3s | 812.4 MB | 41 warnings`, and `[Build Forge] Build process complete.`
+Build Forge's log lines start with `[Build Forge]`, plugins' with `[Build Forge/<plugin>]`. Before a build changes any setting, it logs the warnings the build window shows for the profile, such as an output path without `{Variant}` or an OpenXR override while OpenXR is not the XR provider. Each build ends with a summary line, such as `[Build Forge] Quest (Internal) — Succeeded | 6m 3s | 812.4 MB | 41 warnings`, and `[Build Forge] Build process complete.`
 
 ## Version overrides
 

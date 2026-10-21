@@ -100,7 +100,7 @@ Build Forge finds every class with `[ForgePlugin]` that implements `IForgePlugin
 | `void SetEnabled(ForgeProfile, bool)` | Does nothing | Persists the switch; required when `IsEnabled` is not null. |
 | `void OnPreBuild(ForgeBuildContext)` | Required | Before the player build, in order. |
 | `void OnPostBuild(ForgeBuildContext)` | Required | After the player build, in reverse order, also when the build failed. |
-| `IReadOnlyList<string> Validate(ForgeProfile)` and `Validate(ForgeProfile, string variant)` | No warnings | Warnings in the build window. |
+| `IReadOnlyList<string> Validate(ForgeProfile)` and `Validate(ForgeProfile, string variant)` | No warnings | Warnings in the build window, also logged at the start of each build. |
 | `string DescribeBuild(ForgeProfile, bool isCI)` and `DescribeBuild(ForgeProfile, bool isCI, string variant)` | `null` | One line in the build window's plugin list. |
 | `void OnDrawProfileGUI(ForgeProfile)` | Nothing | The plugin's foldout in the Build Forge section. |
 | `void OnDrawSettingsGUI()` | Nothing | Under the plugin's toggle in Project Settings > Build Forge. |
@@ -190,7 +190,7 @@ Keep the drawing code free of side effects beyond the configuration: do not buil
 
 ## Warnings and build descriptions
 
-`Validate` returns short sentences, shown in the build window for profiles where the plugin is enabled and applicable. They do not stop builds: throw from `OnPreBuild` for a problem that must. The Build Number plugin does both for an unusable environment variable: it warns in the window and fails the build.
+`Validate` returns short sentences, shown in the build window for profiles where the plugin is enabled and applicable. A build of the profile also logs them before it changes anything, as `[Build Forge/<plugin>] <warning>`, so a CI log shows them. They do not stop builds, and neither does a `Validate` that throws, which is logged as a warning: throw from `OnPreBuild` for a problem that must. The Build Number plugin does both for an unusable environment variable: it warns in the window and fails the build.
 
 `DescribeBuild` returns one line about what the plugin will do in a build of the profile, shown next to it in the build window. `isCI` is the CI detection that build will see, so a plugin whose behavior differs between local and CI builds can say which applies.
 
