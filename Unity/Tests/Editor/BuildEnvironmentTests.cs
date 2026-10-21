@@ -46,15 +46,20 @@ namespace BuildForge.Tests.Editor
                 StringAssert.DoesNotContain(other, forwarded);
         }
 
+        // What the build window's buttons copy: the build, and Activate for the CI step before it.
         [Test]
-        public void SharedWorkspaceCICommand_IsActivateThenTheBuild()
+        public void CICommands_AreTheBuildAndActivate_WithTheShellWarning()
         {
-            var lines = ForgeBuildRunner.FormatSharedWorkspaceCICommand(".", "Assets/Quest.asset", "Internal").Split('\n');
-            CollectionAssert.AreEqual(new[]
-            {
-                ForgeBuildRunner.FormatActivateCommand(".", "Assets/Quest.asset"),
-                ForgeBuildRunner.FormatCICommand(".", "Assets/Quest.asset", "Internal"),
-            }, lines);
+            var (build, activate, shellWarning) = ForgeBuildRunner.CICommands(".", "Assets/Quest.asset", "Internal");
+            Assert.AreEqual(ForgeBuildRunner.FormatCICommand(".", "Assets/Quest.asset", "Internal"), build);
+            Assert.AreEqual(ForgeBuildRunner.FormatActivateCommand(".", "Assets/Quest.asset"), activate);
+            StringAssert.Contains("BuildForge.CommandLine.Activate", activate);
+            StringAssert.DoesNotContain("-activeBuildProfile", activate);
+            Assert.IsNull(shellWarning);
+
+            var odd = ForgeBuildRunner.CICommands("C:/Projects/100%", "Assets/Quest$Beta.asset", "Internal");
+            Assert.IsNotNull(odd.ShellWarning);
+            Assert.AreEqual(ForgeBuildRunner.ShellCharacterWarning("C:/Projects/100%", "Assets/Quest$Beta.asset"), odd.ShellWarning);
         }
 
         // Characters a shell reads inside the copied double quotes get a warning; other names don't.

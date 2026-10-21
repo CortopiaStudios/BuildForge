@@ -709,12 +709,15 @@ namespace BuildForge.Editor.Core
             if (profile == null || profile.BuildProfile == null)
                 return ("", "", null);
 
-            var projectPath = CIProjectPath();
-            var buildProfilePath = AssetDatabase.GetAssetPath(profile.BuildProfile);
-            return (FormatCICommand(projectPath, buildProfilePath, variant),
-                    FormatActivateCommand(projectPath, buildProfilePath),
-                    ShellCharacterWarning(projectPath, buildProfilePath));
+            return CICommands(CIProjectPath(), AssetDatabase.GetAssetPath(profile.BuildProfile), variant);
         }
+
+        /// <summary>Pure part of GetCICommands, for the paths it looked up.</summary>
+        internal static (string Build, string Activate, string ShellWarning) CICommands(
+            string projectPath, string buildProfilePath, string variant)
+            => (FormatCICommand(projectPath, buildProfilePath, variant),
+                FormatActivateCommand(projectPath, buildProfilePath),
+                ShellCharacterWarning(projectPath, buildProfilePath));
 
         // Characters a shell still reads inside double quotes, with the shells that do.
         static readonly (char Character, string Shells)[] ShellCharacters =
@@ -756,14 +759,6 @@ namespace BuildForge.Editor.Core
         internal static string FormatActivateCommand(string projectPath, string buildProfilePath) =>
             $"unity run \"{projectPath}\" --non-interactive -- {ForwardedActivateArguments}" +
             $" {ForgeEditorState.BuildProfileArg} \"{buildProfilePath}\"";
-
-        /// <summary>
-        /// Activate, then the build, one per line, as the build window shows them. Each goes
-        /// into a CI step of its own, the build only after Activate succeeded: pasted as one
-        /// script, the second line would also run after a failed first one.
-        /// </summary>
-        internal static string FormatSharedWorkspaceCICommand(string projectPath, string buildProfilePath, string variant) =>
-            FormatActivateCommand(projectPath, buildProfilePath) + "\n" + FormatCICommand(projectPath, buildProfilePath, variant);
 
         /// <summary>
         /// Editor arguments forwarded by Unity CLI. The CLI supplies batch mode,
