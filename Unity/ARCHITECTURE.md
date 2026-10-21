@@ -176,6 +176,9 @@ Bundled plugins require more nuance because they're present whether the user wan
 
 The principle: a fresh install should never change build output without the user explicitly enabling it. Manifest-only contributions are safe to default on. Anything that modifies PlayerSettings or build artifacts defaults to requiring per-profile opt-in.
 
+### Compatibility after 1.0
+Some settings store nothing until someone changes them, by design: a profile that keeps the default output path stores an empty `outputPath` and follows `ForgeProfile.DefaultOutputPath`, a plugin config equal to a new instance is not stored (see Plugins own their own settings), so `GetPluginConfig` returns the installed version's defaults, and a project that never saved `ProjectSettings/ForgeSettings.asset` gets `ForgeSettings`' own defaults. A release that changes such a default changes the builds of every project that kept it, without a diff in the project. Git Metadata's Branch, made opt-in in 0.9.4, shows how: profiles that stored Git Metadata settings kept the value they stored, and every other profile's manifest lost the branch name. So after 1.0, a default that changes what a build produces or where its output goes changes only in a major version, or the new behavior is opt-in, behind a setting whose default keeps the old one. A field added later gets an initializer that keeps the old behavior: profiles and configs stored before it don't hold it, and Unity runs a field's initializer when the stored data lacks the field (checked on 6000.3.0f1 for `[SerializeReference]` data).
+
 ### Player Settings Diff View
 Compares a Build Profile's Player Settings against the platform defaults using YAML-to-YAML comparison. This was the result of several iterations:
 
