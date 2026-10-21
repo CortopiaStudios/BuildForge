@@ -217,6 +217,19 @@ namespace BuildForge.Editor.Configuration
         }
 
         /// <summary>
+        /// The Installed Plugins switches for plugins that aren't installed; see
+        /// <see cref="PluginEnableState.Stale"/>.
+        /// </summary>
+        internal List<(string TypeName, bool Disabled)> StalePluginSwitches(IEnumerable<string> installedTypeNames)
+            => PluginEnableState.Stale(disabledPlugins, enabledPlugins, installedTypeNames);
+
+        internal void RemovePluginSwitch(string pluginTypeName)
+        {
+            PluginEnableState.Remove(disabledPlugins, enabledPlugins, pluginTypeName);
+            SaveSettings();
+        }
+
+        /// <summary>
         /// Persists settings to disk. Public wrapper around the protected Save method.
         /// </summary>
         public void SaveSettings()
@@ -252,6 +265,40 @@ namespace BuildForge.Editor.Configuration
                 disabled.Add(pluginTypeName);
             else
                 enabled.Add(pluginTypeName);
+        }
+
+        /// <summary>
+        /// The entries that name none of <paramref name="installedTypeNames"/>, each
+        /// once and sorted, with whether it switches the plugin off. A plugin that is
+        /// renamed, moved or uninstalled leaves its entry behind; nothing asks
+        /// <see cref="IsDisabled"/> about a type that doesn't exist, so the entry
+        /// changes no build, and a reinstalled plugin uses it again.
+        /// </summary>
+        public static List<(string TypeName, bool Disabled)> Stale(
+            List<string> disabled, List<string> enabled, IEnumerable<string> installedTypeNames)
+        {
+            var installed = new HashSet<string>(installedTypeNames);
+            var listed = new HashSet<string>();
+            var stale = new List<(string TypeName, bool Disabled)>();
+            // The disabled list first: a name in both lists is off, as IsDisabled decides.
+            foreach (var name in disabled)
+                if (!installed.Contains(name) && listed.Add(name))
+                    stale.Add((name, true));
+            foreach (var name in enabled)
+                if (!installed.Contains(name) && listed.Add(name))
+                    stale.Add((name, false));
+            stale.Sort((a, b) => string.CompareOrdinal(a.TypeName, b.TypeName));
+            return stale;
+        }
+
+        /// <summary>
+        /// Removes the name from both lists, every time it occurs, so the plugin is
+        /// back to its default.
+        /// </summary>
+        public static void Remove(List<string> disabled, List<string> enabled, string pluginTypeName)
+        {
+            disabled.RemoveAll(name => name == pluginTypeName);
+            enabled.RemoveAll(name => name == pluginTypeName);
         }
     }
 }

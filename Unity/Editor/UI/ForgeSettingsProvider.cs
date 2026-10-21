@@ -226,6 +226,33 @@ namespace BuildForge.Editor.UI
                 EditorGUI.indentLevel--;
             }
 
+            // Builds ignore a switch whose plugin type is gone, so without this list a
+            // renamed plugin's switch would reset without a word.
+            var installedTypeNames = plugins.Select(p => p.GetType().FullName)
+                .Concat(ForgePluginRegistry.LoadFailures.Select(f => f.Type.FullName));
+            var staleSwitches = ForgeSettings.instance.StalePluginSwitches(installedTypeNames);
+            if (staleSwitches.Count > 0)
+            {
+                EditorGUILayout.Space(4);
+                EditorGUILayout.LabelField("Switches for plugins that aren't installed", EditorStyles.miniBoldLabel);
+                EditorGUILayout.LabelField(
+                    "Left by a plugin that was renamed or moved, or whose package was removed or is older than the plugin needs. Builds ignore them; " +
+                    "a reinstalled or updated package uses its switch again, and a renamed plugin starts from its default.",
+                    EditorStyles.wordWrappedMiniLabel);
+                foreach (var (typeName, disabled) in staleSwitches)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.LabelField(new GUIContent(
+                        $"{typeName} (switched {(disabled ? "off" : "on")})", typeName));
+                    if (GUILayout.Button(new GUIContent("Remove", "Remove this switch from ProjectSettings/ForgeSettings.asset."),
+                            GUILayout.Width(60), GUILayout.ExpandWidth(false)))
+                    {
+                        ForgeSettings.instance.RemovePluginSwitch(typeName);
+                    }
+                    EditorGUILayout.EndHorizontal();
+                }
+            }
+
             // Show optional plugins that require packages not yet installed
             var activeNames = new System.Collections.Generic.HashSet<string>();
             foreach (var plugin in plugins)

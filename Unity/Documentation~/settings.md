@@ -156,6 +156,7 @@ Stored in `ProjectSettings/ForgeSettings.asset`; commit it.
 | | Variant Rules | Empty | Optional rules per variant. |
 | | Mark Variant Builds | On | Shown once variants exist. Suffixes a variant build's product name with the variant. |
 | Installed Plugins | One toggle per plugin, sorted by name | On | Off disables the plugin for every profile: it is hidden from the Build Forge section and skipped in builds. Some plugins show global settings under their toggle. A plugin that failed to load follows the others, marked "(failed to load)" with its error; builds and Apply stop while it is on. |
+| | Switches for plugins that aren't installed | | Shown while the settings hold a switch for a plugin type that isn't installed, because the plugin was renamed or moved, or its package was removed or is older than the plugin needs. Each entry shows the type name, whether the plugin was switched on or off, and **Remove**, which deletes the switch. Builds ignore these switches. A reinstalled or updated package uses its switch again; a renamed plugin starts from its default, so set it again under the new name. |
 | Available Plugins | Install | | Shown while a bundled plugin's Unity package is missing. Adds the package. |
 
 The global settings shown under a plugin's toggle are described on that plugin's page: [Android Keystore Env](plugins/android-keystore-env.md#default-variable-names) has the default variable names, [OpenXR](plugins/openxr.md#interaction-profiles) the Interaction Profiles option.

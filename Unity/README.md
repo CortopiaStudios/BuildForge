@@ -534,7 +534,7 @@ Tests/
     ForgeProfileEmbeddingTests.cs          # Settings inside the Build Profile, and its editor section
     ForgeProfileLookupTests.cs             # 1:1 rule: resolve and shared-profile errors
     ForgeProfileOutputPathTests.cs         # Output path placeholders and extensions
-    ForgeSettingsPluginToggleTests.cs     # Plugin enable/disable precedence tests
+    ForgeSettingsPluginToggleTests.cs     # Plugin enable/disable precedence, and switches of plugins that aren't installed
     GitHelperTests.cs                     # Git process runner tests
     InterruptedBuildMarkerTests.cs         # Builds and Apply stop after a build that did not finish, until it is cleared
     InterruptedOperationTests.cs           # Builds, Apply and Activate stop after an Apply or a build that did not finish
