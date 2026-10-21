@@ -488,6 +488,7 @@ Editor/
     PlayerSettingsDiffView.cs              # Reusable Player Overrides diff UI
     PlayerSettingsDiffWindow.cs            # Standalone Player Overrides window
     PlayerSettingsMatrixView.cs            # The window's Matrix mode
+    PluginDisplay.cs                       # A plugin's values for the windows, with a fallback when it throws
   Icons/
     ForgeProfile.png                       # Custom icon for ForgeProfile assets and the build window, light theme
     d_ForgeProfile.png                     # The same for the dark theme (Unity's d_ naming)
@@ -550,6 +551,7 @@ Tests/
     ForgeGradleCallbackTests.cs            # Gradle step dispatch to plugins
     PlayerSettingsProfileTests.cs          # Real Build Profile diffs (skip in a clean host)
     PluginConfigStorageTests.cs            # Config storage contract + YAML round trips
+    PluginDisplayTests.cs                  # A plugin that throws for a window gets a fallback and one logged error
     PluginLoadFailureTests.cs              # Builds stop for plugins or plugin settings that can't load
     PluginRegistryTests.cs                 # Plugin discovery tests
     PublicApiSurfaceTests.cs               # Locks the public API surface

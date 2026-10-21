@@ -159,9 +159,9 @@ namespace BuildForge.Editor.UI
                 {
                     if (ForgeSettings.instance.IsPluginDisabledWithDefault(
                         plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin))) continue;
-                    if (!plugin.IsApplicable(profile.BuildProfile)) continue;
-                    if (plugin.IsEnabled(profile) == false) continue;
-                    warnings.AddRange(plugin.Validate(profile, CurrentVariant));
+                    if (!PluginDisplay.Applies(plugin, profile.BuildProfile, out _)) continue;
+                    if (PluginDisplay.Enabled(plugin, profile) == false) continue;
+                    warnings.AddRange(PluginDisplay.Warnings(plugin, profile, CurrentVariant));
                 }
                 if (warnings.Count > 0)
                     validationWarnings[profile] = warnings;
@@ -848,9 +848,9 @@ namespace BuildForge.Editor.UI
                 if (ForgeSettings.instance.IsPluginDisabledWithDefault(
                         plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin)))
                     skipReason = "disabled in Project Settings";
-                else if (!plugin.IsApplicable(buildProfile))
-                    skipReason = plugin.NotApplicableReason(buildProfile) ?? "not applicable to this Unity Build Profile";
-                else if (plugin.IsEnabled(profile) == false)
+                else if (!PluginDisplay.Applies(plugin, buildProfile, out var notApplicable))
+                    skipReason = notApplicable ?? "not applicable to this Unity Build Profile";
+                else if (PluginDisplay.Enabled(plugin, profile) == false)
                     skipReason = "disabled for this profile";
 
                 EditorGUILayout.BeginHorizontal();
@@ -858,15 +858,15 @@ namespace BuildForge.Editor.UI
                 if (skipReason == null)
                 {
                     step++;
-                    var what = plugin.DescribeBuild(profile, isCI, variant);
+                    var what = PluginDisplay.Describe(plugin, profile, isCI, variant);
                     if (string.IsNullOrEmpty(what))
                     {
-                        EditorGUILayout.LabelField(new GUIContent($"{step}.  {plugin.DisplayName}", plugin.Description));
+                        EditorGUILayout.LabelField(new GUIContent($"{step}.  {PluginDisplay.Name(plugin)}", PluginDisplay.Description(plugin)));
                     }
                     else
                     {
                         EditorGUILayout.LabelField(
-                            FitContent($"{step}.  {plugin.DisplayName}", plugin.Description, null, EditorStyles.label, nameWidth),
+                            FitContent($"{step}.  {PluginDisplay.Name(plugin)}", PluginDisplay.Description(plugin), null, EditorStyles.label, nameWidth),
                             GUILayout.Width(nameWidth));
                         // Wrapped: OpenXR's Only Listed Features names every feature it turns off.
                         EditorGUILayout.LabelField(new GUIContent(what, what), EditorStyles.wordWrappedMiniLabel);
@@ -876,7 +876,7 @@ namespace BuildForge.Editor.UI
                 {
                     using (new EditorGUI.DisabledScope(true))
                         EditorGUILayout.LabelField(
-                            FitContent($"\u2013   {plugin.DisplayName}", plugin.Description, null, EditorStyles.label, nameWidth),
+                            FitContent($"\u2013   {PluginDisplay.Name(plugin)}", PluginDisplay.Description(plugin), null, EditorStyles.label, nameWidth),
                             GUILayout.Width(nameWidth));
                     EditorGUILayout.LabelField(skipReason, EditorStyles.miniLabel);
                 }
@@ -894,7 +894,7 @@ namespace BuildForge.Editor.UI
             var prefix = $"{plugins.Count}.  ";
             var widest = 0f;
             foreach (var plugin in plugins)
-                widest = Mathf.Max(widest, EditorStyles.label.CalcSize(new GUIContent(prefix + plugin.DisplayName)).x);
+                widest = Mathf.Max(widest, EditorStyles.label.CalcSize(new GUIContent(prefix + PluginDisplay.Name(plugin))).x);
             var min = EditorGUIUtility.labelWidth;
             return Mathf.Clamp(widest, min, Mathf.Max(min, cap));
         }

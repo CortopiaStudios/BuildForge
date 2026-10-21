@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- A plugin that throws while the build window, the Build Forge section or Project Settings ask it for its name, description, applicability, switch, build description or warnings no longer breaks the window: it shows a fallback and logs the error once. The build window used to lose its action bar and repeat the error on every repaint. A plugin's own drawing code is not caught
 - A build logs a plugin that is switched on for the profile but doesn't apply to its Build Profile, with the reason, instead of skipping it without a word
 - The Example Integration sample's Application ID Suffix plugin stops a build when it lists a variant that is no longer configured, instead of only warning in the build window: the renamed variant's build got the production application identifier. The plugin guide recommends the same for any plugin that stores variant names
 - With Maintain Build Profile Defines on, a CI build stops when its Build Profile lacks its `BUILD_PROFILE_` define or carries a stale one, as after a rename outside the editor, instead of building the player with the wrong `#if` branches after a log warning. A local build still warns, since the build window adds the define

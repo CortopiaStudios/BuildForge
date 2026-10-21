@@ -184,13 +184,13 @@ namespace BuildForge.Editor.UI
             else
             {
                 // Alphabetical, to find a plugin by name; builds run them in their Order.
-                foreach (var plugin in plugins.OrderBy(p => p.DisplayName, System.StringComparer.OrdinalIgnoreCase))
+                foreach (var plugin in plugins.OrderBy(PluginDisplay.Name, System.StringComparer.OrdinalIgnoreCase))
                 {
                     var typeName = plugin.GetType().FullName;
                     var enabledByDefault = ForgePluginRegistry.IsEnabledByDefault(plugin);
                     var isDisabled = ForgeSettings.instance.IsPluginDisabledWithDefault(typeName, enabledByDefault);
                     var newEnabled = EditorGUILayout.Toggle(
-                        new UnityEngine.GUIContent(plugin.DisplayName, plugin.Description), !isDisabled);
+                        new UnityEngine.GUIContent(PluginDisplay.Name(plugin), PluginDisplay.Description(plugin)), !isDisabled);
                     if (newEnabled == isDisabled)
                     {
                         ForgeSettings.instance.SetPluginDisabled(typeName, !newEnabled);
@@ -229,7 +229,7 @@ namespace BuildForge.Editor.UI
             // Show optional plugins that require packages not yet installed
             var activeNames = new System.Collections.Generic.HashSet<string>();
             foreach (var plugin in plugins)
-                activeNames.Add(plugin.DisplayName);
+                activeNames.Add(PluginDisplay.Name(plugin));
 
             bool hasUnavailable = false;
             foreach (var (name, _, packageId) in OptionalPlugins)

@@ -194,22 +194,24 @@ namespace BuildForge.Editor.UI
                     pluginId, ForgePluginRegistry.IsEnabledByDefault(plugin)))
                     continue;
 
-                var applicable = buildProfile != null && plugin.IsApplicable(buildProfile);
-                var enabled = plugin.IsEnabled(forgeProfile);
+                string notApplicable = null;
+                var applicable = buildProfile != null && PluginDisplay.Applies(plugin, buildProfile, out notApplicable);
+                var enabled = PluginDisplay.Enabled(plugin, forgeProfile);
+                var name = PluginDisplay.Name(plugin);
 
                 // "(not applicable)" wins over "(disabled)" — it's the stronger
                 // statement (the plugin couldn't run even if enabled).
                 string label;
                 if (!applicable)
-                    label = $"{plugin.DisplayName} (not applicable)";
+                    label = $"{name} (not applicable)";
                 else if (enabled == false)
-                    label = $"{plugin.DisplayName} (disabled)";
+                    label = $"{name} (disabled)";
                 else
-                    label = plugin.DisplayName;
+                    label = name;
 
                 bool expanded = IsPluginExpanded(pluginId);
                 var newExpanded = EditorGUILayout.Foldout(expanded,
-                    new GUIContent(label, plugin.Description), true,
+                    new GUIContent(label, PluginDisplay.Description(plugin)), true,
                     EditorStyles.foldoutHeader);
 
                 if (newExpanded != expanded)
@@ -222,8 +224,7 @@ namespace BuildForge.Editor.UI
                     {
                         var reason = buildProfile == null
                             ? "No Unity Build Profile is assigned."
-                            : plugin.NotApplicableReason(buildProfile)
-                                ?? "This plugin is not applicable to this profile.";
+                            : notApplicable ?? "This plugin is not applicable to this profile.";
                         EditorGUILayout.HelpBox(
                             $"{reason} Plugin settings are preserved but cannot be edited here.",
                             MessageType.None);
