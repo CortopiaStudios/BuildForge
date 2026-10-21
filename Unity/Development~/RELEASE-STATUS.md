@@ -1,40 +1,53 @@
-# Release Status — 1.0.0 Handoff
+# Release Status — Before 1.0
 
-Working state for the pre-1.0 push. Written 2026-07-31 as a session handoff;
-update or delete as items complete. Durable design knowledge does NOT live
-here — see ARCHITECTURE.md (decisions, pitfalls), Development~/LEARNINGS.md
-(abandoned approaches), and AGENTS.md at the repository root (working guidelines).
+What is left before 1.0, and the release sequence for it. Update it as items
+complete; the release sequence retires it before the release commit. Durable design
+knowledge does NOT live here — see ARCHITECTURE.md (decisions, pitfalls),
+Development~/LEARNINGS.md (abandoned approaches), and AGENTS.md at the
+repository root (working guidelines).
 
-## Remaining before 1.0 (rough order)
+## Remaining before 1.0
 
-1. **Docs cluster** — written after converting real projects: the migration
-   guide is `Documentation~/integration-guide.md`, the plugin authoring guide
-   `Documentation~/custom-plugins.md` (public API only; InternalsVisibleTo is
-   not available to third parties), the CI arguments `Documentation~/ci.md`.
-2. **Never checked yet** (as last noted, 2026-10-06):
-   - the OpenXR feature-group build error with a group ticked (needs Unity
-     OpenXR Meta);
-   - by eye: the Addressables Stripper's Move to…/Remove row for exclusions
-     under an unknown variant, the Stop Tracking dialog after a failed Revert
-     to Baseline, the XR Vendor Filter's grouped package list and the Android
-     Manifest inspector;
-   - anything on macOS or Linux.
+**Never checked yet** (as last noted, 2026-10-21):
+- the OpenXR feature-group build error with Unity OpenXR Meta's real groups:
+  the tests tick a group they declare themselves, and a build's pre-build
+  step, an Apply and the matching Play Mode copy stop on it
+  (`Tests/Editor/OpenXR/OpenXRFeatureGroupTests.cs`);
+- by eye: the Addressables Stripper's Move to…/Remove row for exclusions
+  under an unknown variant, the Stop Tracking dialog after a failed Revert
+  to Baseline, the XR Vendor Filter's grouped package list and the Android
+  Manifest inspector;
+- the hand-back after a build with a profile applied, when a plugin could not
+  put a setting back: the tests cover `EditorStateApplier.ResumeAfterBuild`
+  with such settings, not the runner's call to
+  `ForgeEditorState.ResumeAfterBuild` that passes them;
+- Activate of the applied profile while its Apply or a build did not finish:
+  the tests cover the message it logs, not Activate itself;
+- anything on macOS or Linux.
 
 ## Release sequence (owner: Patrik, at the very end, in this order)
 
 1. Final verification: full test run (the plain run and both optional-package
    sets, `BUILDFORGE_PACKAGES=oldest` and `newest`, on 6000.3.0f1 and the newest
    editor; see AGENTS.md) + a real Android build via the window and via CLI.
-2. CHANGELOG.md: turn `[Unreleased]` into `[1.0.0]` with the release date.
-3. **Asset metadata** is retained with existing GUIDs. Check for missing,
+2. **Asset metadata** is retained with existing GUIDs. Check for missing,
    duplicate or orphaned metadata before release; no wholesale GUID regeneration.
    `Development~` and `Tools~` are excluded from Unity import and need no metadata.
-4. **Reference source removed:** `PackageSnapshots~` was removed on 2026-09-14.
-   Download third-party package source outside the repository when needed.
-   Its files remain only in the previous repository's history; this repository
-   started without that history on 2026-09-28.
-5. Wrapping-project hygiene: its `ProjectSettings/ForgeSettings.asset` may
-   still contain stray `com.test.*` plugin entries from old test runs.
+   A fix goes in a commit of its own.
+3. Retire this file, in a commit of its own, so that the 1.0.0 tag doesn't
+   carry it: move the release sequence into a lasting release checklist in
+   `Development~` (its name chosen then), and the post-1.0 notes below into the
+   roadmap (README's Roadmap or ARCHITECTURE's Roadmap Context); delete
+   RELEASE-STATUS.md and point AGENTS.md at the repository root to the new
+   checklist.
+4. CHANGELOG.md: a `## [1.0.0] - <release date>` heading right under
+   `## [Unreleased]`, which stays, empty.
+5. package.json: `"version": "1.0.0"`.
+6. The release commit, with only CHANGELOG.md and package.json, as in the
+   0.9.x releases: the subject `Build Forge 1.0.0` and the body
+   `The changes since <previous version> are in the CHANGELOG's 1.0.0 section.`
+7. An annotated tag `v1.0.0` on that commit, with the message `Build Forge 1.0.0`.
+8. Push the commits and the tag.
 
 ## Post-1.0 roadmap notes (beyond README's Roadmap section)
 
