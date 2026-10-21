@@ -11,7 +11,8 @@
 #   Rebuild plugins, and their tests, compile only with their packages installed, so
 #   the plain host leaves them out. BUILDFORGE_PACKAGES=oldest adds OpenXR,
 #   XR Plug-in Management and Addressables at the oldest versions the plugins
-#   support, BUILDFORGE_PACKAGES=newest at the newest versions they were tested with,
+#   support, or the oldest the editor allows where it requires newer ones,
+#   BUILDFORGE_PACKAGES=newest at the newest versions they were tested with,
 #   each in a host of its own; the run prints the versions Unity resolved.
 #
 # Host project location: %LOCALAPPDATA%\BuildForge\test-host, or test-host-oldest
@@ -64,6 +65,56 @@ $EditorVersion = if ($env:UNITY_EDITOR_VERSION) { $env:UNITY_EDITOR_VERSION }
                  else { Get-InstalledEditorVersion }
 if (-not $EditorVersion) { $EditorVersion = $FallbackEditorVersion }
 
+# 1 when version Left is newer than Right, -1 when older, 0 when equal; a release is newer than its
+# pre-releases. (PowerShell names are case-insensitive, so the parts can't be called $a and $b.)
+function Compare-PackageVersion([string]$Left, [string]$Right) {
+    $leftParts = @($Left -split '-', 2)
+    $rightParts = @($Right -split '-', 2)
+    $core = ([version]$leftParts[0]).CompareTo([version]$rightParts[0])
+    if ($core -ne 0) { return [Math]::Sign($core) }
+    if ($leftParts.Count -eq 1 -and $rightParts.Count -eq 1) { return 0 }
+    if ($leftParts.Count -eq 1) { return 1 }
+    if ($rightParts.Count -eq 1) { return -1 }
+    return [Math]::Sign([string]::CompareOrdinal($leftParts[1], $rightParts[1]))
+}
+
+$Packages = [ordered]@{}
+if ($PackageSet) {
+    foreach ($Package in $PackageSets[$PackageSet].GetEnumerator()) { $Packages[$Package.Key] = $Package.Value }
+}
+# A newer editor doesn't compile Unity's oldest packages (6000.6.6f1 requires Addressables 2.11.2,
+# OpenXR 1.18.0 and XR Plug-in Management 4.7.0), so the oldest set starts each package at the
+# editor's own minimum version where that is newer: the oldest a project on that editor can have.
+$Raised = @()
+if ($PackageSet -eq 'oldest') {
+    $Editor = $null
+    try {
+        $Editor = (unity editors -i --json --no-banner 2>$null | Out-String | ConvertFrom-Json).data |
+            Where-Object { $_.version -eq $EditorVersion } | Select-Object -First 1
+    } catch { }
+    $EditorManifest = $null
+    if ($Editor) {
+        $EditorDir = Split-Path $Editor.location
+        $EditorManifest = @(
+            (Join-Path $EditorDir "Data/Resources/PackageManager/Editor/manifest.json"),
+            (Join-Path $EditorDir "../Resources/PackageManager/Editor/manifest.json"),
+            (Join-Path $Editor.location "Contents/Resources/PackageManager/Editor/manifest.json")
+        ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    }
+    if (-not $EditorManifest) {
+        Write-Host "The oldest set needs editor $EditorVersion installed: it reads the package versions that editor requires."
+        exit 2
+    }
+    $Required = (Get-Content $EditorManifest -Raw | ConvertFrom-Json).packages
+    foreach ($Name in @($Packages.Keys)) {
+        $Minimum = $Required.$Name.minimumVersion
+        if ($Minimum -and (Compare-PackageVersion $Minimum $Packages[$Name]) -gt 0) {
+            $Raised += "  $Name ${Minimum}: the oldest $EditorVersion allows (the plugins support $($Packages[$Name]))"
+            $Packages[$Name] = $Minimum
+        }
+    }
+}
+
 # Assets/ must exist — Unity's project validation requires it, even empty.
 New-Item -ItemType Directory -Force -Path (Join-Path $HostDir "Assets") | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $HostDir "Packages") | Out-Null
@@ -71,10 +122,8 @@ New-Item -ItemType Directory -Force -Path (Join-Path $HostDir "ProjectSettings")
 
 $PackagePath = $PackageDir -replace '\\', '/'
 $OptionalPackages = ""
-if ($PackageSet) {
-    foreach ($Package in $PackageSets[$PackageSet].GetEnumerator()) {
-        $OptionalPackages += ",`n    `"$($Package.Key)`": `"$($Package.Value)`""
-    }
+foreach ($Package in $Packages.GetEnumerator()) {
+    $OptionalPackages += ",`n    `"$($Package.Key)`": `"$($Package.Value)`""
 }
 @"
 {
@@ -96,6 +145,7 @@ $ProjectVersionFile = Join-Path $HostDir "ProjectSettings\ProjectVersion.txt"
 "m_EditorVersion: $EditorVersion" | Set-Content $ProjectVersionFile
 
 Write-Host "Test host: $HostDir (editor $EditorVersion$(if ($PackageSet) { ", $PackageSet packages" }))"
+$Raised | ForEach-Object { Write-Host $_ }
 # Forward slashes for everything handed to Unity: the editor's absolute-path
 # detection rejects backslash paths ("Couldn't set project path" with the CWD
 # prepended to an already-absolute path).
@@ -110,7 +160,7 @@ $LockFile = Join-Path $HostDir "Packages/packages-lock.json"
 if ($PackageSet -and (Test-Path $LockFile)) {
     $Resolved = (Get-Content $LockFile -Raw | ConvertFrom-Json).dependencies
     Write-Host "Packages ($PackageSet):"
-    foreach ($Package in $PackageSets[$PackageSet].GetEnumerator()) {
+    foreach ($Package in $Packages.GetEnumerator()) {
         $Version = $Resolved.($Package.Key).version
         $Note = if (-not $Version) { "not resolved" } elseif ($Version -ne $Package.Value) { "$Version, pinned $($Package.Value)" } else { $Version }
         Write-Host "  $($Package.Key) $Note"

@@ -12,7 +12,8 @@
 #   Rebuild plugins, and their tests, compile only with their packages installed, so
 #   the plain host leaves them out. BUILDFORGE_PACKAGES=oldest adds OpenXR,
 #   XR Plug-in Management and Addressables at the oldest versions the plugins
-#   support, BUILDFORGE_PACKAGES=newest at the newest versions they were tested with,
+#   support, or the oldest the editor allows where it requires newer ones,
+#   BUILDFORGE_PACKAGES=newest at the newest versions they were tested with,
 #   each in a host of its own; the run prints the versions Unity resolved.
 #
 # Host project location: ~/.cache/buildforge/test-host, or test-host-oldest or
@@ -51,6 +52,51 @@ detect_installed_editor() {
 EDITOR_VERSION="${UNITY_EDITOR_VERSION:-$(detect_installed_editor)}"
 EDITOR_VERSION="${EDITOR_VERSION:-$FALLBACK_EDITOR_VERSION}"
 
+# Succeeds when version $1 is newer than $2; a release is newer than its pre-releases.
+version_newer() {
+  [ "$1" = "$2" ] && return 1
+  local a="${1%%-*}" b="${2%%-*}"
+  if [ "$a" = "$b" ]; then
+    case "$1" in *-*) ;; *) return 0 ;; esac
+    case "$2" in *-*) ;; *) return 1 ;; esac
+    [ "$(printf '%s\n%s\n' "${1#*-}" "${2#*-}" | LC_ALL=C sort | tail -n 1)" = "${1#*-}" ]
+    return
+  fi
+  [ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n 1)" = "$a" ]
+}
+
+# A newer editor doesn't compile Unity's oldest packages (6000.6.6f1 requires Addressables 2.11.2,
+# OpenXR 1.18.0 and XR Plug-in Management 4.7.0), so the oldest set starts each package at the
+# editor's own minimum version where that is newer: the oldest a project on that editor can have.
+RAISED=()
+if [ "$PACKAGE_SET" = oldest ]; then
+  # The "location" that follows the editor's "version" in the CLI's JSON, its \\ made /.
+  location=$(unity editors -i --json --no-banner 2>/dev/null | awk -v want="\"$EDITOR_VERSION\"" '
+    /"version":/ { current = $2; sub(/,$/, "", current) }
+    /"location":/ && current == want { sub(/^[^:]*: *"/, ""); sub(/",? *$/, ""); gsub(/\\\\/, "/"); print; exit }' || true)
+  editor_manifest=""
+  if [ -n "$location" ]; then
+    for candidate in "$(dirname "$location")/Data/Resources/PackageManager/Editor/manifest.json" \
+                     "$(dirname "$location")/../Resources/PackageManager/Editor/manifest.json" \
+                     "$location/Contents/Resources/PackageManager/Editor/manifest.json"; do
+      if [ -f "$candidate" ]; then editor_manifest="$candidate"; break; fi
+    done
+  fi
+  if [ -z "$editor_manifest" ]; then
+    echo "The oldest set needs editor $EDITOR_VERSION installed: it reads the package versions that editor requires."
+    exit 2
+  fi
+  for i in "${!PACKAGES[@]}"; do
+    name="${PACKAGES[$i]%%=*}"; floor="${PACKAGES[$i]#*=}"
+    # The package's "minimumVersion", read up to the end of its own block.
+    minimum=$(awk -v key="\"$name\": {" 'found && /}/ { exit } found && /"minimumVersion"/ { gsub(/[",]/, "", $2); print $2; exit } index($0, key) { found = 1 }' "$editor_manifest")
+    if [ -n "$minimum" ] && version_newer "$minimum" "$floor"; then
+      RAISED+=("  $name $minimum: the oldest $EDITOR_VERSION allows (the plugins support $floor)")
+      PACKAGES[$i]="$name=$minimum"
+    fi
+  done
+fi
+
 # Assets/ must exist — Unity's project validation requires it, even empty.
 mkdir -p "$HOST_DIR/Assets" "$HOST_DIR/Packages" "$HOST_DIR/ProjectSettings"
 
@@ -78,6 +124,7 @@ printf 'm_EditorVersion: %s\n' "$EDITOR_VERSION" \
   > "$HOST_DIR/ProjectSettings/ProjectVersion.txt"
 
 echo "Test host: $HOST_DIR (editor $EDITOR_VERSION${PACKAGE_SET:+, $PACKAGE_SET packages})"
+for line in ${RAISED[@]+"${RAISED[@]}"}; do echo "$line"; done
 set +e
 unity test "$HOST_DIR" --mode EditMode --output "$HOST_DIR/test-results.xml" "$@" \
   -- -logFile "$HOST_DIR/editor.log"
