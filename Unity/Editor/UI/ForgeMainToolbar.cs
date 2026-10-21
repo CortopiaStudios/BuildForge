@@ -424,7 +424,9 @@ namespace BuildForge.Editor.UI
                     ? $"No Unity Build Profile is active; Unity is on the {EditorUserBuildSettings.activeBuildTarget} platform profile."
                     : state.ResolveError);
             return BuildButtonFor(run, profile?.DisplayName, noProfileReason, variant, ForgeSettings.instance.BuildVariants.Count > 0,
-                profile != null ? BuildVariants.ProfileError(profile, variant) ?? ForgePluginRegistry.BlockingError(profile) : null,
+                profile != null
+                    ? BuildVariants.ProfileError(profile, variant) ?? ForgePluginRegistry.BlockingError(profile) ?? InterruptedBuildMarker.Error()
+                    : null,
                 state.CanMutate, state.MutateReason);
         }
 

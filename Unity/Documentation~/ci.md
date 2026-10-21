@@ -137,7 +137,7 @@ The manifest is inside the player, for an APK at `assets/BuildForge/BuildManifes
 ## Timeouts, cancellation and one build per checkout
 
 - For a bounded job, add `--timeout <seconds>` before `--`, with enough time for imports, the build and cache uploads.
-- A forced timeout, a cancelled job or a crash can stop the editor before Build Forge restores its changes. Discard or recover the workspace before reusing it.
+- A forced timeout, a cancelled job or a crash can stop the editor before Build Forge restores its changes. Discard or recover the workspace before reusing it. Build Forge notices: the build leaves `UserSettings/ForgeBuildInProgress.json` behind, and every later build in that workspace stops until the file is gone, so a reused workspace doesn't build from what the stopped build left. A workspace cleaned with `git clean -fdx` loses it with the rest; otherwise restore the changed files and delete it.
 - With Unity CLI 1.0.0-beta.9 and beta.10 on Windows, cancelling `unity run` could leave its editor running, which then blocks the next build of the same project ("already open"). Identify that editor by its process and project path and stop it before retrying; do not kill every Unity process by name or delete the project's lock file while its editor is alive. Later CLI versions have not been checked for this.
 - Run only one Unity process per checkout. Two jobs in the same workspace fight over the open project, the Library and the settings Build Forge changes during a build. Use separate checkouts for parallel builds.
 

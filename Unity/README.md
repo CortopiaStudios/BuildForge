@@ -403,6 +403,7 @@ Editor/
     ForgeBuildInterceptor.cs               # Blocks non-Build Forge builds
     ForgeBuildContext.cs                   # Context passed to plugins (incl. IsCI)
     ForgeBuildRestoreException.cs          # What RunBuild throws when a step after a built player failed
+    InterruptedBuildMarker.cs              # Builds stop after one that did not finish (UserSettings/ForgeBuildInProgress.json)
     BuildEnvironment.cs                    # CI detection (-forgeCI / FORGE_CI / batch mode)
     GitHelper.cs                           # Runs git for plugins (Git Metadata, Build Number) and the core
     BuildManifestWriter.cs                 # Writes/cleans up manifest
@@ -531,6 +532,7 @@ Tests/
     ForgeProfileOutputPathTests.cs         # Output path placeholders and extensions
     ForgeSettingsPluginToggleTests.cs     # Plugin enable/disable precedence tests
     GitHelperTests.cs                     # Git process runner tests
+    InterruptedBuildMarkerTests.cs         # Builds stop after one that did not finish, until it is cleared
     InterruptedOperationTests.cs           # Builds, Apply and Activate stop after an Apply or a build that did not finish
     MainToolbarTests.cs                    # Main toolbar menus, labels and Build buttons
     MangleForFilenameTests.cs             # Output path sanitization tests

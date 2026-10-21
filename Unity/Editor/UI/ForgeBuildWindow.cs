@@ -213,6 +213,7 @@ namespace BuildForge.Editor.UI
 
             EditorGUILayout.BeginVertical();
             detailsScroll = EditorGUILayout.BeginScrollView(detailsScroll, GUILayout.ExpandHeight(true));
+            DrawUnfinishedBuild();
             DrawEditorState(ForgeEditorState.AppliedProfile);
             DrawDetails();
             EditorGUILayout.EndScrollView();
@@ -663,6 +664,30 @@ namespace BuildForge.Editor.UI
         /// the state as applied, and the reminder that an applied profile lives
         /// in version-controlled settings assets.
         /// </summary>
+        /// <summary>
+        /// A build that did not finish stops the next one until it is cleared here, once the
+        /// files it changed are restored (see <see cref="InterruptedBuildMarker"/>).
+        /// </summary>
+        void DrawUnfinishedBuild()
+        {
+            var unfinished = InterruptedBuildMarker.Error();
+            if (unfinished == null)
+                return;
+            var canMutate = ForgeEditorState.CanMutate(out var reason);
+            DrawWarningBoxWithButtons(unfinished, (new GUIContent("Clear",
+                    canMutate ? "Builds can start again. Clear only once the files that build changed are restored." : reason),
+                canMutate, () =>
+                {
+                    if (EditorUtility.DisplayDialog("Clear the unfinished build?",
+                            "Builds then start from the project files as they are. Clear only after restoring the files the " +
+                            "build that did not finish changed (check git status and git diff).", "Clear", "Cancel"))
+                    {
+                        InterruptedBuildMarker.Clear();
+                        Debug.Log("[Build Forge] Cleared the record of a build that did not finish.");
+                    }
+                }));
+        }
+
         void DrawEditorState(ForgeProfile appliedProfile)
         {
             if (!ForgeEditorState.HasAppliedGuid)
@@ -1017,6 +1042,7 @@ namespace BuildForge.Editor.UI
                     if (AwaitsVariant(variant)) { reason = PickVariantReason; enabled = false; }
                     else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
                     else if (blockingError != null) { reason = blockingError; enabled = false; }
+                    else if (InterruptedBuildMarker.Error() is string unfinished) { reason = unfinished; enabled = false; }
                     else if (!canMutate) { reason = mutateReason; enabled = false; }
                     else { reason = null; enabled = true; }
 

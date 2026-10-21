@@ -243,30 +243,17 @@ The Gradle callback only compiles when `UNITY_ANDROID` is defined (`UnityEditor.
 ## Known Limitations
 
 ### Editor crash during build can leave settings in an overridden state
+A build that does not finish is detected, not undone: before it changes anything the runner writes `UserSettings/ForgeBuildInProgress.json` (`InterruptedBuildMarker`), and removes it only after every step that puts something back has succeeded and the restored settings are saved. A file left by a crash, a killed process, a CI timeout or a failed restore stops every later build (the command line's `-forgeVersion`/`-forgeVersionCode` overrides are inside the same span) until it is cleared, with the build window's **Clear** or by deleting it: the next build would otherwise start from what the crashed one left and keep it, silently. It lives in `UserSettings` like the editor-state ledger, because deleting `Library` is a common fix and the leftovers are in `ProjectSettings` and `Assets`.
+
 Plugins like OpenXR, Build Number, and Android Keystore Env modify project settings in `OnPreBuild` and restore them in `OnPostBuild`. The restore runs in a `finally` block, so it survives build failures and exceptions. However, if the Unity editor crashes or is force-killed mid-build, `OnPostBuild` never runs and the overridden values remain on disk (plugins call `SaveAssets()` to flush changes because `BuildPipeline.BuildPlayer` reads from disk).
 
 **Why we don't auto-recover:** Persisting pre-mutation snapshots to a temp file and restoring them on the next editor launch is technically possible but not worth the complexity. It would require serializable snapshot formats per plugin, partial-state handling (crash after plugin 3 of 6), false-recovery guards (editor killed for an unrelated reason), and is extremely difficult to test. The recovery code itself would be a source of bugs.
 
 One part is recoverable without version control: while a profile is applied to the editor, the per-user ledger (`UserSettings/ForgeEditorState.asset`) keeps every applied group's baseline across the build, marked `Suspended`, so "Revert to Baseline" or Re-apply restores those settings whole (today OpenXR within its managed scope and the XR loader list) after a crash, and until then builds, and Apply and Activate of another profile, stop rather than build on what the crashed build left. With nothing applied there is no ledger to say a build was interrupted. Build-time-only overrides (build number, keystore, crash reporting) have no ledger. Neither has the variant a build applies to the Unity Build Profile: its defines and development flags can reach disk mid-build when a plugin saves assets, and after a crash the variant ledger (`UserSettings/ForgeVariantDefines.asset`) treats them as the user's own edits, so Revert keeps them. With nothing applied, a variant define left that way is reported like one committed from another machine, and Activate removes it with the rules' aliases, but not the development flags. Restore the Build Profile asset from version control in that case.
 
-**Recovery:** If settings look wrong after a crash, restore the affected files from version control:
-```
-git checkout -- ProjectSettings/
-```
-For OpenXR settings (stored under `Assets/XR/`), also restore those:
-```
-git checkout -- Assets/XR/
-```
-For a variant build, also restore the Unity Build Profile asset that was built, for example:
-```
-git checkout -- "Assets/Settings/Build Profiles/"
-```
-With the Addressables Stripper, also restore the Addressables settings: its changes are saved during the build, by Addressables (creating the temporary group saves) and by the build's own save, so they are on disk while it runs, and the temporary group holds the entries it moved, so deleting that group would delete them. With Android Manifest, also restore the main manifest it swapped:
-```
-git checkout -- Assets/AddressableAssetsData/ Assets/Plugins/Android/AndroidManifest.xml
-```
+**Recovery:** Check `git status` and `git diff`, and restore only the files the build changed, keeping your own edits; a folder-wide `git checkout -- ProjectSettings/` would also throw away changes made before the build. The build can have changed `ProjectSettings/ProjectSettings.asset` (Player Settings, the version, Build Number, the keystore path), `ProjectSettings/UnityConnectSettings.asset` (Cloud Diagnostics), the OpenXR settings under `Assets/XR/`, the Unity Build Profile asset that was built (a variant's defines, development flags and Build Configuration, Diagnostics Data), the Addressables settings under `Assets/AddressableAssetsData/` (the Stripper's changes are saved during the build, by Addressables, which saves when it creates the temporary group, and by the build's own save; that group holds the entries it moved, so deleting it would delete them), and the main manifest Android Manifest swapped, `Assets/Plugins/Android/AndroidManifest.xml`. Then clear the marker.
 
-Editor crashes mid-build are rare. Version control is the safety net. (If a profile was applied to the editor at the time, "Revert to Baseline" in the Build window restores the pre-apply state of the settings the ledger covers — see "Editor State".)
+Editor crashes mid-build are rare. The marker makes them visible; version control is the safety net. (If a profile was applied to the editor at the time, "Revert to Baseline" in the Build window restores the pre-apply state of the settings the ledger covers — see "Editor State".)
 
 ### The CI command can stall after a finished build (Windows)
 After `Build process complete` and Unity's whole shutdown, `unity run` can keep waiting; reproduced locally with Unity CLI 1.0.0-beta.12 and beta.13, and seen on a CI agent. The CLI returns only once every process holding the output pipe it gave the editor has closed it, whatever the log options (`--log-file`, `--no-tail`, `-logFile <file>`): a probe child started with the editor's handles kept `unity run` waiting until the child exited, and one started without inherited handles did not.

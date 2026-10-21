@@ -145,6 +145,10 @@ namespace BuildForge.Editor.Core
             var interrupted = ForgeEditorState.InterruptedError();
             if (interrupted != null)
                 throw new InvalidOperationException(interrupted);
+            // A build that did not finish may have left project files holding its changes.
+            var unfinishedBuild = InterruptedBuildMarker.Error();
+            if (unfinishedBuild != null)
+                throw new InvalidOperationException(unfinishedBuild);
             if (activeProfile != forgeProfile.BuildProfile)
             {
                 var activeName = activeProfile != null
@@ -220,6 +224,8 @@ namespace BuildForge.Editor.Core
             VariantPlayerSettings.Snapshot playerSettingsBeforeVariant = null;
             string productNameBeforeMark = null;
             string versionBeforeRule = null;
+            // Before the first change; removed below once everything is put back.
+            var beganMarker = InterruptedBuildMarker.Begin(forgeProfile.DisplayName, resolvedVariant);
             IsForgeBuildInProgress = true;
 
             try
@@ -434,6 +440,9 @@ namespace BuildForge.Editor.Core
                     }
                 }
 
+                // Last, after every step that puts something back: a failed one keeps the
+                // marker, which stops the next build, as an editor that quits would.
+                InterruptedBuildMarker.Finish(beganMarker, context.PostBuildFailures.Count == 0);
                 IsForgeBuildInProgress = false;
 
                 // A build that also runs shows the player instead, like Unity's Build And Run.
@@ -583,7 +592,24 @@ namespace BuildForge.Editor.Core
             int originalVersionCode = 0;
             bool versionCodeApplied = false;
 
+            // The version overrides change Player Settings before the build: the marker spans
+            // them, so a run stopped before their restore stops the next build too.
+            var overrides = !string.IsNullOrEmpty(version) || !string.IsNullOrEmpty(versionCode);
+            var beganMarker = false;
+            if (overrides)
+            {
+                var unfinishedBuild = InterruptedBuildMarker.Error();
+                if (unfinishedBuild != null)
+                {
+                    Debug.LogError($"[Build Forge] {unfinishedBuild}");
+                    EditorApplication.Exit(1);
+                    return;
+                }
+                beganMarker = InterruptedBuildMarker.Begin(profile.DisplayName, variant);
+            }
+
             int exitCode = 1;
+            var versionRestored = true;
             try
             {
                 if (!string.IsNullOrEmpty(version))
@@ -641,7 +667,11 @@ namespace BuildForge.Editor.Core
                     Debug.LogError(
                         $"[Build Forge] Restoring version settings failed: {e.Message}\n{e.StackTrace}");
                     exitCode = 1;
+                    versionRestored = false;
                 }
+                // The build reported its own restores to the marker; this span adds the versions'.
+                if (beganMarker)
+                    InterruptedBuildMarker.Finish(true, versionRestored);
             }
 
             EditorApplication.Exit(exitCode);

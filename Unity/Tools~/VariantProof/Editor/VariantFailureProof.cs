@@ -20,6 +20,7 @@ public static class VariantFailureProof
     public static UnityEngine.Object TemporaryPreloadedAsset;
     static readonly Type EditorState = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.ForgeEditorState");
     static readonly Type Persistence = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.PlayerSettingsPersistence");
+    static readonly Type Marker = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.InterruptedBuildMarker");
     const BindingFlags Flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
 
     public static void Run()
@@ -61,8 +62,21 @@ public static class VariantFailureProof
             if (!before.SequenceEqual(File.ReadAllBytes(path)) || product != PlayerSettings.productName
                 || !project.SequenceEqual(File.ReadAllBytes("ProjectSettings/ProjectSettings.asset")))
                 throw new Exception("The other steps did not put the project back after the failed restore");
+            // The failed restore keeps the record of a build that did not finish, which stops the next build.
+            if (!File.Exists("UserSettings/ForgeBuildInProgress.json"))
+                throw new Exception("The failed restore did not keep the unfinished-build record");
+            try
+            {
+                ForgeBuildRunner.RunBuild(forge, "Development");
+                throw new Exception("A build ran although the previous one did not finish");
+            }
+            catch (InvalidOperationException e) when (e.Message.Contains("did not finish")) { }
         }
-        finally { InjectRestoreFailure = false; }
+        finally
+        {
+            InjectRestoreFailure = false;
+            Marker.GetMethod("Clear", Flags).Invoke(null, null);
+        }
     }
 
     static void CheckPlayerFailure(ForgeProfile forge)
