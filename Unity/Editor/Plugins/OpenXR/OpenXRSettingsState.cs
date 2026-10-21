@@ -165,12 +165,13 @@ namespace BuildForge.Editor.OpenXR
                 return;
             }
 
-            foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))
-            {
-                var state = Override(config, feature);
-                if (state != null)
-                    SetEnabled(feature, state.Value);
-            }
+            using (new RefusalPlatform(group))
+                foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))
+                {
+                    var state = Override(config, feature);
+                    if (state != null)
+                        SetEnabled(feature, state.Value);
+                }
 
             var so = new SerializedObject(settings);
             foreach (var ovr in config.GetAllSettingsOverrides())
@@ -221,10 +222,26 @@ namespace BuildForge.Editor.OpenXR
                 if (!sourceStates.ContainsKey(typeName))
                     sourceStates.Add(typeName, feature.enabled);
             }
-            foreach (var feature in GetManagedFeatures(to, true))
-                if (sourceStates.TryGetValue(feature.GetType().FullName, out var enabled) && (enabled || match))
-                    SetEnabled(feature, enabled);
+            using (new RefusalPlatform(target))
+                foreach (var feature in GetManagedFeatures(to, true))
+                    if (sourceStates.TryGetValue(feature.GetType().FullName, out var enabled) && (enabled || match))
+                        SetEnabled(feature, enabled);
             Flush(to);
+        }
+
+        /// <summary>
+        /// OpenXRFeature.enabled refuses to turn off a feature that a ticked group requires,
+        /// for the platform in OpenXRFeatureSetManager.activeBuildTarget, which only the
+        /// XR Plug-in Management page sets while it draws. While Build Forge writes a
+        /// platform's features, that is the platform being written; the value is put back after.
+        /// </summary>
+        sealed class RefusalPlatform : IDisposable
+        {
+            readonly BuildTargetGroup previous = OpenXRFeatureSetManager.activeBuildTarget;
+
+            public RefusalPlatform(BuildTargetGroup group) => OpenXRFeatureSetManager.activeBuildTarget = group;
+
+            public void Dispose() => OpenXRFeatureSetManager.activeBuildTarget = previous;
         }
 
         // ---------------------------------------------------------------- restore

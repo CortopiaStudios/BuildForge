@@ -55,7 +55,7 @@ namespace BuildForge.Tests.OpenXR
         {
             var warning = OpenXRPlugin.FeatureGroupMessage(new[] { "Meta Quest" }, BuildTargetGroup.Android,
                 new[] { "'Meta Quest Support' (required by 'Meta Quest')" });
-            StringAssert.Contains("Builds of this profile stop on its Disable override for " +
+            StringAssert.Contains("Builds and Apply of this profile stop on its Disable override for " +
                 "'Meta Quest Support' (required by 'Meta Quest'); untick the group or remove the override.", warning);
             StringAssert.DoesNotContain("ignored", warning);
 
@@ -1012,6 +1012,110 @@ namespace BuildForge.Tests.OpenXR
             {
                 refusal.SetValue(null, originalRefusal);
                 OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
+
+        static OpenXRFeatureSetManager.FeatureSet RequiringControllers(bool ticked) => new OpenXRFeatureSetManager.FeatureSet
+        {
+            name = "Controllers", isEnabled = ticked,
+            featureIds = new[] { KHRSimpleControllerProfile.featureId },
+            requiredFeatureIds = new[] { KHRSimpleControllerProfile.featureId },
+        };
+
+        // Before anything is written, for builds and Apply: OpenXR's own refusal depends on the
+        // platform tab shown last, and refuses nothing in batch mode.
+        [Test] public void TurningOffAFeatureATickedGroupRequires_IsAnErrorBeforeWriting()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var features = standalone.GetFeatures<OpenXRFeature>();
+            var disables = new OpenXRProfileConfig();
+            disables.DisabledFeatures.Add(typeof(KHRSimpleControllerProfile).FullName);
+            var ticked = new[] { RequiringControllers(true) };
+
+            var error = OpenXRPlugin.RequiredFeatureConflictError(disables, features, ticked, BuildTargetGroup.Standalone, true);
+            StringAssert.Contains("with a Disable override", error);
+            StringAssert.Contains("'Controllers', ticked for Standalone", error);
+            StringAssert.EndsWith("remove the Disable override.", error);
+
+            Assert.IsNull(OpenXRPlugin.RequiredFeatureConflictError(disables, features, new[] { RequiringControllers(false) },
+                BuildTargetGroup.Standalone, true), "An unticked group requires nothing.");
+            Assert.IsNull(OpenXRPlugin.RequiredFeatureConflictError(new OpenXRProfileConfig(), features, ticked,
+                BuildTargetGroup.Standalone, true), "Without an override nothing is turned off.");
+            Assert.IsNull(OpenXRPlugin.RequiredFeatureConflictError(disables, features, ticked, BuildTargetGroup.Standalone, false),
+                "Interaction profiles are left alone while their overrides aren't managed.");
+
+            var onlyListed = new OpenXRProfileConfig { OnlyListedFeatures = true };
+            StringAssert.EndsWith("list the feature.",
+                OpenXRPlugin.RequiredFeatureConflictError(onlyListed, features, ticked, BuildTargetGroup.Standalone, true));
+        }
+
+        // OpenXR refuses for the platform in activeBuildTarget: the one being written, while Build Forge writes.
+        [Test] public void Apply_PointsOpenXRsRefusalAtThePlatformItWrites_AndPutsItBack()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var feature = standalone.GetFeature<KHRSimpleControllerProfile>();
+            var refusal = typeof(OpenXRFeature).GetField("canSetFeatureDisabled", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(refusal, "OpenXRFeature's feature-group refusal is an OpenXR internal.");
+            var original = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            var originalRefusal = refusal.GetValue(null);
+            var previousTarget = OpenXRFeatureSetManager.activeBuildTarget;
+            try
+            {
+                feature.enabled = true;
+                OpenXRFeatureSetManager.activeBuildTarget = BuildTargetGroup.Android;
+                var asked = BuildTargetGroup.Unknown;
+                refusal.SetValue(null, (System.Func<string, bool>)(_ => { asked = OpenXRFeatureSetManager.activeBuildTarget; return true; }));
+                var config = new OpenXRProfileConfig();
+                config.DisabledFeatures.Add(typeof(KHRSimpleControllerProfile).FullName);
+
+                OpenXRSettingsState.Apply(config, BuildTargetGroup.Standalone, true);
+
+                Assert.AreEqual(BuildTargetGroup.Standalone, asked);
+                Assert.AreEqual(BuildTargetGroup.Android, OpenXRFeatureSetManager.activeBuildTarget);
+                Assert.IsFalse(feature.enabled);
+            }
+            finally
+            {
+                refusal.SetValue(null, originalRefusal);
+                OpenXRFeatureSetManager.activeBuildTarget = previousTarget;
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
+
+        // The Play Mode copy with Match turns features off in Standalone, which a group ticked there can forbid.
+        [Test] public void TheMatchingPlayModeCopy_IsAnErrorBeforeWriting_WhenItWouldTurnOffARequiredFeature()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            var android = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Android);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            Assert.That(android, Is.Not.Null, "The OpenXR test host must contain Android settings.");
+            var standaloneOriginal = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            var androidOriginal = OpenXRSettingsState.Capture(BuildTargetGroup.Android, true);
+            void SetOn(OpenXRFeature target, bool enabled)
+            {
+                var so = new SerializedObject(target);
+                so.FindProperty(OpenXRSettingsState.EnabledField).boolValue = enabled;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            try
+            {
+                SetOn(standalone.GetFeature<KHRSimpleControllerProfile>(), true);
+                SetOn(android.GetFeature<KHRSimpleControllerProfile>(), false);
+
+                StringAssert.Contains("would turn off OpenXR feature",
+                    OpenXRPlugin.MatchConflictError(BuildTargetGroup.Android, BuildTargetGroup.Standalone, new[] { RequiringControllers(true) }));
+                Assert.IsNull(OpenXRPlugin.MatchConflictError(BuildTargetGroup.Android, BuildTargetGroup.Standalone,
+                    new[] { RequiringControllers(false) }));
+                SetOn(android.GetFeature<KHRSimpleControllerProfile>(), true);
+                Assert.IsNull(OpenXRPlugin.MatchConflictError(BuildTargetGroup.Android, BuildTargetGroup.Standalone,
+                    new[] { RequiringControllers(true) }), "A feature the platform has on is not turned off.");
+            }
+            finally
+            {
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, standaloneOriginal);
+                OpenXRSettingsState.Restore(BuildTargetGroup.Android, androidOriginal);
             }
         }
     }

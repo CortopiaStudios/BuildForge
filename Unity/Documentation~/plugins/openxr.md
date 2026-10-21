@@ -73,7 +73,7 @@ To manage them per profile, for example to leave a vendor's controllers out of o
 
 Vendor packages add OpenXR feature groups, such as "Meta XR" or "Meta Quest", which switch a set of features on together. Unity stores which groups are ticked per platform, so a group cannot differ between two profiles of the same platform. Build Forge manages features one by one instead, which can express everything a group can.
 
-A ticked group also works against per-profile overrides: Unity force-enables the group's required features on every domain reload and refuses to disable them. The build window warns while any group is ticked for a profile's platform, and a build stops on a Disable override that a group blocks, with an error naming the group. Untick the groups in XR Plug-in Management and enable their features per profile.
+A ticked group also works against per-profile overrides: Unity force-enables the group's required features on every domain reload and refuses to disable them. The build window warns while any group is ticked for a profile's platform. A build or an Apply of a profile whose Disable override, or Only Listed Features, would turn off a feature that a ticked group requires stops before it writes anything, with an error naming the group; command-line builds included, where OpenXR itself refuses nothing. With Play Mode Follows Applied Profile's OpenXR Features set to Match the platform's, an Apply also stops when the copy would turn off a feature that a group ticked for Standalone requires. Untick the groups in XR Plug-in Management and enable their features per profile.
 
 ## Meta Quest Build Profiles
 

@@ -284,7 +284,25 @@ namespace BuildForge.Editor.OpenXR
             return result;
         }
 
+        /// <summary>For display: the ticked groups, or none when OpenXR's can't be read.</summary>
         static List<OpenXRFeatureSetManager.FeatureSet> EnabledFeatureSets(BuildTargetGroup group)
+        {
+            try
+            {
+                return TickedFeatureGroups(group);
+            }
+            catch (Exception)
+            {
+                return new List<OpenXRFeatureSetManager.FeatureSet>();
+            }
+        }
+
+        /// <summary>
+        /// The feature groups ticked for the platform in XR Plug-in Management, read from
+        /// the project's OpenXR editor settings, so also in batch mode. Throws when OpenXR's
+        /// can't be read: builds and Apply check them before writing.
+        /// </summary>
+        internal static List<OpenXRFeatureSetManager.FeatureSet> TickedFeatureGroups(BuildTargetGroup group)
         {
             try
             {
@@ -292,10 +310,64 @@ namespace BuildForge.Editor.OpenXR
                     .Where(s => s != null && s.isEnabled && s.featureIds != null)
                     .ToList();
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return new List<OpenXRFeatureSetManager.FeatureSet>();
+                throw new InvalidOperationException(
+                    $"Build Forge can't read the OpenXR feature groups ticked for {group}: {e.Message} Update Build Forge for this OpenXR version.", e);
             }
+        }
+
+        /// <summary>
+        /// Why the profile can't be written for <paramref name="group"/>, or null: a Disable
+        /// override, or Only Listed Features, turns off a feature that a group ticked for
+        /// that platform (<paramref name="tickedGroups"/>) requires, which OpenXR doesn't
+        /// allow. Builds and Apply check this before they write anything, so the answer
+        /// doesn't depend on OpenXR's own refusal, which looks at whichever platform the
+        /// XR Plug-in Management page showed last and refuses nothing in batch mode.
+        /// </summary>
+        internal static string RequiredFeatureConflictError(OpenXRProfileConfig config, IEnumerable<OpenXRFeature> features,
+            IReadOnlyList<OpenXRFeatureSetManager.FeatureSet> tickedGroups, BuildTargetGroup group, bool includeInteractionProfiles)
+        {
+            foreach (var feature in features)
+            {
+                if (feature == null) continue;
+                if (OpenXRSettingsState.ManagedOverride(config, feature, includeInteractionProfiles) != false) continue;
+                var groups = RequiringGroups(GetFeatureId(feature), tickedGroups);
+                if (groups.Count > 0)
+                    return $"This profile turns off OpenXR feature '{FormatFeatureName(GetFeatureUiName(feature))}' " +
+                           (config.OnlyListedFeatures ? "because it doesn't list it" : "with a Disable override") +
+                           $", but the feature group(s) {string.Join(", ", groups.Select(n => $"'{n}'"))}, ticked for {group} " +
+                           "in XR Plug-in Management, require it, and OpenXR doesn't turn it off. Untick the group, or " +
+                           (config.OnlyListedFeatures ? "list the feature." : "remove the Disable override.");
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Why Play Mode Follows Applied Profile, with OpenXR Features set to Match the
+        /// platform's, can't copy <paramref name="source"/>'s features to <paramref name="target"/>,
+        /// or null: it would turn off a feature that a group ticked for the target requires.
+        /// </summary>
+        internal static string MatchConflictError(BuildTargetGroup source, BuildTargetGroup target,
+            IReadOnlyList<OpenXRFeatureSetManager.FeatureSet> tickedGroups)
+        {
+            var from = OpenXRSettings.GetSettingsForBuildTargetGroup(source);
+            var to = OpenXRSettings.GetSettingsForBuildTargetGroup(target);
+            if (from == null || to == null || tickedGroups.Count == 0)
+                return null;
+            var offInSource = new HashSet<string>(OpenXRSettingsState.GetManagedFeatures(from, true)
+                .Where(f => !f.enabled).Select(f => f.GetType().FullName));
+            foreach (var feature in OpenXRSettingsState.GetManagedFeatures(to, true))
+            {
+                if (!offInSource.Contains(feature.GetType().FullName)) continue;
+                var groups = RequiringGroups(GetFeatureId(feature), tickedGroups);
+                if (groups.Count > 0)
+                    return $"Play Mode Follows Applied Profile would turn off OpenXR feature '{FormatFeatureName(GetFeatureUiName(feature))}' " +
+                           $"for {target} to match {source}, but the feature group(s) {string.Join(", ", groups.Select(n => $"'{n}'"))}, " +
+                           $"ticked for {target} in XR Plug-in Management, require it, and OpenXR doesn't turn it off. Untick the " +
+                           "group, or set OpenXR Features to Turn on the platform's in Project Settings > Build Forge.";
+            }
+            return null;
         }
 
         /// <summary>The names of the ticked groups that require the feature, so OpenXR refuses to disable it.</summary>
@@ -316,9 +388,9 @@ namespace BuildForge.Editor.OpenXR
                 "the features per profile.";
             if (conflicts.Count > 0)
                 message += onlyListedFeatures
-                    ? $" Builds of this profile stop on turning off {string.Join(", ", conflicts)}, which it doesn't list; " +
+                    ? $" Builds and Apply of this profile stop on turning off {string.Join(", ", conflicts)}, which it doesn't list; " +
                       "untick the group or list the feature."
-                    : $" Builds of this profile stop on its Disable override for {string.Join(", ", conflicts)}; " +
+                    : $" Builds and Apply of this profile stop on its Disable override for {string.Join(", ", conflicts)}; " +
                       "untick the group or remove the override.";
             return message;
         }
@@ -576,6 +648,10 @@ namespace BuildForge.Editor.OpenXR
                 context.BuildTargetGroup);
             if (staleError != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + staleError);
+            var conflict = RequiredFeatureConflictError(config, settings.GetFeatures<OpenXRFeature>(),
+                TickedFeatureGroups(context.BuildTargetGroup), context.BuildTargetGroup, includeInteractionProfiles);
+            if (conflict != null)
+                throw new InvalidOperationException("[Build Forge/OpenXR] " + conflict);
             var setupError = MetaQuestSetupError(config, context.BuildTargetGroup, MetaQuestProfileActive, settings.GetFeatures<OpenXRFeature>());
             if (setupError != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + setupError);
@@ -655,6 +731,12 @@ namespace BuildForge.Editor.OpenXR
                 : null;
             if (staleError != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + staleError);
+            var conflict = settings != null
+                ? RequiredFeatureConflictError(config, settings.GetFeatures<OpenXRFeature>(), TickedFeatureGroups(group), group,
+                    includeInteractionProfiles)
+                : null;
+            if (conflict != null)
+                throw new InvalidOperationException("[Build Forge/OpenXR] " + conflict);
             OpenXRSettingsState.Apply(config, group, includeInteractionProfiles);
         }
 

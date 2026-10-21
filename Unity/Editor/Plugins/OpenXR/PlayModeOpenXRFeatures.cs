@@ -32,9 +32,15 @@ namespace BuildForge.Editor.OpenXR
             => OpenXRSettingsState.Capture(group, includeInteractionProfiles: true)?.ToJson();
 
         public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group)
-            => OpenXRSettingsState.CopyFeatureStates(
-                BuildPipeline.GetBuildTargetGroup(Core.BuildProfileUtility.GetBuildTarget(profile.BuildProfile)), group,
-                OpenXRPlugin.GetGlobalConfig().MatchPlatformFeaturesInPlayMode);
+        {
+            var source = BuildPipeline.GetBuildTargetGroup(Core.BuildProfileUtility.GetBuildTarget(profile.BuildProfile));
+            var match = OpenXRPlugin.GetGlobalConfig().MatchPlatformFeaturesInPlayMode;
+            // Only Match turns features off, which a ticked group can forbid; before anything is written.
+            var conflict = match ? OpenXRPlugin.MatchConflictError(source, group, OpenXRPlugin.TickedFeatureGroups(group)) : null;
+            if (conflict != null)
+                throw new System.InvalidOperationException("[Build Forge/OpenXR] " + conflict);
+            OpenXRSettingsState.CopyFeatureStates(source, group, match);
+        }
 
         public void RestoreEditorState(BuildTargetGroup group, string json)
             => OpenXRSettingsState.Restore(group, OpenXREditorStateSnapshot.FromJson(json));
