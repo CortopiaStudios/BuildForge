@@ -17,7 +17,7 @@ This sample shows two things a project adds around Build Forge:
 
 The plugin needs Build Forge on Unity 6000.3 or later and the Android platform module. The CI recipes need the standalone Unity CLI on the build machine. See the Build Forge manual's [Command line and CI](../../Documentation~/ci.md) page for the command they run.
 
-<!-- unverified: the CI recipes follow Build Forge's documented command line and have not been run as written on Jenkins or GitHub Actions -->
+What has been run: `Build-Player.ps1` (Windows PowerShell 5.1) and `build-player.sh` (Git Bash) were run as written on Windows with Unity 6000.3.0f1 and the Unity CLI 1.0.0-beta.13, building a profile and variant through the Unity CLI and with the editor started directly, with and without the Shared workspace step, and failing with a nonzero exit code for an unknown variant. `build-player.sh` has not been run on macOS or Linux. The `Jenkinsfile` and `build-player.yml` use the same command line but have not been run on Jenkins or GitHub Actions.
 
 ## 1. Import the sample
 
