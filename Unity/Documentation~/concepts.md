@@ -39,9 +39,9 @@ Build Forge builds one profile per Unity process, and only the **active** Unity 
 
 A build runs these steps:
 
-1. Checks that the variant is valid for the profile and that the profile is active.
+1. Checks that the variant is valid for the profile and that the profile is active, and the rest of what stops a build before it changes anything, such as a plugin that failed to load, an earlier build that did not finish or, on CI, a missing or stale `BUILD_PROFILE_` define; see [The build stops before it starts](troubleshooting.md#the-build-stops-before-it-starts).
 2. With **Remove Previous Build Output** on, removes the previous build's files from the destination.
-3. Marks a variant build's product name, for example `My Game (Internal)`.
+3. Logs the warnings the build window shows for the profile, records that the build has started in `UserSettings/ForgeBuildInProgress.json`, and marks a variant build's product name, for example `My Game (Internal)`.
 4. If a profile is applied to the editor, restores its baseline, so the build starts from the project's own settings. Settings changed after the Apply keep their new values.
 5. Puts the variant's development flags and defines on the Build Profile.
 6. Runs each plugin's pre-build step, in plugin order.
@@ -82,7 +82,7 @@ Build-only plugin work, such as build numbers, signing, crash reporting and Addr
 
 Apply first reverts whatever is applied, then records each setting's current value as its **baseline** before writing it. The baselines are saved to `UserSettings/ForgeEditorState.asset` before a plugin writes anything, so applying never stacks one profile on top of another, and a crash in the middle of an Apply can still be reverted.
 
-A plugin that cannot apply its settings stops the Apply, as it would stop a build, for example XR Loaders on a platform without XR Plug-in Management settings. Build Forge then restores what the Apply wrote, nothing is applied afterwards, not even the profile that was applied before, and the console names the plugin and the reason. What stops a build before it starts also stops an Apply before it changes anything: a plugin that failed to load, or that throws when asked whether it runs for the profile, while it is on in Project Settings, and plugin settings Unity cannot load. The build window and the main toolbar then show the reason in red and disable Apply and Build for the profile.
+A plugin that cannot apply its settings stops the Apply, as it would stop a build, for example XR Loaders on a platform without XR Plug-in Management settings. Build Forge then restores what the Apply wrote, nothing is applied afterwards, not even the profile that was applied before, and the console names the plugin and the reason. What stops a build before it starts also stops an Apply before it changes anything: a plugin that failed to load, or that throws when asked whether it runs for the profile, while it is on in Project Settings, plugin settings Unity cannot load, and a build that did not finish (see [Builds](#builds)). The build window and the main toolbar then disable Apply and Build for the profile, with the reason as their tooltip; the build window also shows it, in red in the details, or, for a build that did not finish, at the top with **Clear**.
 
 Once a profile is applied, the button reads **Re-apply**. Use it after editing the profile's plugin settings: Re-apply undoes the Apply and applies the profile as it is now, so removed overrides disappear too.
 
@@ -100,7 +100,7 @@ If a setting cannot be restored, its baseline is kept for another attempt, and A
 
 When the editor quits in the middle of an Apply, or of a build while a profile is applied, or Build Forge couldn't undo a stopped Apply or apply the profile again after a build, it can't tell what the affected settings hold: they are partly written. The build window says which settings and why, and the toolbar's Apply tooltip lists them as drift with `(Apply did not finish)` or `(build did not finish)`.
 
-**Revert to Baseline** and **Re-apply** of the applied profile restore those settings to their state from before the Apply or the build, whole, without keeping changes made after the Apply as they otherwise do: what the Apply or the build wrote would look like such changes. Anything changed in those settings since is undone too, and the console says which settings it restores. Until then, builds stop, and so do Apply and Activate of another profile, which would undo the same settings without saying so. Dismiss Drift leaves them reported. In batch mode there is no Revert, so open the project in the editor first.
+**Revert to Baseline** and **Re-apply** of the applied profile restore those settings to their state from before the Apply or the build, whole, without keeping changes made after the Apply as they otherwise do: what the Apply or the build wrote would look like such changes. Anything changed in those settings since is undone too, and the console says which settings it restores. Until then, builds stop, and so do Apply and Activate of another profile, which would undo the same settings without saying so. After a build that did not finish, builds, Apply and Re-apply also stop until you clear the record it left; see [Builds](#builds). Dismiss Drift leaves them reported. In batch mode there is no Revert, so open the project in the editor first.
 
 ## Drift
 

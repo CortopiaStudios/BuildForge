@@ -100,7 +100,7 @@ An empty list, an unknown name or a name listed twice in Allowed Variants is an 
 
 ## Variants in builds
 
-For a build, Build Forge puts the variant's define and its rule's defines, development flags and Build Configuration on the Build Profile, and the Build Configuration's IL2CPP and stripping settings in Player Settings, marks the product name, and undoes all of it after every plugin's post-build step, also when the build fails. If a plugin saves assets during the build, the variant's values can reach the Build Profile file on disk for that time; after an editor crash during a variant build, restore the Build Profile asset from version control.
+For a build, Build Forge puts the variant's define and its rule's defines, development flags and Build Configuration on the Build Profile, and the Build Configuration's IL2CPP and stripping settings in Player Settings, marks the product name, and undoes all of it after every plugin's post-build step, also when the build fails. If a plugin saves assets during the build, the variant's values can reach the Build Profile file on disk for that time; after an editor crash during a variant build, restore the Build Profile asset from version control, then clear the record of that build; see [The editor crashed during a build](troubleshooting.md#the-editor-crashed-during-a-build).
 
 Plugins see the variant as `ForgeBuildContext.Variant` (null only in a project without variants) and the resolved development mode as `ForgeBuildContext.DevelopmentBuild`.
 

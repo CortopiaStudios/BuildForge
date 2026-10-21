@@ -26,6 +26,8 @@ While something is applied, the top of the details pane explains the editor stat
 
 So Revert to Baseline is always in the notices, whichever profile is selected.
 
+Above them, whether or not anything is applied, a warning says when a build did not finish, with **Clear**. Clear asks for confirmation, then removes the record of that build, so builds and Apply can start again; use it once the files that build changed are restored. See [The editor crashed during a build](troubleshooting.md#the-editor-crashed-during-a-build).
+
 ### Details
 
 | Item | Shows |
@@ -41,7 +43,7 @@ So Revert to Baseline is always in the notices, whichever profile is selected.
 | Version | The selected variant's [Version](variants.md#version): for the active profile filled in except for `{BuildNumber}`, for another profile as written. A warning when the profile's builds have no build number, which stops a CI build. |
 | Build Configuration | The selected variant's [Build Configuration](variants.md#build-configuration) settings that this profile's builds get, with a warning when development options would go unused. |
 | Editor | What is applied: "no plugin settings to apply", "plugin settings applied", or "plugin settings and Play Mode XR applied" when Apply also set [Play Mode's XR](concepts.md#apply-and-re-apply) (with ", drifted" and the variant), "plugin settings not applied (Apply to make Play Mode match)", or "activate, then apply, to iterate on this profile in the editor". |
-| Warnings | Each issue in full: plugins' warnings, a missing `{Variant}` in the output path, a define collision, a variant define saved elsewhere. An invalid variant selection shows as an error. |
+| Warnings | Each issue in full: plugins' warnings, a missing `{Variant}` in the output path, a define collision, a variant define saved elsewhere. What stops the profile's builds and Apply shows above them as an error: a plugin or plugin settings that can't load, a plugin that can't say whether it runs for the profile, and, for builds only, an extended-length or device output path. An invalid variant selection shows as an error. |
 | Plugins for this build | Every plugin in execution order: numbered with what it will do, or greyed with why it is skipped. See [Bundled plugins](plugins/index.md#in-the-build-window). |
 | CI Command | The commands that build this profile and the selected variant on CI: **One workspace per job**, the build command, with **Copy**, and **Shared workspace**, Activate followed by the build, for a workspace that also builds other platforms' profiles, with **Activate** and **Build** buttons that copy one command each, for a CI step each. A warning shows when the project or Build Profile path holds a character a shell reads inside the double quotes, such as `$` or `%`. See [Command line and CI](ci.md#changing-platform). |
 
@@ -53,7 +55,7 @@ The action bar shows the actions the selected profile has. For a profile that is
 |---|---|
 | Activate | For a profile that is not active: makes it the active Unity Build Profile, after reverting another profile's applied settings. |
 | Apply / Re-apply | Writes the active profile's plugin settings and the variant's defines to the editor. Disabled when the profile has nothing to apply, and, like Build, while a plugin failed to load or can't say whether it runs for the profile, Unity cannot load plugin settings, or a build did not finish. Its **▾** menu holds **Revert to Baseline**, which restores every setting the applied profile changed. |
-| Build | Builds the active profile with the selected variant. |
+| Build | Builds the active profile with the selected variant. Disabled for the same reasons as Apply, apart from having nothing to apply, and while the output path is an extended-length or device path. |
 | Build and Run | Builds like **Build**, then runs the build, like Unity's own Build And Run, and doesn't show it in the file browser. |
 
 The actions run after the current editor frame, never in the middle of drawing, and are refused in Play Mode, while scripts compile or assets import, and during a build.
@@ -92,7 +94,7 @@ The dropdown is shown only while its menu has something to offer.
 
 **Build** and **Build and Run** build the active profile like the build window's buttons of the same names, and show the same icons: **Build and Run** also runs the build afterwards, like Unity's own Build And Run, and doesn't show it in the file browser.
 
-Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, the variant isn't allowed for it, a plugin or plugin settings can't load, a plugin can't say whether it runs for the profile, or the output path is an extended-length or device path.
+Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, the variant isn't allowed for it, a plugin or plugin settings can't load, a plugin can't say whether it runs for the profile, a build did not finish, or the output path is an extended-length or device path.
 
 ### Behavior
 

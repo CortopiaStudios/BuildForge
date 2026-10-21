@@ -94,11 +94,11 @@ The comments in `ApplicationIdSuffixPlugin.cs` explain each part. The points tha
   ```
 
 - **Build steps.** `OnPreBuild` reads the identifier through the static `PlayerSettings` API, which during a build answers for the active Build Profile, records the original in the build context and sets the suffixed one. It records before changing anything, because Build Forge calls `OnPostBuild` even when `OnPreBuild` throws. `OnPostBuild` sets the original back; Build Forge then saves the restored Player Settings.
-- **Failing early.** An invalid suffix, or an identifier that the suffix would make invalid, throws from `OnPreBuild`, which stops the build before the player is built. `Validate` shows the same problems in the build window beforehand, together with variants the plugin lists that are no longer configured.
+- **Failing early.** An invalid suffix, an identifier that the suffix would make invalid, or a variant the plugin lists that is no longer configured throws from `OnPreBuild`, which stops the build before the player is built. `Validate` shows the same problems in the build window beforehand.
 - **The manifest.** `IForgeManifestContributor` adds an `ApplicationIdSuffix` section with the identifier the build used, so the player can show it.
 - **No editor Apply.** The plugin only matters for builds, so it does not implement `IForgeEditorApplicable`: Apply never changes the identifier the editor uses.
 
-If the editor crashes during a build, the suffixed identifier can stay in Player Settings; restore `ProjectSettings/ProjectSettings.asset`, or the Build Profile if it has Player Settings of its own, from version control.
+If the editor crashes during a build, the suffixed identifier can stay in Player Settings; restore `ProjectSettings/ProjectSettings.asset`, or the Build Profile if it has Player Settings of its own, from version control, then clear the record of that build with **Clear** in the build window, since builds stop until then. See the manual's [The editor crashed during a build](../../Documentation~/troubleshooting.md#the-editor-crashed-during-a-build).
 
 ## 6. Adapting it
 

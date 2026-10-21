@@ -137,11 +137,11 @@ The selected variant's settings are in place before the first plugin runs and ar
 
 - The profile being built is always the active Unity Build Profile. Unity's static `PlayerSettings` API reads and writes the settings the build uses: the profile's own Player Settings when it has them, otherwise Project Settings. Build Forge saves the restored Player Settings after all post-build steps.
 - Record what you change before changing it, and restore exactly that in `OnPostBuild`. Build Forge calls a plugin's `OnPostBuild` also when its own `OnPreBuild` threw halfway, so restore only what was changed.
-- An exception in `OnPreBuild` stops the build; the post-build steps of every plugin that started still run. An exception in `OnPostBuild` is logged, the other post-build steps still run, a command-line build fails, and `ForgeBuildRunner.RunBuild` throws `ForgeBuildRestoreException`.
+- An exception in `OnPreBuild` stops the build; the post-build steps of every plugin that started still run. An exception in `OnPostBuild` is logged, the other post-build steps still run, a command-line build fails, and `ForgeBuildRunner.RunBuild` throws `ForgeBuildRestoreException`. The build then counts as not finished: later builds and Apply stop until its record is cleared; see [Troubleshooting](troubleshooting.md#post-build-restorecleanup-steps-failed).
 - Finish all work before returning. The command line exits as soon as the build and cleanup are done, so `async void`, `EditorApplication.delayCall` and coroutines cannot be used for required work or restoration.
 - When you change an asset the build reads from disk, such as XR settings, save it before returning, and save the restored state in `OnPostBuild`.
 - Do not keep Unity object references from before the player build for use afterwards: the build unloads unused assets and can destroy them. Keep GUIDs or paths and load the objects again in `OnPostBuild`.
-- A killed or crashed editor runs no post-build step. Changes that reach disk during the build then stay; that is what version control is for.
+- A killed or crashed editor runs no post-build step. Changes that reach disk during the build then stay; that is what version control is for. Build Forge notices: later builds and Apply stop until the changed files are restored and the record of that build is cleared; see [The editor crashed during a build](troubleshooting.md#the-editor-crashed-during-a-build).
 
 ### ForgeBuildContext
 
@@ -274,7 +274,7 @@ Unity build callbacks, such as `IPostGenerateGradleAndroidProject` for changes t
 | Plugin contract | `IForgePlugin`, `IForgeManifestContributor`, `IForgeEditorApplicable`, `IForgeGradleProcessor`, `ForgePluginAttribute`, `ForgeBuildContext` |
 | Configuration | `ForgeProfile`, `ForgeSettings` |
 | Utilities | `BuildProfileUtility` (a Build Profile's build target, whether it is a Dedicated Server; both throw when Unity stores no such value in the profile), `BuildEnvironment` (`IsCI`), `GitHelper` (runs git in the project) |
-| Builds | `ForgeBuildRunner` (`RunBuild`, `GetCICommand`, `IsForgeBuildInProgress`), `BuildForge.CommandLine` (the `-executeMethod` entry point) |
+| Builds | `ForgeBuildRunner` (`RunBuild`, `GetCICommand`, `IsForgeBuildInProgress`), `ForgeBuildRestoreException` (what `RunBuild` throws when the player was built but a restore or cleanup step after it failed), `BuildForge.CommandLine` (the `-executeMethod` entry point) |
 | Runtime | `BuildManifest`, `ManifestSection`, `ManifestEntry`, `BuildManifestLoader` |
 
 Everything else in the package is internal and may change between releases.

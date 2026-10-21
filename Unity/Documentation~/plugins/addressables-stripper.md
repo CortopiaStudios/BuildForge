@@ -19,7 +19,7 @@ Leaves Addressables groups and labelled entries out of a build, for example spoi
 
 After the build, the groups' flags are restored and the entries moved back; the temporary group is removed. An entry that cannot be moved back is left in the temporary group, with a warning in the log.
 
-These changes are saved during the build, by Addressables and by the build's own save. After an editor crash or a killed build, the excluded groups stay excluded and the moved entries stay in the temporary group, and every later build, of any profile, leaves them out. Restore `Assets/AddressableAssetsData/` from version control. Don't delete the temporary group: that deletes the entries in it.
+These changes are saved during the build, by Addressables and by the build's own save. After an editor crash or a killed build, the excluded groups stay excluded and the moved entries stay in the temporary group, where every later build, of any profile, would leave them out, so builds stop until the record of that build is cleared. Check `git status` and `git diff`, restore the files under `Assets/AddressableAssetsData/` that the build changed and keep your own edits, then clear the record with **Clear** in the build window; see [The editor crashed during a build](../troubleshooting.md#the-editor-crashed-during-a-build). Don't delete the temporary group: that deletes the entries in it.
 
 An excluded asset that a shipped asset references is still packed as a dependency; Addressables packs dependencies whatever group they are in.
 
