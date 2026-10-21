@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using BuildForge.Editor.Core;
 using UnityEditor;
 using UnityEditor.XR.OpenXR.Features;
@@ -335,7 +336,8 @@ namespace BuildForge.Editor.OpenXR
         /// IForgeEditorApplicable.MergeEditorState). Each setting, and each
         /// feature's enabled state and properties, takes the baseline's value
         /// while the current one is still the one the Apply left, and keeps the
-        /// current one otherwise. A feature's properties count as one value. What
+        /// current one otherwise. A feature's properties count as one value, compared
+        /// without the on/off state its JSON also holds, which counts on its own. What
         /// the current snapshot doesn't hold, such as interaction profiles left out
         /// of it, takes the baseline's value. Null when a snapshot can't be read.
         /// </summary>
@@ -376,7 +378,7 @@ namespace BuildForge.Editor.OpenXR
                 {
                     featureTypeName = feature.featureTypeName,
                     enabled = feature.enabled == applied.enabled ? before.enabled : feature.enabled,
-                    json = feature.json == applied.json ? before.json : feature.json,
+                    json = WithoutEnabled(feature.json) == WithoutEnabled(applied.json) ? before.json : feature.json,
                 });
             }
             foreach (var feature in baseline.features)
@@ -385,6 +387,16 @@ namespace BuildForge.Editor.OpenXR
 
             return merged.ToJson();
         }
+
+        static readonly Regex EnabledValue = new Regex("\"" + EnabledField + @"""\s*:\s*(true|false)", RegexOptions.CultureInvariant);
+
+        /// <summary>
+        /// A feature's JSON without its on/off value, which the snapshot's enabled field
+        /// holds and Merge compares on its own. Only the first: Unity writes a base
+        /// class's fields first, so that is OpenXRFeature's own.
+        /// </summary>
+        internal static string WithoutEnabled(string json)
+            => json == null ? null : EnabledValue.Replace(json, "\"" + EnabledField + "\":_", 1);
 
         static Dictionary<string, T> ByKey<T>(List<T> items, Func<T, string> key)
         {

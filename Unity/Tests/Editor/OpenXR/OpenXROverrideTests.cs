@@ -728,6 +728,48 @@ namespace BuildForge.Tests.OpenXR
             Assert.IsTrue(merged.features.Single(f => f.featureTypeName == "Touch").enabled, "The feature the pull turned on stays on.");
         }
 
+        // A feature's JSON holds its on/off state too. Turning it off after the Apply is a
+        // change to that state alone: the properties the Apply wrote are undone with it.
+        [Test] public void Merge_FeatureTurnedOffAfterTheApply_GetsTheBaselinesPropertiesBack()
+        {
+            var baseline = Snapshot("0", "0", Feature("Hands", false, "{\"m_enabled\":false,\"p\":\"Y\"}")).ToJson();
+            var expected = Snapshot("0", "0", Feature("Hands", true, "{\"m_enabled\":true,\"p\":\"X\"}")).ToJson();
+            var current = Snapshot("0", "0", Feature("Hands", false, "{\"m_enabled\":false,\"p\":\"X\"}")).ToJson();
+
+            var hands = OpenXREditorStateSnapshot.FromJson(OpenXRSettingsState.Merge(baseline, expected, current)).features.Single();
+
+            Assert.IsFalse(hands.enabled);
+            Assert.AreEqual("{\"m_enabled\":false,\"p\":\"Y\"}", hands.json);
+        }
+
+        // Unity writes the on/off field as true or false, which Merge leaves out of the comparison.
+        [Test] public void WithoutEnabled_LeavesOutTheOnOffStateOfARealFeature()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var feature = standalone.GetFeature<KHRSimpleControllerProfile>();
+            var original = new SerializedObject(feature).FindProperty(OpenXRSettingsState.EnabledField).boolValue;
+            string JsonWith(bool enabled)
+            {
+                var so = new SerializedObject(feature);
+                so.FindProperty(OpenXRSettingsState.EnabledField).boolValue = enabled;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                return EditorJsonUtility.ToJson(feature);
+            }
+            try
+            {
+                var on = JsonWith(true);
+                var off = JsonWith(false);
+
+                Assert.AreNotEqual(on, off);
+                Assert.AreEqual(OpenXRSettingsState.WithoutEnabled(on), OpenXRSettingsState.WithoutEnabled(off));
+            }
+            finally
+            {
+                JsonWith(original);
+            }
+        }
+
         // A snapshot leaves out interaction profiles while Build Forge doesn't manage
         // them, and a feature can come or go with a package.
         [Test] public void Merge_TakesTheBaselineForWhatTheCurrentSnapshotLeavesOut()
