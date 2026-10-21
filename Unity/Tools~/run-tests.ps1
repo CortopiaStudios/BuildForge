@@ -11,7 +11,7 @@
 #   Rebuild plugins, and their tests, compile only with their packages installed, so
 #   the plain host leaves them out. BUILDFORGE_PACKAGES=oldest adds OpenXR,
 #   XR Plug-in Management and Addressables at the oldest versions the plugins
-#   support, or the oldest the editor allows where it requires newer ones,
+#   support, or the minimum versions the editor names where those are newer,
 #   BUILDFORGE_PACKAGES=newest at the newest versions they were tested with,
 #   each in a host of its own; the run prints the versions Unity resolved.
 #
@@ -82,9 +82,11 @@ $Packages = [ordered]@{}
 if ($PackageSet) {
     foreach ($Package in $PackageSets[$PackageSet].GetEnumerator()) { $Packages[$Package.Key] = $Package.Value }
 }
-# A newer editor doesn't compile Unity's oldest packages (6000.6.6f1 requires Addressables 2.11.2,
-# OpenXR 1.18.0 and XR Plug-in Management 4.7.0), so the oldest set starts each package at the
-# editor's own minimum version where that is newer: the oldest a project on that editor can have.
+# A newer editor may not compile the oldest versions the plugins support (Addressables 2.7.4 and
+# OpenXR 1.16.0 fail on 6000.6.6f1), so the oldest set starts each package at the minimum version
+# the editor's Package Manager manifest names for it, where that is newer: 6000.6.6f1 names
+# Addressables 2.11.2, OpenXR 1.18.0 and XR Plug-in Management 4.7.0. A project can still pin an
+# older version, which may or may not compile there.
 $Raised = @()
 if ($PackageSet -eq 'oldest') {
     $Editor = $null
@@ -102,14 +104,14 @@ if ($PackageSet -eq 'oldest') {
         ) | Where-Object { Test-Path $_ } | Select-Object -First 1
     }
     if (-not $EditorManifest) {
-        Write-Host "The oldest set needs editor $EditorVersion installed: it reads the package versions that editor requires."
+        Write-Host "The oldest set needs editor $EditorVersion installed: it reads the minimum package versions that editor names."
         exit 2
     }
     $Required = (Get-Content $EditorManifest -Raw | ConvertFrom-Json).packages
     foreach ($Name in @($Packages.Keys)) {
         $Minimum = $Required.$Name.minimumVersion
         if ($Minimum -and (Compare-PackageVersion $Minimum $Packages[$Name]) -gt 0) {
-            $Raised += "  $Name ${Minimum}: the oldest $EditorVersion allows (the plugins support $($Packages[$Name]))"
+            $Raised += "  $Name ${Minimum}: the minimum $EditorVersion names (the plugins support $($Packages[$Name]))"
             $Packages[$Name] = $Minimum
         }
     }

@@ -12,7 +12,7 @@
 #   Rebuild plugins, and their tests, compile only with their packages installed, so
 #   the plain host leaves them out. BUILDFORGE_PACKAGES=oldest adds OpenXR,
 #   XR Plug-in Management and Addressables at the oldest versions the plugins
-#   support, or the oldest the editor allows where it requires newer ones,
+#   support, or the minimum versions the editor names where those are newer,
 #   BUILDFORGE_PACKAGES=newest at the newest versions they were tested with,
 #   each in a host of its own; the run prints the versions Unity resolved.
 #
@@ -65,9 +65,11 @@ version_newer() {
   [ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | tail -n 1)" = "$a" ]
 }
 
-# A newer editor doesn't compile Unity's oldest packages (6000.6.6f1 requires Addressables 2.11.2,
-# OpenXR 1.18.0 and XR Plug-in Management 4.7.0), so the oldest set starts each package at the
-# editor's own minimum version where that is newer: the oldest a project on that editor can have.
+# A newer editor may not compile the oldest versions the plugins support (Addressables 2.7.4 and
+# OpenXR 1.16.0 fail on 6000.6.6f1), so the oldest set starts each package at the minimum version
+# the editor's Package Manager manifest names for it, where that is newer: 6000.6.6f1 names
+# Addressables 2.11.2, OpenXR 1.18.0 and XR Plug-in Management 4.7.0. A project can still pin an
+# older version, which may or may not compile there.
 RAISED=()
 if [ "$PACKAGE_SET" = oldest ]; then
   # The "location" that follows the editor's "version" in the CLI's JSON, its \\ made /.
@@ -83,7 +85,7 @@ if [ "$PACKAGE_SET" = oldest ]; then
     done
   fi
   if [ -z "$editor_manifest" ]; then
-    echo "The oldest set needs editor $EDITOR_VERSION installed: it reads the package versions that editor requires."
+    echo "The oldest set needs editor $EDITOR_VERSION installed: it reads the minimum package versions that editor names."
     exit 2
   fi
   for i in "${!PACKAGES[@]}"; do
@@ -91,7 +93,7 @@ if [ "$PACKAGE_SET" = oldest ]; then
     # The package's "minimumVersion", read up to the end of its own block.
     minimum=$(awk -v key="\"$name\": {" 'found && /}/ { exit } found && /"minimumVersion"/ { gsub(/[",]/, "", $2); print $2; exit } index($0, key) { found = 1 }' "$editor_manifest")
     if [ -n "$minimum" ] && version_newer "$minimum" "$floor"; then
-      RAISED+=("  $name $minimum: the oldest $EDITOR_VERSION allows (the plugins support $floor)")
+      RAISED+=("  $name $minimum: the minimum $EDITOR_VERSION names (the plugins support $floor)")
       PACKAGES[$i]="$name=$minimum"
     fi
   done
