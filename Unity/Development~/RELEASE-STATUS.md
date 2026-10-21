@@ -11,13 +11,7 @@ here — see ARCHITECTURE.md (decisions, pitfalls), Development~/LEARNINGS.md
    guide is `Documentation~/integration-guide.md`, the plugin authoring guide
    `Documentation~/custom-plugins.md` (public API only; InternalsVisibleTo is
    not available to third parties), the CI arguments `Documentation~/ci.md`.
-2. **CI** (agreed, after 1.0 structural work settles): GitHub Actions
-   workflow reusing the `Tools~` scaffold recipe. License handled ONCE as a
-   repo secret — either a `.ulf` (manual activation) or a Unity Cloud
-   service-account key (`unity auth login --client-id/--client-secret`).
-   Per-session sandbox activation was evaluated and rejected: ephemeral
-   machines make it a recurring manual dance.
-3. **Never checked yet** (as last noted, 2026-10-06):
+2. **Never checked yet** (as last noted, 2026-10-06):
    - the OpenXR feature-group build error with a group ticked (needs Unity
      OpenXR Meta);
    - by eye: the Addressables Stripper's Move to…/Remove row for exclusions
@@ -60,3 +54,14 @@ A Rename Variant action in Project Settings > Build Forge could preview the
 change, then update the Variant Rules, every profile's Allowed Variants and
 the Addressables Stripper's exclusions; third-party plugin configs could
 join later through an optional interface.
+
+CI (moved here from the pre-1.0 list on 2026-10-21; the release gate stays a
+full test run on a developer machine): a GitHub Actions workflow on a Windows
+runner that calls `Tools~/run-tests.ps1` for the plain run and both
+`BUILDFORGE_PACKAGES` sets, on the floor and the newest editor. The license is
+handled ONCE as a repo secret, either a `.ulf` (manual activation) or a Unity
+Cloud service-account key (`unity auth login --client-id/--client-secret`).
+Per-session sandbox activation was evaluated and rejected: ephemeral machines
+make it a recurring manual dance. Downloading package versions an editor
+hasn't cached needs a signed-in Unity account on 6000.6, so the runner needs
+the account too, or a package cache.
