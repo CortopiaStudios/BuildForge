@@ -90,9 +90,10 @@ namespace BuildForge.Editor.UI
             }
         }
 
-        static string StateKey()
+        internal static string StateKey()
         {
             var active = BuildProfile.GetActiveBuildProfile();
+            var forgeProfile = active != null ? ForgeProfileEmbedding.Get(active) : null;
             var applied = ForgeEditorState.AppliedBuildProfile;
             ForgeEditorState.CanMutate(out var reason);
             return string.Join("|",
@@ -105,9 +106,12 @@ namespace BuildForge.Editor.UI
                 string.Join(",", ForgeSettings.instance.BuildVariants),
                 // The Build buttons' tooltip names the window's variant.
                 ForgeBuildWindow.SessionVariant ?? "",
-                // Whether the Build buttons are enabled: the variant rules and the active
-                // profile's Allowed Variants are edited without a projectChanged.
-                active != null ? BuildVariants.ProfileError(ForgeProfileEmbedding.Get(active), ForgeBuildWindow.SessionVariant) ?? "" : "",
+                // Whether the Build buttons are enabled: the variant rules, the active profile's
+                // Allowed Variants and the plugin switches in Project Settings are edited without
+                // a projectChanged, and the unfinished-build marker is outside the AssetDatabase.
+                active != null ? BuildVariants.ProfileError(forgeProfile, ForgeBuildWindow.SessionVariant) ?? "" : "",
+                forgeProfile != null ? ForgePluginRegistry.BlockingError(forgeProfile) ?? "" : "",
+                InterruptedBuildMarker.Error() ?? "",
                 // The Build buttons' icons come in a version per editor theme.
                 EditorGUIUtility.isProSkin ? "dark" : "light",
                 reason ?? "");

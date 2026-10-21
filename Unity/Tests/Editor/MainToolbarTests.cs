@@ -237,5 +237,32 @@ namespace BuildForge.Tests.Editor
             Assert.IsNotNull(ForgeBuildWindow.BuildIcon(run: true));
             Assert.AreSame(EditorGUIUtility.IconContent("PlayButton").image, ForgeBuildWindow.BuildIcon(run: true));
         }
+
+        // The toolbar redraws when its state key changes. The unfinished-build marker, which
+        // disables its Build buttons, is outside the AssetDatabase, so the key follows the file.
+        [Test]
+        public void TheStateKey_FollowsTheUnfinishedBuildMarker()
+        {
+            var path = BuildForge.Editor.Core.InterruptedBuildMarker.FilePath;
+            var previous = System.IO.File.Exists(path) ? System.IO.File.ReadAllText(path) : null;
+            try
+            {
+                if (System.IO.File.Exists(path))
+                    System.IO.File.Delete(path);
+                var without = ForgeMainToolbar.StateKey();
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(path));
+                System.IO.File.WriteAllText(path, "{}");
+                Assert.AreNotEqual(without, ForgeMainToolbar.StateKey());
+                System.IO.File.Delete(path);
+                Assert.AreEqual(without, ForgeMainToolbar.StateKey());
+            }
+            finally
+            {
+                if (previous != null)
+                    System.IO.File.WriteAllText(path, previous);
+                else if (System.IO.File.Exists(path))
+                    System.IO.File.Delete(path);
+            }
+        }
     }
 }
