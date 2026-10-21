@@ -231,7 +231,7 @@ var forgeProfile = buildProfile != null ? buildProfile.GetComponent<ForgeProfile
 var report = ForgeBuildRunner.RunBuild(forgeProfile, "Internal"); // returns Unity's BuildReport; RunBuild(forgeProfile) without variants
 ```
 
-`RunBuild` throws `InvalidOperationException` if the profile's Unity Build Profile is not the active Build Profile — activate it first (`BuildProfile.SetActiveBuildProfile`), for the same reason the CLI fails fast (see CI section).
+`RunBuild` throws `InvalidOperationException` if the profile's Unity Build Profile is not the active Build Profile — activate it first (`BuildProfile.SetActiveBuildProfile`), for the same reason the CLI fails fast (see CI section). If the player was built but a restore or cleanup step after it failed, it throws `ForgeBuildRestoreException` once every other step has run: its `Report` is the player's report and `Failures` lists the failed steps.
 
 Build Forge runs one profile at a time. Multiple-platform or batch builds belong in an external orchestrator that drives separate Unity instances — see the Roadmap.
 
@@ -402,6 +402,7 @@ Editor/
     ForgeBuildRunner.cs                    # Build orchestrator with try/finally
     ForgeBuildInterceptor.cs               # Blocks non-Build Forge builds
     ForgeBuildContext.cs                   # Context passed to plugins (incl. IsCI)
+    ForgeBuildRestoreException.cs          # What RunBuild throws when a step after a built player failed
     BuildEnvironment.cs                    # CI detection (-forgeCI / FORGE_CI / batch mode)
     GitHelper.cs                           # Runs git for plugins (Git Metadata, Build Number) and the core
     BuildManifestWriter.cs                 # Writes/cleans up manifest
@@ -533,6 +534,7 @@ Tests/
     NormalizeValueTests.cs                 # Diff value normalization
     PlayerSettingsDiffComputerTests.cs     # Diff computation tests
     PlayerSettingsMatrixTests.cs           # Matrix rows, columns and stale hints
+    RunBuildRestoreFailureTests.cs         # RunBuild throws when a step after a built player failed
     StopTrackingTests.cs                   # Stop Tracking a setting group whose plugin is gone
     VariantBuildConfigurationTests.cs      # A variant rule's Build Configuration: labels, checks, restore
     VariantDefineLedgerTests.cs            # Undoing exactly what Apply changed in a profile's defines

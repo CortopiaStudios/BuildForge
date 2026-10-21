@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `ForgeBuildRunner.RunBuild` throws the new `ForgeBuildRestoreException` when the player was built but a restore or cleanup step after the build failed, once every other step has run. It used to return the player's report, which says Succeeded, so a script that judged the build by it took a possibly modified project for a clean build. The exception's `Report` is that report and its `Failures` lists the failed steps. A player build that fails is still reported by the returned report, and the build window, the toolbar and `BuildForge.CommandLine.Build` are unchanged
+
 ## [0.9.5] - 2026-10-21
 
 ### Changed

@@ -16,6 +16,7 @@ public static class VariantFailureProof
     public static bool ExpectedDevelopment;
     public static bool CleanedUp;
     public static bool InjectPlayerFailure;
+    public static bool InjectRestoreFailure;
     public static UnityEngine.Object TemporaryPreloadedAsset;
     static readonly Type EditorState = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.ForgeEditorState");
     static readonly Type Persistence = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.PlayerSettingsPersistence");
@@ -29,7 +30,39 @@ public static class VariantFailureProof
         try { CheckFailure(forge, "Default"); }
         finally { EditorState.GetMethod("RevertCore", Flags).Invoke(null, null); }
         CheckPlayerFailure(forge);
-        File.WriteAllText("failure-proof.json", "{\"developmentFailureRestored\":true,\"releaseFailureRestoredAppliedDevelopment\":true,\"cleanupRan\":true,\"playerFailurePreloadedAssetsRestored\":true}");
+        CheckRestoreFailure(forge);
+        File.WriteAllText("failure-proof.json", "{\"developmentFailureRestored\":true,\"releaseFailureRestoredAppliedDevelopment\":true,\"cleanupRan\":true,\"playerFailurePreloadedAssetsRestored\":true,\"builtPlayerRestoreFailureThrown\":true}");
+    }
+
+    // A player that was built while a step after the build failed: the public RunBuild throws,
+    // with the player's report, once the other steps have put the project back.
+    static void CheckRestoreFailure(ForgeProfile forge)
+    {
+        AssetDatabase.SaveAssets();
+        var path = AssetDatabase.GetAssetPath(forge.BuildProfile);
+        var before = File.ReadAllBytes(path);
+        var product = PlayerSettings.productName;
+        var project = File.ReadAllBytes("ProjectSettings/ProjectSettings.asset");
+        InjectRestoreFailure = true;
+        try
+        {
+            try
+            {
+                ForgeBuildRunner.RunBuild(forge, "Development");
+                throw new Exception("Expected restore failure was not reported");
+            }
+            catch (ForgeBuildRestoreException e)
+            {
+                if (e.Report == null || e.Report.summary.result != BuildResult.Succeeded)
+                    throw new Exception("The restore failure does not carry the built player's report");
+                if (e.Failures.Count != 1 || !e.Failures[0].Contains("Injected restore failure"))
+                    throw new Exception("The restore failure does not name the failed step");
+            }
+            if (!before.SequenceEqual(File.ReadAllBytes(path)) || product != PlayerSettings.productName
+                || !project.SequenceEqual(File.ReadAllBytes("ProjectSettings/ProjectSettings.asset")))
+                throw new Exception("The other steps did not put the project back after the failed restore");
+        }
+        finally { InjectRestoreFailure = false; }
     }
 
     static void CheckPlayerFailure(ForgeProfile forge)
@@ -123,4 +156,15 @@ public sealed class InjectVariantFailure : IForgePlugin
         throw new InvalidOperationException("Injected variant failure");
     }
     public void OnPostBuild(ForgeBuildContext context) => VariantFailureProof.CleanedUp = true;
+}
+
+[ForgePlugin]
+public sealed class InjectRestoreFailure : IForgePlugin
+{
+    public string DisplayName => "Restore failure proof";
+    public int Order => 760;
+    public bool IsApplicable(BuildProfile profile) => true;
+    public bool? IsEnabled(ForgeProfile profile) => VariantFailureProof.InjectRestoreFailure;
+    public void OnPreBuild(ForgeBuildContext context) { }
+    public void OnPostBuild(ForgeBuildContext context) => throw new InvalidOperationException("Injected restore failure");
 }

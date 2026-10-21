@@ -41,25 +41,48 @@ namespace BuildForge.Editor.Core
         /// Executes a build of the Unity Build Profile that stores the given Build Forge settings.
         /// Uses BuildPlayerWithProfileOptions so the Build Profile handles
         /// scenes, scripting defines, player settings, and build options natively.
-        /// A build without a variant, for a project without variants.
+        /// A build without a variant, for a project without variants. Throws
+        /// <see cref="ForgeBuildRestoreException"/> like <see cref="RunBuild(ForgeProfile, string)"/>.
         /// </summary>
         public static BuildReport RunBuild(ForgeProfile forgeProfile)
-            => RunBuild(forgeProfile, null, out _);
+            => RunBuild(forgeProfile, null);
 
         /// <summary>
         /// Builds the profile with the selected variant's define and optional
         /// development, alias, product-name and plugin rules. Once the project has
         /// variants the build names one; null or empty is for a project without
         /// them. Invalid rules or unsupported selections throw before settings are
-        /// changed.
+        /// changed. When the player was built but a restore or cleanup step after
+        /// it failed, this throws <see cref="ForgeBuildRestoreException"/> once
+        /// every other step has run, rather than return a report that says Succeeded.
         /// </summary>
         public static BuildReport RunBuild(ForgeProfile forgeProfile, string variant)
-            => RunBuild(forgeProfile, variant, out _);
+        {
+            var report = RunBuild(forgeProfile, variant, out var context);
+            if (report != null)
+            {
+                var failure = RestoreFailure(report, report.summary.result, context.PostBuildFailures);
+                if (failure != null)
+                    throw failure;
+            }
+            return report;
+        }
+
+        /// <summary>
+        /// The exception for a player that was built (<paramref name="result"/>)
+        /// while steps after the build failed (<paramref name="failures"/>), or null.
+        /// A failed player's report already says so.
+        /// </summary>
+        internal static ForgeBuildRestoreException RestoreFailure(BuildReport report, BuildResult result,
+            IReadOnlyList<string> failures)
+            => result == BuildResult.Succeeded && failures.Count > 0
+                ? new ForgeBuildRestoreException(report, failures.ToArray())
+                : null;
 
         /// <summary>
         /// Build overload that also exposes the context, so callers (the CLI
-        /// entry point) can inspect post-build restore/cleanup failures that
-        /// would otherwise be swallowed after a successful build.
+        /// entry point, the build window and the toolbar) can inspect post-build
+        /// restore/cleanup failures, which it only logs after a successful build.
         /// <paramref name="runPlayer"/> also runs the built player, like Unity's
         /// Build And Run (Build and Run in the build window and the main toolbar).
         /// </summary>

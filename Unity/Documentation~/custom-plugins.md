@@ -136,7 +136,7 @@ The selected variant's settings are in place before the first plugin runs and ar
 
 - The profile being built is always the active Unity Build Profile. Unity's static `PlayerSettings` API reads and writes the settings the build uses: the profile's own Player Settings when it has them, otherwise Project Settings. Build Forge saves the restored Player Settings after all post-build steps.
 - Record what you change before changing it, and restore exactly that in `OnPostBuild`. Build Forge calls a plugin's `OnPostBuild` also when its own `OnPreBuild` threw halfway, so restore only what was changed.
-- An exception in `OnPreBuild` stops the build; the post-build steps of every plugin that started still run. An exception in `OnPostBuild` is logged, the other post-build steps still run, and a command-line build fails.
+- An exception in `OnPreBuild` stops the build; the post-build steps of every plugin that started still run. An exception in `OnPostBuild` is logged, the other post-build steps still run, a command-line build fails, and `ForgeBuildRunner.RunBuild` throws `ForgeBuildRestoreException`.
 - Finish all work before returning. The command line exits as soon as the build and cleanup are done, so `async void`, `EditorApplication.delayCall` and coroutines cannot be used for required work or restoration.
 - When you change an asset the build reads from disk, such as XR settings, save it before returning, and save the restored state in `OnPostBuild`.
 - Do not keep Unity object references from before the player build for use afterwards: the build unloads unused assets and can destroy them. Keep GUIDs or paths and load the objects again in `OnPostBuild`.

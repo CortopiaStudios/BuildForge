@@ -69,7 +69,7 @@ The Console's **Clear on Build** option clears the Console when the player build
 
 ### "post-build restore/cleanup step(s) failed"
 
-Restoring a setting or cleaning up failed. The line says whether the player was built, and the errors above it name the step. The project may have been left modified: check the changed files before committing. A command-line build fails in this case. If a profile was applied and its settings could not be put back or applied again after the build, the build window names them, and builds stop until Revert to Baseline or Re-apply; see [When an Apply or a build did not finish](concepts.md#when-an-apply-or-a-build-did-not-finish).
+Restoring a setting or cleaning up failed. The line says whether the player was built, and the errors above it name the step. The project may have been left modified: check the changed files before committing. A command-line build fails in this case, and `RunBuild` from your own scripts throws `ForgeBuildRestoreException`. If a profile was applied and its settings could not be put back or applied again after the build, the build window names them, and builds stop until Revert to Baseline or Re-apply; see [When an Apply or a build did not finish](concepts.md#when-an-apply-or-a-build-did-not-finish).
 
 ### The editor crashed during a build
 

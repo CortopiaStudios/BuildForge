@@ -23,6 +23,7 @@ namespace BuildForge.Tests.Editor
             "BuildForge.Editor.Core.BuildEnvironment",
             "BuildForge.Editor.Core.BuildProfileUtility",
             "BuildForge.Editor.Core.ForgeBuildContext",
+            "BuildForge.Editor.Core.ForgeBuildRestoreException",
             "BuildForge.Editor.Core.ForgeBuildRunner",
             "BuildForge.Editor.Core.ForgePluginAttribute",
             "BuildForge.Editor.Core.GitHelper",
