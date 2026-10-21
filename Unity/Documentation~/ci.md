@@ -58,7 +58,7 @@ A step has also stalled on an agent that runs one build at a time, with no secon
 |---|---|---|
 | `-forgeVariant` | A variant name | Builds that variant. Required once the project has variants: without it the build fails and lists them rather than picking one. Names must match a configured variant exactly, including case. |
 | `-forgeVersion` | For example `1.2.3` | Sets `PlayerSettings.bundleVersion` for this build. |
-| `-forgeVersionCode` | An integer | Sets the Android version code for this build. |
+| `-forgeVersionCode` | An integer | Sets the Android version code for this build. Android needs at least 1, and Google Play accepts at most 2,100,000,000. |
 | `-forgeCI` | `true` or `false` (also `1`/`0`, `yes`/`no`) | Overrides [CI detection](#ci-detection). Without a value it means true. |
 | `-forgeBuildProfile` | A Unity Build Profile's asset path | Only for `BuildForge.CommandLine.Activate`; see [Changing platform](#changing-platform). |
 

@@ -27,6 +27,8 @@ The plugin is an explicit opt-in, so a build without the configured number fails
 - the variable is missing, empty, or not a whole number of 0 or more. The build window warns about this beforehand;
 - the base plus the offset is outside 0 to 2147483647. The preview shows this too.
 
+Android needs a version code of at least 1, and Google Play accepts at most 2,100,000,000; a build with another value succeeds, and the store refuses it at upload.
+
 ## Notes
 
 - Store version codes only grow. When the store already has a higher version code than your counter gives, set **Offset** so new builds start above it.
