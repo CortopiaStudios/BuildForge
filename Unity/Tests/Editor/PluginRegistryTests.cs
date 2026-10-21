@@ -1,5 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using BuildForge.Editor.Core;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace BuildForge.Tests.Editor
 {
@@ -83,15 +89,53 @@ namespace BuildForge.Tests.Editor
             public void OnPostBuild(ForgeBuildContext context) { }
         }
 
+        // Without [ForgePlugin], like Zeta and Alpha, so discovery outside these tests doesn't find it.
+        sealed class Omega : IForgePlugin
+        {
+            public string DisplayName => "Omega";
+            public int Order => 100;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context) { }
+        }
+
+        sealed class ThrowingOrder : IForgePlugin
+        {
+            public string DisplayName => "Throwing Order";
+            public int Order => throw new InvalidOperationException("no order");
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context) { }
+        }
+
         // Two plugins with the same Order run in the order of their type names, whatever
         // order discovery found them in.
         [Test]
         public void PluginsWithTheSameOrder_RunByTypeName()
         {
-            var zeta = new Zeta();
-            var alpha = new Alpha();
-            CollectionAssert.AreEqual(new IForgePlugin[] { alpha, zeta }, ForgePluginRegistry.InPluginOrder(new IForgePlugin[] { zeta, alpha }));
-            CollectionAssert.AreEqual(new IForgePlugin[] { alpha, zeta }, ForgePluginRegistry.InPluginOrder(new IForgePlugin[] { alpha, zeta }));
+            var failures = new List<(Type, string)>();
+            CollectionAssert.AreEqual(new[] { typeof(Alpha), typeof(Zeta) },
+                ForgePluginRegistry.Discover(new[] { typeof(Zeta), typeof(Alpha) }, failures).Select(p => p.GetType()));
+            CollectionAssert.AreEqual(new[] { typeof(Alpha), typeof(Zeta) },
+                ForgePluginRegistry.Discover(new[] { typeof(Alpha), typeof(Zeta) }, failures).Select(p => p.GetType()));
+            Assert.IsEmpty(failures);
+        }
+
+        // A plugin whose Order throws has no place in the order: it fails to load, which stops
+        // builds and Apply while it is on, and the others are still sorted. It used to leave the
+        // list unsorted, and builds ran the plugins in discovery order without a word.
+        [Test]
+        public void APluginWhoseOrderThrows_FailsToLoad_AndTheOthersAreSorted()
+        {
+            var failures = new List<(Type Type, string Error)>();
+            LogAssert.Expect(LogType.Error, new Regex(@"Failed to load plugin .*ThrowingOrder: Order threw: no order"));
+
+            var plugins = ForgePluginRegistry.Discover(new[] { typeof(Zeta), typeof(ThrowingOrder), typeof(Omega), typeof(Alpha) }, failures);
+
+            CollectionAssert.AreEqual(new[] { typeof(Omega), typeof(Alpha), typeof(Zeta) }, plugins.Select(p => p.GetType()));
+            Assert.AreEqual(typeof(ThrowingOrder), failures.Single().Type);
+            Assert.AreEqual("Order threw: no order", failures.Single().Error);
+            StringAssert.Contains("Order threw: no order", ForgePluginRegistry.LoadError(failures, _ => false));
         }
     }
 }

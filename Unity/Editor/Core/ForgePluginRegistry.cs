@@ -15,7 +15,7 @@ namespace BuildForge.Editor.Core
     {
         static List<IForgePlugin> cachedPlugins;
 
-        /// <summary>The plugins whose creation failed in the last discovery, with the error; tests add to it.</summary>
+        /// <summary>The plugins whose creation or Order failed in the last discovery, with the error; tests add to it.</summary>
         internal static readonly List<(Type Type, string Error)> LoadFailures = new();
 
         /// <summary>
@@ -26,12 +26,20 @@ namespace BuildForge.Editor.Core
             if (cachedPlugins != null)
                 return cachedPlugins;
 
-            cachedPlugins = new List<IForgePlugin>();
             LoadFailures.Clear();
+            cachedPlugins = Discover(TypeCache.GetTypesWithAttribute<ForgePluginAttribute>(), LoadFailures);
+            return cachedPlugins;
+        }
 
-            var pluginTypes = TypeCache.GetTypesWithAttribute<ForgePluginAttribute>();
-
-            foreach (var type in pluginTypes)
+        /// <summary>
+        /// Creates a plugin of each type, in plugin order: by Order, and plugins of the same
+        /// Order by type name, so theirs doesn't depend on discovery. A type whose constructor
+        /// or Order throws is left out and added to <paramref name="failures"/>.
+        /// </summary>
+        internal static List<IForgePlugin> Discover(IEnumerable<Type> types, List<(Type Type, string Error)> failures)
+        {
+            var created = new List<(IForgePlugin Plugin, int Order)>();
+            foreach (var type in types)
             {
                 if (!typeof(IForgePlugin).IsAssignableFrom(type))
                 {
@@ -47,27 +55,32 @@ namespace BuildForge.Editor.Core
                     continue;
                 }
 
+                IForgePlugin plugin = null;
                 try
                 {
-                    var plugin = (IForgePlugin)Activator.CreateInstance(type);
-                    cachedPlugins.Add(plugin);
+                    plugin = (IForgePlugin)Activator.CreateInstance(type);
+                    // Read once, here: a plugin without a place in the order fails to load,
+                    // so builds and Apply stop while it is on instead of running the plugins
+                    // in discovery order.
+                    created.Add((plugin, plugin.Order));
                 }
                 catch (Exception e)
                 {
                     var error = (e as System.Reflection.TargetInvocationException)?.InnerException?.Message ?? e.Message;
-                    LoadFailures.Add((type, error));
+                    if (plugin != null)
+                        error = $"Order threw: {error}";
+                    failures.Add((type, error));
                     Debug.LogError(
-                        $"[Build Forge] Failed to instantiate plugin {type.FullName}: {error}");
+                        $"[Build Forge] Failed to {(plugin == null ? "instantiate" : "load")} plugin {type.FullName}: {error}");
                 }
             }
 
-            cachedPlugins = InPluginOrder(cachedPlugins);
-            return cachedPlugins;
+            return created
+                .OrderBy(p => p.Order)
+                .ThenBy(p => p.Plugin.GetType().FullName, StringComparer.Ordinal)
+                .Select(p => p.Plugin)
+                .ToList();
         }
-
-        /// <summary>By Order, and plugins of the same Order by type name, so theirs doesn't depend on discovery.</summary>
-        internal static List<IForgePlugin> InPluginOrder(IEnumerable<IForgePlugin> plugins)
-            => plugins.OrderBy(p => p.Order).ThenBy(p => p.GetType().FullName, StringComparer.Ordinal).ToList();
 
         /// <summary>
         /// Why builds stop because a plugin failed to load, or null: a plugin that is on
