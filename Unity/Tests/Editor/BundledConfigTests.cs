@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using BuildForge.Editor.Configuration;
 using NUnit.Framework;
@@ -67,6 +68,40 @@ namespace BuildForge.Tests.Editor
                 var type = assembly.GetType(typeName);
                 Assert.IsNotNull(type, $"{typeName} is no longer in {assemblyName}: profiles that store its settings would stop building.");
                 Assert.IsTrue(type.IsSerializable, $"{typeName} is no longer [Serializable].");
+            }
+        }
+
+        // The keys the bundled plugins store their settings under, in profiles and in Project Settings
+        // > Build Forge: the plugin, the constant, and its value. A changed key makes every profile read
+        // the defaults without an error, and leaves the old entry in the file.
+        static readonly (string Assembly, string Plugin, string Field, string Key, bool Optional)[] Keys =
+        {
+            ("BuildForge.Editor.AndroidKeystoreEnv", "BuildForge.Editor.Plugins.AndroidKeystoreEnvPlugin", "ConfigKey", "AndroidKeystoreEnv", false),
+            ("BuildForge.Editor.AndroidKeystoreEnv", "BuildForge.Editor.Plugins.AndroidKeystoreEnvPlugin", "GlobalConfigKey", "AndroidKeystoreEnv", false),
+            ("BuildForge.Editor.AndroidManifest", "BuildForge.Editor.Plugins.AndroidManifestPlugin", "ConfigKey", "AndroidManifest", false),
+            ("BuildForge.Editor.BuildNumber", "BuildForge.Editor.Plugins.BuildNumberPlugin", "ConfigKey", "BuildNumber", false),
+            ("BuildForge.Editor.CloudDiagnostics", "BuildForge.Editor.Plugins.CloudDiagnosticsPlugin", "ConfigKey", "CloudDiagnostics", false),
+            ("BuildForge.Editor.GitMetadata", "BuildForge.Editor.Plugins.GitMetadataPlugin", "ConfigKey", "Git", false),
+            ("BuildForge.Editor.XRVendorFilter", "BuildForge.Editor.Plugins.XRVendorFilterPlugin", "ConfigKey", "XRVendorFilter", false),
+            ("BuildForge.Editor.Addressables", "BuildForge.Editor.Addressables.AddressablesRebuildPlugin", "ConfigKey", "AddressablesRebuild", true),
+            ("BuildForge.Editor.Addressables", "BuildForge.Editor.Addressables.AddressablesStripperPlugin", "ConfigKey", "AddressablesStripper", true),
+            ("BuildForge.Editor.OpenXR", "BuildForge.Editor.OpenXR.OpenXRPlugin", "ConfigKey", "OpenXR", true),
+            ("BuildForge.Editor.OpenXR", "BuildForge.Editor.OpenXR.OpenXRPlugin", "GlobalConfigKey", "OpenXR", true),
+            ("BuildForge.Editor.XRManagement", "BuildForge.Editor.XRManagement.XRLoaderSelectionPlugin", "Key", "XRLoaders", true),
+        };
+
+        [Test]
+        public void TheBundledPlugins_KeepTheKeysTheirSettingsAreStoredUnder()
+        {
+            foreach (var (assemblyName, pluginName, fieldName, key, optional) in Keys)
+            {
+                var assembly = Loaded(assemblyName);
+                if (assembly == null && optional)
+                    continue;
+                Assert.IsNotNull(assembly, $"The bundled plugin assembly {assemblyName} is not loaded.");
+                var field = assembly.GetType(pluginName)?.GetField(fieldName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+                Assert.IsNotNull(field, $"{pluginName}.{fieldName} is gone.");
+                Assert.AreEqual(key, field.GetRawConstantValue(), $"{pluginName}.{fieldName}: profiles store its settings under '{key}'.");
             }
         }
 
