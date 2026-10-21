@@ -180,15 +180,16 @@ namespace BuildForge.Editor.Configuration
         /// <summary>
         /// "Builds/Quest//Game" (an empty {Variant}) becomes "Builds/Quest/Game". Decided from
         /// the <paramref name="template"/> (the path itself when none is given): a network
-        /// path's leading "\\server" or "//server" stays, and a template that starts with
-        /// neither a separator nor a drive letter stays relative, so "{Variant}/Builds" in a
-        /// project without variants becomes "Builds", not "/Builds" at the drive's root.
+        /// path's leading "\\server" or "//server" stays, and so does a device path's prefix,
+        /// which keeps it refused; a template that starts with neither a separator nor a drive
+        /// letter stays relative, so "{Variant}/Builds" in a project without variants becomes
+        /// "Builds", not "/Builds" at the drive's root.
         /// </summary>
         internal static string CollapseEmptySegments(string path, string template = null)
         {
             template ??= path;
             var prefix = "";
-            if (IsNetworkPath(template) && path.Length >= 2)
+            if ((IsNetworkPath(template) || IsDevicePath(template)) && path.Length >= 2)
             {
                 prefix = path.Substring(0, 2);
                 path = path.Substring(2).TrimStart('/', '\\');
@@ -202,9 +203,19 @@ namespace BuildForge.Editor.Configuration
 
         static bool IsSeparator(char c) => c == '/' || c == '\\';
 
-        /// <summary>"\\server\share" or "//server/share".</summary>
+        /// <summary>"\\server\share" or "//server/share", and not a device path.</summary>
         internal static bool IsNetworkPath(string template)
-            => template.Length >= 2 && IsSeparator(template[0]) && IsSeparator(template[1]);
+            => template.Length >= 2 && IsSeparator(template[0]) && IsSeparator(template[1]) && !IsDevicePath(template);
+
+        /// <summary>
+        /// An extended-length ("\\?\") or device ("\\.\") path, with either separator in any mix,
+        /// as Windows reads one (.NET's PathInternal.IsDevice): two separators, then ? or ., then a
+        /// separator or the end. Also the NT form "\??\".
+        /// </summary>
+        internal static bool IsDevicePath(string path)
+            => path.Length >= 3 && IsSeparator(path[0]) && IsSeparator(path[1]) && (path[2] == '?' || path[2] == '.')
+               && (path.Length == 3 || IsSeparator(path[3]))
+               || path.StartsWith(@"\??\", StringComparison.Ordinal);
 
         // Checked by its first characters: Path.IsPathRooted throws on some characters a template may hold.
         static bool IsRootedTemplate(string template)
@@ -213,13 +224,23 @@ namespace BuildForge.Editor.Configuration
 
         /// <summary>
         /// Why a build can't go to the output path, or null: an extended-length ("\\?\") or
-        /// device ("\\.\") path, which Unity's player build isn't known to take.
+        /// device ("\\.\") path (<see cref="IsDevicePath"/>), which Unity's player build isn't known to take.
         /// </summary>
         internal static string OutputPathError(string template)
-            => template.StartsWith(@"\\?\", StringComparison.Ordinal) || template.StartsWith(@"\\.\", StringComparison.Ordinal)
-               || template.StartsWith("//?/", StringComparison.Ordinal) || template.StartsWith("//./", StringComparison.Ordinal)
+            => IsDevicePath(template)
                 ? $"The output path '{template}' is an extended-length or device path, which Build Forge doesn't support. " +
                   "Use a path with a drive letter, a network path (\\\\server\\share) or one relative to the project."
+                : null;
+
+        /// <summary>
+        /// The same for the path <paramref name="template"/> resolved to: a placeholder's value,
+        /// such as the product name while Sanitize Product Name is off, can make one of another template.
+        /// </summary>
+        internal static string ResolvedOutputPathError(string template, string resolved)
+            => IsDevicePath(resolved)
+                ? $"The output path '{template}' resolves to '{resolved}', an extended-length or device path, which " +
+                  "Build Forge doesn't support. Change the template, or the value of the placeholder that leads there, " +
+                  "such as the product name while Sanitize Product Name is off."
                 : null;
 
         string GetRequiredExtension(BuildTarget target)

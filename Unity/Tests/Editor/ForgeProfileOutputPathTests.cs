@@ -325,16 +325,63 @@ namespace BuildForge.Tests.Editor
         public void CollapseEmptySegments_KeepsANetworkPrefix_AndRelativeTemplatesRelative(string template, string expected)
             => Assert.AreEqual(expected, ForgeProfile.CollapseEmptySegments(template.Replace("{Variant}", ""), template));
 
+        // Windows reads either separator in a device prefix, as .NET's PathInternal.IsDevice does.
         [TestCase(@"\\?\C:\Builds\Game")]
         [TestCase(@"\\.\pipe\Game")]
         [TestCase("//?/C:/Builds/Game")]
+        [TestCase(@"\\?/C:/Builds/Game")]
+        [TestCase(@"/\?\C:\Builds\Game")]
+        [TestCase(@"//?\C:\x")]
+        [TestCase(@"\\./C:/x")]
+        [TestCase(@"/\.\pipe\Game")]
+        [TestCase(@"\??\C:\x")]
+        [TestCase(@"\\?")]
         public void ExtendedLengthAndDevicePaths_AreRefused(string template)
             => StringAssert.Contains("extended-length or device path", ForgeProfile.OutputPathError(template));
 
         [TestCase(@"\\nas\builds\{Variant}")]
+        [TestCase(@"\\nas\builds")]
+        [TestCase("//nas/builds")]
         [TestCase("Builds/{Target}/{ProfileName}")]
         [TestCase(@"D:\Builds")]
         public void OtherPaths_AreAccepted(string template)
             => Assert.IsNull(ForgeProfile.OutputPathError(template));
+
+        // A device prefix isn't a server's, and tidying keeps it, so the resolved path is refused too.
+        [TestCase(@"\\?\C:\Builds\{Variant}\Game", @"\\?\C:\Builds\Game")]
+        [TestCase(@"/\.\pipe\{Variant}\Game", @"/\.\pipe\Game")]
+        public void ADevicePath_IsNotANetworkPath_AndKeepsItsPrefix(string template, string expected)
+        {
+            Assert.IsFalse(ForgeProfile.IsNetworkPath(template));
+            var collapsed = ForgeProfile.CollapseEmptySegments(template.Replace("{Variant}", ""), template);
+            Assert.AreEqual(expected, collapsed);
+            Assert.IsNotNull(ForgeProfile.ResolvedOutputPathError(template, collapsed));
+            Assert.IsTrue(ForgeProfile.IsNetworkPath(@"\\nas\builds"));
+            Assert.IsTrue(ForgeProfile.IsNetworkPath("//nas/builds"));
+        }
+
+        // A template that is fine can resolve to a device path through a placeholder's value,
+        // such as a product name kept as written: the build checks the resolved path as well.
+        [Test]
+        public void APlaceholderValue_ThatMakesADevicePath_IsRefused()
+        {
+            SetOutputPath(@"\\{ProjectName}\Game");
+            var previous = ForgeSettings.instance.MangleProductName;
+            try
+            {
+                ForgeSettings.instance.MangleProductName = false;
+                var resolved = profile.GetResolvedOutputPath(BuildTarget.WebGL, null, @"?\C:");
+
+                Assert.AreEqual(@"\\?\C:\Game", resolved);
+                Assert.IsNull(ForgeProfile.OutputPathError(profile.OutputPath));
+                var error = ForgeProfile.ResolvedOutputPathError(profile.OutputPath, resolved);
+                StringAssert.Contains(@"resolves to '\\?\C:\Game', an extended-length or device path", error);
+                Assert.IsNull(ForgeProfile.ResolvedOutputPathError(profile.OutputPath, @"\\nas\Game"));
+            }
+            finally
+            {
+                ForgeSettings.instance.MangleProductName = previous;
+            }
+        }
     }
 }

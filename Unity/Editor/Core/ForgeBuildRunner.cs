@@ -454,6 +454,9 @@ namespace BuildForge.Editor.Core
             if (outputPathError != null)
                 throw new InvalidOperationException(outputPathError);
             outputPath = forgeProfile.GetResolvedOutputPath(buildTarget, resolvedVariant);
+            outputPathError = ForgeProfile.ResolvedOutputPathError(forgeProfile.OutputPath, outputPath);
+            if (outputPathError != null)
+                throw new InvalidOperationException(outputPathError);
 
             // A CI build doesn't go out with another version than its variant rule's; before
             // anything changes. Locally the window warns beforehand, and the build warns.
