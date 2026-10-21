@@ -86,7 +86,7 @@ Build Forge finds every class with `[ForgePlugin]` that implements `IForgePlugin
 - **Installing a plugin must not change any build.** Until a profile turns the plugin on or configures it, the plugin leaves builds as they were. Give a plugin that acts by itself [a per-profile switch](#the-per-profile-switch) that starts off, or have it act only on what a profile configures, as the bundled plugins do. A project's own plugin, meant for every build of that project, can do without.
 - Plugins are enabled for the whole project by default, which makes them available to every profile. `[ForgePlugin(EnabledByDefault = false)]` makes a plugin start disabled until someone enables it in **Project Settings > Build Forge > Installed Plugins**. Use it for a plugin that can't follow the rule above.
 - A plugin turned off there is hidden from the Build Forge section and skipped by builds, but can still restore editor settings it applied before.
-- That switch is stored under the plugin's full type name, namespace and class. Renaming either resets the switch to the plugin's default in every project that set it, so set it again after a rename; `[MovedFrom]` carries stored settings over, not the switch.
+- That switch is stored under the plugin's full type name, namespace and class. Renaming either resets the switch to the plugin's default in every project that set it, so set it again after a rename; `[MovedFrom]` carries stored settings over, not the switch. Build Forge's per-user record of what an Apply wrote names the plugin the same way: where a profile is applied when a plugin that implements `IForgeEditorApplicable` is renamed, Build Forge can't restore what the plugin applied, as when its package is removed, and Apply, Activate, Revert to Baseline and builds stop on it until **Stop Tracking**; see [Revert to Baseline](concepts.md#revert-to-baseline).
 
 ## The interface
 
@@ -174,7 +174,7 @@ forgeProfile.SetPluginConfig("MyStudio.MyPlugin", config);
 - `GetPluginConfig` returns the stored instance, or a new default instance that is **not** stored; reading never changes the asset.
 - After changing it, call `SetPluginConfig` again, which marks the Build Forge settings changed; with **Save Profiles On Edit** on, the Build Forge section saves them right after the edit. Code outside the section saves with `AssetDatabase.SaveAssetIfDirty(forgeProfile)`. Passing null removes the configuration, and so does passing one whose values are all those of a new instance, since it would read the same: a setting changed and then changed back leaves the asset as it was.
 - Do not share one instance between profiles, and read it again rather than caching it.
-- The class must be a `[Serializable]` class that does not derive from `UnityEngine.Object`; `SetPluginConfig` throws otherwise. Unity does not serialize dictionaries; use lists.
+- The class must be a `[Serializable]` class that does not derive from `UnityEngine.Object`; `SetPluginConfig` throws for one that isn't `[Serializable]` or derives from `UnityEngine.Object`. Unity drops fields it can't serialize, such as dictionaries, without an error when it saves; use lists.
 - Pick a key that will not collide with other plugins, for example with your studio's or project's name in front.
 
 The configuration is stored as a managed reference, so each field is a readable line in the Build Profile asset and a change is a one-line diff. Unity writes every serialized field, including ones the current settings do not use.
