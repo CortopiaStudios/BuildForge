@@ -108,14 +108,6 @@ namespace BuildForge.Editor.Core
             // settings, so building a non-active profile would let its Player
             // Settings overrides silently shadow plugin and CLI writes.
             var activeProfile = BuildProfile.GetActiveBuildProfile();
-            if (ForgeSettings.instance.MaintainBuildProfileDefines && BuildProfileDefines.NeedsUpdate(forgeProfile.BuildProfile))
-            {
-                // Writing defines here would recompile mid-build; the editor paths
-                // keep the list current, so at build time only report it.
-                Debug.LogWarning($"[Build Forge] Unity Build Profile '{forgeProfile.BuildProfile.name}' is missing its " +
-                                 $"'{BuildProfileDefines.DefineFor(forgeProfile.BuildProfile.name)}' scripting define " +
-                                 "(or carries a stale one). Open the Build Forge window once and commit the profile.");
-            }
             // A derived platform this editor has not enabled, such as Meta Quest under an
             // account that never enabled it, builds with its build target's settings
             // instead of the profile's, without an error. Activating doesn't change that.
@@ -149,6 +141,9 @@ namespace BuildForge.Editor.Core
             var unfinishedBuild = InterruptedBuildMarker.Error();
             if (unfinishedBuild != null)
                 throw new InvalidOperationException(unfinishedBuild);
+            var defineError = StaleDefineError(forgeProfile.BuildProfile, BuildEnvironment.IsCI);
+            if (defineError != null)
+                throw new InvalidOperationException(defineError);
             if (activeProfile != forgeProfile.BuildProfile)
             {
                 var activeName = activeProfile != null
@@ -914,6 +909,28 @@ namespace BuildForge.Editor.Core
             {
                 Debug.LogWarning($"[Build Forge] Could not reveal the build in the file browser: {e.Message}");
             }
+        }
+
+        /// <summary>
+        /// While Build Forge maintains the profiles' BUILD_PROFILE_ defines: a profile renamed
+        /// outside the editor, or the setting turned on before anyone opened the window, lacks
+        /// its define or carries the old one, and the player's #if branches follow. The build
+        /// never writes it, which would recompile mid-build; the editor paths do. A CI build,
+        /// which has no window to follow the advice in, stops (the error); a local one warns.
+        /// </summary>
+        internal static string StaleDefineError(BuildProfile buildProfile, bool isCI)
+        {
+            if (!ForgeSettings.instance.MaintainBuildProfileDefines || !BuildProfileDefines.NeedsUpdate(buildProfile))
+                return null;
+            var message = $"Unity Build Profile '{buildProfile.name}' is missing its " +
+                          $"'{BuildProfileDefines.DefineFor(buildProfile.name)}' scripting define (or carries a stale one).";
+            if (!isCI)
+            {
+                Debug.LogWarning($"[Build Forge] {message} Open the Build Forge window once and commit the profile.");
+                return null;
+            }
+            return message + " A CI build stops instead of building with the wrong #if branches: open the Build Forge " +
+                   "window once and commit the profile, or, in a shared workspace, run BuildForge.CommandLine.Activate first.";
         }
 
         /// <summary>

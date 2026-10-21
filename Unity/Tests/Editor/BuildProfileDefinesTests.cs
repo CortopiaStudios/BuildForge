@@ -211,5 +211,33 @@ namespace BuildForge.Tests.Editor
             Assert.IsTrue(BuildProfileDefines.CanRecordDefines,
                 "UnityEditor.Build.Profile.BuildProfileModuleUtil.RequestScriptCompilation(BuildProfile) was not found.");
         }
+
+        // CI has no window to follow the advice in: a missing or stale define stops its build; a local one warns.
+        [Test]
+        public void AMissingDefine_StopsACIBuild_AndWarnsLocally()
+        {
+            var previous = EditorJsonUtility.ToJson(ForgeSettings.instance);
+            var bp = NewBuildProfile("Quest 3");
+            try
+            {
+                var settings = new SerializedObject(ForgeSettings.instance);
+                settings.FindProperty("maintainBuildProfileDefines").boolValue = true;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                Assert.IsTrue(BuildProfileDefines.NeedsUpdate(bp));
+
+                StringAssert.Contains("A CI build stops", ForgeBuildRunner.StaleDefineError(bp, isCI: true));
+                UnityEngine.TestTools.LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("missing its 'BUILD_PROFILE_QUEST_3'"));
+                Assert.IsNull(ForgeBuildRunner.StaleDefineError(bp, isCI: false));
+
+                settings.FindProperty("maintainBuildProfileDefines").boolValue = false;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                Assert.IsNull(ForgeBuildRunner.StaleDefineError(bp, isCI: true), "Only while Build Forge maintains the defines.");
+            }
+            finally
+            {
+                EditorJsonUtility.FromJsonOverwrite(previous, ForgeSettings.instance);
+                Object.DestroyImmediate(bp);
+            }
+        }
     }
 }

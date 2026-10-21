@@ -144,7 +144,7 @@ The define is in the Build Profile's own Scripting Defines list, which Unity app
 
 - Build Forge writes it when it touches the profile: when the settings are added, when the Build Forge section or the build window shows the profile, and on Activate and Apply. After a rename it replaces the old one. Defines without the prefix are left alone.
 - Writing to the active profile recompiles scripts once.
-- At build time a missing or stale define is only reported in the build log, never written, since writing would recompile in the middle of the build. Open the build window once and commit the profile.
+- At build time a missing or stale define is never written, since writing would recompile in the middle of the build. A local build reports it in the log; a CI build stops, since it has no window to fix it in. Open the build window once and commit the profile, or, in a shared workspace, run Activate before the build.
 - Two names can give the same define ("Quest 3" and "Quest-3"); the build window and the Build Forge section warn about that.
 - Turning the setting off stops the writes. Defines already written stay in the profiles; remove them by hand once no code uses them.
 
