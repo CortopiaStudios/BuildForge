@@ -239,6 +239,58 @@ namespace BuildForge.Tests.Editor
             }
         }
 
+        sealed class ThrowingEditorPlugin : IForgePlugin, IForgeEditorApplicable
+        {
+            public string DisplayName => "Throwing Editor Plugin";
+            public bool IsApplicable(BuildProfile profile) => throw new InvalidOperationException("no platform");
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context) { }
+            public string CaptureEditorState(BuildTargetGroup group) => "{}";
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) { }
+            public void RestoreEditorState(BuildTargetGroup group, string json) { }
+        }
+
+        sealed class ThrowingSwitch : IForgePlugin
+        {
+            public string DisplayName => "Throwing Switch";
+            public bool IsApplicable(BuildProfile profile) => true;
+            public bool? IsEnabled(ForgeProfile profile) => throw new InvalidOperationException("no config");
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context) { }
+        }
+
+        // A plugin that is on and throws when asked whether it runs for the profile stops its
+        // builds and Apply, which can't tell whether it would run; the build window and the
+        // toolbar, which ask guarded, still draw, with Apply and Build disabled for the reason.
+        [Test]
+        public void APluginThatThrowsWhenAskedWhetherItRuns_StopsBuildsAndApply_AndTheWindowsStillDraw()
+        {
+            var native = VariantRulesTests.CreateNativeProfile();
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                var fp = new SerializedObject(forge);
+                fp.FindProperty("buildProfile").objectReferenceValue = native;
+                fp.ApplyModifiedPropertiesWithoutUndo();
+                var plugins = new IForgePlugin[] { new ThrowingEditorPlugin(), new ThrowingSwitch() };
+
+                var error = ForgePluginRegistry.BlockingError(forge, plugins);
+                StringAssert.Contains($"{typeof(ThrowingEditorPlugin).FullName} (ThrowingEditorPlugin.IsApplicable threw: no platform)", error);
+                StringAssert.Contains($"{typeof(ThrowingSwitch).FullName} (ThrowingSwitch.IsEnabled threw: no config)", error);
+                StringAssert.Contains("Installed Plugins", error);
+                Assert.IsNull(ForgePluginRegistry.CallError(forge, plugins, _ => true), "Off in Project Settings: it wouldn't run anyway.");
+
+                Assert.IsFalse(ForgeEditorState.HasEditorApplicableSettings(forge, plugins), "The windows count it as writing nothing.");
+                Assert.Throws<InvalidOperationException>(() => ForgeEditorState.GetParticipatingPairs(forge, plugins, guarded: false),
+                    "Apply asks unguarded, and stops on the throw.");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(forge);
+                UnityEngine.Object.DestroyImmediate(native);
+            }
+        }
+
         // What stops a build stops Apply, before it undoes the applied profile or writes anything.
         [Test]
         public void Apply_StopsBeforeItChangesAnything_WhileAPluginFailedToLoad()

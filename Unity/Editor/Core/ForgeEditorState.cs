@@ -278,6 +278,16 @@ namespace BuildForge.Editor.Core
         /// active one.
         /// </summary>
         public static List<EditorStatePair> GetParticipatingPairs(ForgeProfile profile)
+            => GetParticipatingPairs(profile, ForgePluginRegistry.GetPlugins(), guarded: false);
+
+        /// <summary>
+        /// <see cref="GetParticipatingPairs(ForgeProfile)"/> of <paramref name="plugins"/>. Apply
+        /// asks them unguarded and stops on what they throw; the windows ask
+        /// <paramref name="guarded"/>, so a plugin whose IsApplicable or IsEnabled throws
+        /// doesn't take part, and <see cref="ForgePluginRegistry.BlockingError(ForgeProfile)"/>
+        /// disables Apply with its error.
+        /// </summary>
+        internal static List<EditorStatePair> GetParticipatingPairs(ForgeProfile profile, IEnumerable<IForgePlugin> plugins, bool guarded)
         {
             var pairs = new List<EditorStatePair>();
             if (profile == null || profile.BuildProfile == null)
@@ -285,16 +295,17 @@ namespace BuildForge.Editor.Core
 
             var group = BuildPipeline.GetBuildTargetGroup(BuildProfileUtility.GetBuildTarget(profile.BuildProfile));
 
-            foreach (var plugin in ForgePluginRegistry.GetPlugins())
+            foreach (var plugin in plugins)
             {
                 if (!(plugin is IForgeEditorApplicable applicable))
                     continue;
                 if (ForgeSettings.instance.IsPluginDisabledWithDefault(
                         plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin)))
                     continue;
-                if (!plugin.IsApplicable(profile.BuildProfile))
-                    continue;
-                if (plugin.IsEnabled(profile) == false)
+                var takesPart = guarded
+                    ? ForgePluginRegistry.TakesPart(plugin, profile, out _)
+                    : plugin.IsApplicable(profile.BuildProfile) && plugin.IsEnabled(profile) != false;
+                if (!takesPart)
                     continue;
 
                 pairs.Add(new EditorStatePair
@@ -499,9 +510,17 @@ namespace BuildForge.Editor.Core
             return keys;
         }
 
-        /// <summary>True when applying this profile would write anything: at least one enabled, applicable IForgeEditorApplicable plugin.</summary>
+        /// <summary>
+        /// True when applying this profile would write anything: at least one enabled,
+        /// applicable IForgeEditorApplicable plugin. For the windows, so it doesn't throw: a
+        /// plugin whose IsApplicable or IsEnabled throws writes nothing here, and
+        /// <see cref="ForgePluginRegistry.BlockingError(ForgeProfile)"/> disables Apply with its error.
+        /// </summary>
         public static bool HasEditorApplicableSettings(ForgeProfile profile)
-            => GetParticipatingPairs(profile).Count > 0;
+            => HasEditorApplicableSettings(profile, ForgePluginRegistry.GetPlugins());
+
+        internal static bool HasEditorApplicableSettings(ForgeProfile profile, IEnumerable<IForgePlugin> plugins)
+            => GetParticipatingPairs(profile, plugins, guarded: true).Count > 0;
 
         /// <summary>
         /// Makes the profile's Unity Build Profile active without applying its

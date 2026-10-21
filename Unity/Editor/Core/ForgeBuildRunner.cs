@@ -855,6 +855,8 @@ namespace BuildForge.Editor.Core
         /// <summary>
         /// Whether a build of the profile has a build number: Android's version code and
         /// iOS's build number always, other platforms only from the Build Number plugin.
+        /// The build window asks too, so a plugin that throws when asked counts as none;
+        /// builds stop on it before they get here (<see cref="ForgePluginRegistry.BlockingError(ForgeProfile)"/>).
         /// </summary>
         internal static bool HasBuildNumber(ForgeProfile profile, BuildTarget target)
         {
@@ -863,8 +865,7 @@ namespace BuildForge.Editor.Core
             var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == BuildNumberPluginName);
             return plugin != null
                    && !ForgeSettings.instance.IsPluginDisabledWithDefault(plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin))
-                   && plugin.IsApplicable(profile.BuildProfile)
-                   && plugin.IsEnabled(profile) != false;
+                   && ForgePluginRegistry.TakesPart(plugin, profile, out _);
         }
 
         /// <summary>

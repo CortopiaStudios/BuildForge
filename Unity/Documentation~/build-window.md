@@ -52,7 +52,7 @@ The action bar shows the actions the selected profile has. For a profile that is
 | Button | Action |
 |---|---|
 | Activate | For a profile that is not active: makes it the active Unity Build Profile, after reverting another profile's applied settings. |
-| Apply / Re-apply | Writes the active profile's plugin settings and the variant's defines to the editor. Disabled when the profile has nothing to apply, and, like Build, while a plugin failed to load or Unity cannot load plugin settings. Its **▾** menu holds **Revert to Baseline**, which restores every setting the applied profile changed. |
+| Apply / Re-apply | Writes the active profile's plugin settings and the variant's defines to the editor. Disabled when the profile has nothing to apply, and, like Build, while a plugin failed to load or can't say whether it runs for the profile, or Unity cannot load plugin settings. Its **▾** menu holds **Revert to Baseline**, which restores every setting the applied profile changed. |
 | Build | Builds the active profile with the selected variant. |
 | Build and Run | Builds like **Build**, then runs the build, like Unity's own Build And Run, and doesn't show it in the file browser. |
 
@@ -92,7 +92,7 @@ The dropdown is shown only while its menu has something to offer.
 
 **Build** and **Build and Run** build the active profile like the build window's buttons of the same names, and show the same icons: **Build and Run** also runs the build afterwards, like Unity's own Build And Run, and doesn't show it in the file browser.
 
-Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, the variant isn't allowed for it, or a plugin or plugin settings can't load.
+Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, the variant isn't allowed for it, a plugin or plugin settings can't load, or a plugin can't say whether it runs for the profile.
 
 ### Behavior
 

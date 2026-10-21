@@ -128,12 +128,76 @@ namespace BuildForge.Editor.Core
 
         /// <summary>
         /// Why builds and Apply of the profile stop before they change anything: a plugin
-        /// that failed to load (<see cref="LoadError()"/>) or plugin settings Unity cannot
-        /// load (<see cref="MissingSettingsError"/>). Null otherwise. Cheap enough to call
-        /// on every repaint: the settings check is a native one unless something is missing.
+        /// that failed to load (<see cref="LoadError()"/>), plugin settings Unity cannot
+        /// load (<see cref="MissingSettingsError"/>), or a plugin that throws when asked
+        /// whether it runs for the profile (<see cref="CallError"/>). Null otherwise. Cheap
+        /// enough to call on every repaint: the settings check is a native one unless
+        /// something is missing, and the windows ask the plugins the same on every repaint.
         /// </summary>
         internal static string BlockingError(ForgeProfile profile)
-            => LoadError() ?? MissingSettingsError(profile);
+            => BlockingError(profile, GetPlugins());
+
+        internal static string BlockingError(ForgeProfile profile, IEnumerable<IForgePlugin> plugins)
+            => LoadError() ?? MissingSettingsError(profile) ?? CallError(profile, plugins,
+                type => ForgeSettings.instance.IsPluginDisabledWithDefault(type.FullName, IsEnabledByDefault(type)));
+
+        /// <summary>
+        /// Why builds and Apply of the profile stop because a plugin that is on in Project
+        /// Settings (not <paramref name="isOff"/>) throws in IsApplicable or IsEnabled, or
+        /// null: whether it would run is unknown, and a build or Apply would stop on the
+        /// throw, while the windows, which ask guarded, would show it as not running.
+        /// </summary>
+        internal static string CallError(ForgeProfile profile, IEnumerable<IForgePlugin> plugins, Func<Type, bool> isOff)
+        {
+            // Nothing is built or applied without a Build Profile, and both stop on that first.
+            if (profile.BuildProfile == null)
+                return null;
+            var failing = new List<string>();
+            foreach (var plugin in plugins)
+            {
+                if (isOff(plugin.GetType()))
+                    continue;
+                TakesPart(plugin, profile, out var error);
+                if (error != null)
+                    failing.Add($"{plugin.GetType().FullName} ({error})");
+            }
+            return failing.Count == 0 ? null
+                : $"Build Forge plugin {string.Join(", ", failing)} could not say whether it runs for '{profile.DisplayName}', " +
+                  "so Build Forge can't tell whether it would run in this build. " +
+                  "Fix it, or turn it off in Project Settings > Build Forge > Installed Plugins.";
+        }
+
+        /// <summary>
+        /// Whether the plugin runs for the profile, as builds and Apply decide: it applies to
+        /// the profile's Build Profile and the profile doesn't switch it off. Asked without
+        /// throwing, for checks and the windows: a plugin whose IsApplicable or IsEnabled
+        /// throws doesn't run, <paramref name="error"/> names the call, and
+        /// <see cref="BlockingError(ForgeProfile)"/> stops builds and Apply on it. Builds and
+        /// Apply ask unguarded.
+        /// </summary>
+        internal static bool TakesPart(IForgePlugin plugin, ForgeProfile profile, out string error)
+        {
+            // Both, whatever the first answers: builds ask IsEnabled first, Apply IsApplicable.
+            var applies = Ask(plugin, "IsApplicable", () => plugin.IsApplicable(profile.BuildProfile), out var applicableError);
+            var enabled = Ask(plugin, "IsEnabled", () => plugin.IsEnabled(profile), out var enabledError);
+            error = applicableError ?? enabledError;
+            return error == null && applies && enabled != false;
+        }
+
+        // Worded like the windows' errors for a plugin that throws (PluginDisplay).
+        static T Ask<T>(IForgePlugin plugin, string member, Func<T> call, out string error)
+        {
+            try
+            {
+                error = null;
+                return call();
+            }
+            catch (Exception e)
+            {
+                error = $"{plugin.GetType().Name}.{member} threw: {e.Message}";
+                return default;
+            }
+        }
 
         /// <summary>
         /// Reads the plugin's [ForgePlugin] EnabledByDefault flag.
