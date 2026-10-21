@@ -69,6 +69,10 @@ cat > "$HOST_DIR/Packages/manifest.json" <<EOF
 }
 EOF
 
+# Build Forge's settings and per-user state go every run, so a run starts from the defaults whatever
+# an earlier one, or a test that didn't put a saved setting back, left in the host.
+rm -f "$HOST_DIR/ProjectSettings/ForgeSettings.asset" "$HOST_DIR"/UserSettings/Forge*
+
 # Rewritten every run so a stale pin from an earlier run cannot stick.
 printf 'm_EditorVersion: %s\n' "$EDITOR_VERSION" \
   > "$HOST_DIR/ProjectSettings/ProjectVersion.txt"

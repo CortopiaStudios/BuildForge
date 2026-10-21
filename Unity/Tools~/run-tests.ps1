@@ -86,6 +86,11 @@ if ($PackageSet) {
 }
 "@ | Set-Content (Join-Path $HostDir "Packages/manifest.json")
 
+# Build Forge's settings and per-user state go every run, so a run starts from the defaults whatever
+# an earlier one, or a test that didn't put a saved setting back, left in the host.
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $HostDir "ProjectSettings\ForgeSettings.asset")
+Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $HostDir "UserSettings\Forge*")
+
 # Rewritten every run so a stale pin from an earlier run cannot stick.
 $ProjectVersionFile = Join-Path $HostDir "ProjectSettings\ProjectVersion.txt"
 "m_EditorVersion: $EditorVersion" | Set-Content $ProjectVersionFile
