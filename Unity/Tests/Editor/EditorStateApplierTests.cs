@@ -944,7 +944,7 @@ namespace BuildForge.Tests.Editor
             public PostBuildPlugin(string name, List<string> order, bool fails) { DisplayName = name; this.order = order; this.fails = fails; }
 
             public string DisplayName { get; }
-            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile buildProfile) => true;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context)
             {

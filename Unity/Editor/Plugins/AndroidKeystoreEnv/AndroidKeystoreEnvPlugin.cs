@@ -27,13 +27,13 @@ namespace BuildForge.Editor.Plugins
         public string Description => "Override Android signing settings from environment variables at build time.";
         public int Order => 600;
 
-        public bool IsApplicable(BuildProfile profile)
+        public bool IsApplicable(BuildProfile buildProfile)
         {
-            var target = BuildProfileUtility.GetBuildTarget(profile);
+            var target = BuildProfileUtility.GetBuildTarget(buildProfile);
             return target == BuildTarget.Android;
         }
 
-        public string NotApplicableReason(BuildProfile profile) =>
+        public string NotApplicableReason(BuildProfile buildProfile) =>
             "Only applicable to Android build profiles.";
 
         public bool? IsEnabled(ForgeProfile forgeProfile) => GetProfileConfig(forgeProfile).Enabled;

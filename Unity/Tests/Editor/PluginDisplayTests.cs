@@ -21,9 +21,9 @@ namespace BuildForge.Tests.Editor
         {
             public string DisplayName => throw new InvalidOperationException("no name");
             public string Description => throw new InvalidOperationException("no description");
-            public bool IsApplicable(BuildProfile profile) => throw new InvalidOperationException("no platform");
-            public bool? IsEnabled(ForgeProfile profile) => throw new InvalidOperationException("no config");
-            public IReadOnlyList<string> Validate(ForgeProfile profile, string variant) => throw new InvalidOperationException("no check");
+            public bool IsApplicable(BuildProfile buildProfile) => throw new InvalidOperationException("no platform");
+            public bool? IsEnabled(ForgeProfile forgeProfile) => throw new InvalidOperationException("no config");
+            public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant) => throw new InvalidOperationException("no check");
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }

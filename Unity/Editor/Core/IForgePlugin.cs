@@ -50,7 +50,7 @@ namespace BuildForge.Editor.Core
         /// <summary>
         /// Returns true if this plugin is applicable for the given build profile.
         /// </summary>
-        bool IsApplicable(BuildProfile profile);
+        bool IsApplicable(BuildProfile buildProfile);
 
         /// <summary>
         /// A short sentence explaining why <see cref="IsApplicable"/> returned
@@ -59,7 +59,7 @@ namespace BuildForge.Editor.Core
         /// message. Only called when IsApplicable is false; the profile is
         /// never null.
         /// </summary>
-        string NotApplicableReason(BuildProfile profile) => null;
+        string NotApplicableReason(BuildProfile buildProfile) => null;
 
         /// <summary>
         /// Per-profile enable switch. Return null when the plugin has no on/off

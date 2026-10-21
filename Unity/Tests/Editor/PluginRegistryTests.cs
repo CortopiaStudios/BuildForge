@@ -75,7 +75,7 @@ namespace BuildForge.Tests.Editor
         {
             public string DisplayName => "Zeta";
             public int Order => 650;
-            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile buildProfile) => true;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }
@@ -84,7 +84,7 @@ namespace BuildForge.Tests.Editor
         {
             public string DisplayName => "Alpha";
             public int Order => 650;
-            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile buildProfile) => true;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }
@@ -94,7 +94,7 @@ namespace BuildForge.Tests.Editor
         {
             public string DisplayName => "Omega";
             public int Order => 100;
-            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile buildProfile) => true;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }
@@ -103,7 +103,7 @@ namespace BuildForge.Tests.Editor
         {
             public string DisplayName => "Throwing Order";
             public int Order => throw new InvalidOperationException("no order");
-            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile buildProfile) => true;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }

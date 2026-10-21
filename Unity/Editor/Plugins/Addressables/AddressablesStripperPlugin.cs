@@ -52,7 +52,7 @@ namespace BuildForge.Editor.Addressables
 
         // Also without Addressables settings: exclusions that can't take effect then stop
         // the build (see MissingSettingsMessage) instead of the plugin being skipped.
-        public bool IsApplicable(BuildProfile profile) => true;
+        public bool IsApplicable(BuildProfile buildProfile) => true;
 
         /// <summary>
         /// Without Addressables settings nothing can be excluded, while Unity's player build

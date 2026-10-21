@@ -132,9 +132,9 @@ namespace BuildForge.Runtime
             pluginSections.Add(section);
         }
 
-        public ManifestSection GetSection(string sectionName)
+        public ManifestSection GetSection(string name)
         {
-            return pluginSections.Find(s => s.Name == sectionName);
+            return pluginSections.Find(s => s.Name == name);
         }
 
         public string ToJson(bool prettyPrint = true)

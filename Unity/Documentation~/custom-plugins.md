@@ -30,7 +30,7 @@ public sealed class BundleVersionSuffixPlugin : IForgePlugin
     public string Description => "Append a suffix to the version string of development builds.";
     public int Order => 450; // after Build Number (400)
 
-    public bool IsApplicable(BuildProfile profile) => true;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
 
     public bool? IsEnabled(ForgeProfile forgeProfile) => Config(forgeProfile).enabled;
 
@@ -240,7 +240,7 @@ Implement `IForgeEditorApplicable` when a plugin's settings are worth having in 
 | Member | Contract |
 |---|---|
 | `string CaptureEditorState(BuildTargetGroup group)` | A JSON snapshot of everything the plugin may write for the group, or null when there is nothing to manage. Build Forge compares snapshot strings to detect drift, so make them deterministic, for example with sorted lists. |
-| `void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group, string variant)` | Writes the profile's settings for the group and saves them. `variant` is the variant applied with the profile, null in a project without variants. |
+| `void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant)` | Writes the profile's settings for the group and saves them. `variant` is the variant applied with the profile, null in a project without variants. |
 | `void RestoreEditorState(BuildTargetGroup group, string json)` | Writes a snapshot back and saves it. Throws when it can't, preferably before writing anything. |
 | `string MergeEditorState(BuildTargetGroup group, string baselineJson, string expectedJson, string currentJson)` | Optional. The snapshot that undoes the Apply when the settings changed after it, as in a git pull: for each setting, the baseline's value where the current value is still the one the Apply left, and the current value otherwise. Return null, as the default does, when the plugin can't tell them apart. |
 

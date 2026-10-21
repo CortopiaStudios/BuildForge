@@ -33,9 +33,9 @@ namespace BuildForge.Editor.Plugins
         public string Description => "Use this profile's own AndroidManifest.xml as the main manifest of its builds.";
         public int Order => 900;
 
-        public bool IsApplicable(BuildProfile profile) => BuildProfileUtility.GetBuildTarget(profile) == BuildTarget.Android;
+        public bool IsApplicable(BuildProfile buildProfile) => BuildProfileUtility.GetBuildTarget(buildProfile) == BuildTarget.Android;
 
-        public string NotApplicableReason(BuildProfile profile) => "Only applicable to Android build profiles.";
+        public string NotApplicableReason(BuildProfile buildProfile) => "Only applicable to Android build profiles.";
 
         static AndroidManifestConfig Config(ForgeProfile profile) => profile.GetPluginConfig<AndroidManifestConfig>(ConfigKey);
 

@@ -242,7 +242,7 @@ namespace BuildForge.Tests.Editor
         sealed class ThrowingEditorPlugin : IForgePlugin, IForgeEditorApplicable
         {
             public string DisplayName => "Throwing Editor Plugin";
-            public bool IsApplicable(BuildProfile profile) => throw new InvalidOperationException("no platform");
+            public bool IsApplicable(BuildProfile buildProfile) => throw new InvalidOperationException("no platform");
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
             public string CaptureEditorState(BuildTargetGroup group) => "{}";
@@ -253,8 +253,8 @@ namespace BuildForge.Tests.Editor
         sealed class ThrowingSwitch : IForgePlugin
         {
             public string DisplayName => "Throwing Switch";
-            public bool IsApplicable(BuildProfile profile) => true;
-            public bool? IsEnabled(ForgeProfile profile) => throw new InvalidOperationException("no config");
+            public bool IsApplicable(BuildProfile buildProfile) => true;
+            public bool? IsEnabled(ForgeProfile forgeProfile) => throw new InvalidOperationException("no config");
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }

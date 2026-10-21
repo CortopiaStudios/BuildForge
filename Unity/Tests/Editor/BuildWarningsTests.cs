@@ -23,10 +23,10 @@ namespace BuildForge.Tests.Editor
             public WarningPlugin(string name, Func<IReadOnlyList<string>> validate) { DisplayName = name; this.validate = validate; }
 
             public string DisplayName { get; }
-            public bool IsApplicable(BuildProfile profile) => true;
+            public bool IsApplicable(BuildProfile buildProfile) => true;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
-            public IReadOnlyList<string> Validate(ForgeProfile profile, string variant) => validate();
+            public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant) => validate();
         }
 
         [Test]
@@ -78,9 +78,9 @@ namespace BuildForge.Tests.Editor
             public SwitchedPlugin(string name, bool? enabled, bool applicable) { DisplayName = name; this.enabled = enabled; this.applicable = applicable; }
 
             public string DisplayName { get; }
-            public bool IsApplicable(BuildProfile profile) => applicable;
-            public string NotApplicableReason(BuildProfile profile) => "it builds for Android only.";
-            public bool? IsEnabled(ForgeProfile profile) => enabled;
+            public bool IsApplicable(BuildProfile buildProfile) => applicable;
+            public string NotApplicableReason(BuildProfile buildProfile) => "it builds for Android only.";
+            public bool? IsEnabled(ForgeProfile forgeProfile) => enabled;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }

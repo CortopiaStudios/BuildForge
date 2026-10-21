@@ -785,16 +785,16 @@ namespace BuildForge.Editor.OpenXR
         static string GetFeatureId(OpenXRFeature feature)
             => feature.GetType().GetCustomAttribute<OpenXRFeatureAttribute>()?.FeatureId ?? "";
 
-        public bool IsApplicable(BuildProfile profile)
+        public bool IsApplicable(BuildProfile buildProfile)
         {
-            var buildTarget = Core.BuildProfileUtility.GetBuildTarget(profile);
+            var buildTarget = Core.BuildProfileUtility.GetBuildTarget(buildProfile);
             var buildTargetGroup = BuildPipeline.GetBuildTargetGroup(buildTarget);
 
             var openxrSettings = OpenXRSettings.GetSettingsForBuildTargetGroup(buildTargetGroup);
             return openxrSettings != null;
         }
 
-        public string NotApplicableReason(BuildProfile profile) =>
+        public string NotApplicableReason(BuildProfile buildProfile) =>
             "No OpenXR settings exist for this profile's build target.";
 
         public void OnPreBuild(ForgeBuildContext context)

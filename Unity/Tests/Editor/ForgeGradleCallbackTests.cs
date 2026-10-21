@@ -14,7 +14,7 @@ namespace BuildForge.Tests.Editor
             public virtual string DisplayName => "Plain";
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
-            public bool IsApplicable(BuildProfile profile) => true;
+            public bool IsApplicable(BuildProfile buildProfile) => true;
         }
 
         class Processor : Plain, IForgeGradleProcessor

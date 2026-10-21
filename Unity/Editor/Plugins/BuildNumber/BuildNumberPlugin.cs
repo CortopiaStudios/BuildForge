@@ -41,7 +41,7 @@ namespace BuildForge.Editor.Plugins
         public string Description => "Set Android.bundleVersionCode and iOS.buildNumber automatically.";
         public int Order => 400;
 
-        public bool IsApplicable(BuildProfile profile) => true;
+        public bool IsApplicable(BuildProfile buildProfile) => true;
 
         public bool? IsEnabled(ForgeProfile forgeProfile) => GetConfig(forgeProfile).Enabled;
 

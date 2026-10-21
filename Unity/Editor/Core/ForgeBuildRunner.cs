@@ -690,12 +690,12 @@ namespace BuildForge.Editor.Core
         /// Returns the CI command line string to build the given profile. In a
         /// project with variants, pass the variant: a command without one fails there.
         /// </summary>
-        public static string GetCICommand(ForgeProfile profile, string variant = null)
+        public static string GetCICommand(ForgeProfile forgeProfile, string variant = null)
         {
-            if (profile == null || profile.BuildProfile == null)
+            if (forgeProfile == null || forgeProfile.BuildProfile == null)
                 return "";
 
-            return FormatCICommand(CIProjectPath(), AssetDatabase.GetAssetPath(profile.BuildProfile), variant);
+            return FormatCICommand(CIProjectPath(), AssetDatabase.GetAssetPath(forgeProfile.BuildProfile), variant);
         }
 
         /// <summary>
@@ -1091,12 +1091,12 @@ namespace BuildForge.Editor.Core
         /// The build target the Build Profile builds for. Throws when the profile stores
         /// none, as a Unity version that renamed the field would, rather than guess.
         /// </summary>
-        public static BuildTarget GetBuildTarget(BuildProfile profile)
+        public static BuildTarget GetBuildTarget(BuildProfile buildProfile)
         {
-            var platformProp = new SerializedObject(profile).FindProperty("m_BuildTarget");
+            var platformProp = new SerializedObject(buildProfile).FindProperty("m_BuildTarget");
             if (platformProp == null)
                 throw new InvalidOperationException(
-                    $"Unity Build Profile '{profile.name}' stores no m_BuildTarget in Unity {Application.unityVersion}, so " +
+                    $"Unity Build Profile '{buildProfile.name}' stores no m_BuildTarget in Unity {Application.unityVersion}, so " +
                     "Build Forge cannot tell what it builds. Update Build Forge for this Unity version.");
             return (BuildTarget)platformProp.intValue;
         }
@@ -1106,14 +1106,14 @@ namespace BuildForge.Editor.Core
         /// Unity keys by NamedBuildTarget.Server rather than the Standalone group.
         /// Throws for a Standalone profile that stores no subtarget, rather than guess.
         /// </summary>
-        public static bool IsDedicatedServer(BuildProfile profile)
+        public static bool IsDedicatedServer(BuildProfile buildProfile)
         {
-            if (BuildPipeline.GetBuildTargetGroup(GetBuildTarget(profile)) != BuildTargetGroup.Standalone)
+            if (BuildPipeline.GetBuildTargetGroup(GetBuildTarget(buildProfile)) != BuildTargetGroup.Standalone)
                 return false;
-            var subtarget = new SerializedObject(profile).FindProperty("m_Subtarget");
+            var subtarget = new SerializedObject(buildProfile).FindProperty("m_Subtarget");
             if (subtarget == null)
                 throw new InvalidOperationException(
-                    $"Unity Build Profile '{profile.name}' stores no m_Subtarget in Unity {Application.unityVersion}, so " +
+                    $"Unity Build Profile '{buildProfile.name}' stores no m_Subtarget in Unity {Application.unityVersion}, so " +
                     "Build Forge cannot tell a Dedicated Server profile from a player one. Update Build Forge for this Unity version.");
             return subtarget.intValue == (int)StandaloneBuildSubtarget.Server;
         }

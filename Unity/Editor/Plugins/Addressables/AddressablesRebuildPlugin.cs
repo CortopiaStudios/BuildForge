@@ -30,7 +30,7 @@ namespace BuildForge.Editor.Addressables
 
         // Also without Addressables settings: turned on, it then stops the build (see
         // MissingSettingsMessage) instead of being skipped. Off, its switch filters it out.
-        public bool IsApplicable(BuildProfile profile) => true;
+        public bool IsApplicable(BuildProfile buildProfile) => true;
 
         /// <summary>
         /// Turned on without Addressables settings, nothing is rebuilt, while Unity's player

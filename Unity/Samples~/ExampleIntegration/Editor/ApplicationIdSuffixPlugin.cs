@@ -57,9 +57,9 @@ namespace BuildForge.Samples.ExampleIntegration
         // has to be set before the player build, which follows every pre-build step.
         public int Order => 650;
 
-        public bool IsApplicable(BuildProfile profile) => profile != null && IsAndroid(profile);
+        public bool IsApplicable(BuildProfile buildProfile) => buildProfile != null && IsAndroid(buildProfile);
 
-        public string NotApplicableReason(BuildProfile profile) => "Only applicable to Android Build Profiles.";
+        public string NotApplicableReason(BuildProfile buildProfile) => "Only applicable to Android Build Profiles.";
 
         // Non-null: Build Forge draws the Enabled checkbox, greys the settings while
         // it is off, and skips the build steps for profiles where it is off.

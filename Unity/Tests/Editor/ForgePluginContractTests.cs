@@ -32,7 +32,7 @@ namespace BuildForge.Tests.Editor
         class MinimalPlugin : IForgePlugin
         {
             public string DisplayName => "Minimal";
-            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile p) => true;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile buildProfile) => true;
             public void OnPreBuild(ForgeBuildContext context) { }
             public void OnPostBuild(ForgeBuildContext context) { }
         }

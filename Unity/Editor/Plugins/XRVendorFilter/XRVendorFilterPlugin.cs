@@ -37,9 +37,9 @@ namespace BuildForge.Editor.Plugins
         // other plugin's Gradle step left.
         public int Order => 1000;
 
-        public bool IsApplicable(BuildProfile profile) => BuildProfileUtility.GetBuildTarget(profile) == BuildTarget.Android;
+        public bool IsApplicable(BuildProfile buildProfile) => BuildProfileUtility.GetBuildTarget(buildProfile) == BuildTarget.Android;
 
-        public string NotApplicableReason(BuildProfile profile) => "Only applicable to Android build profiles.";
+        public string NotApplicableReason(BuildProfile buildProfile) => "Only applicable to Android build profiles.";
 
         public bool? IsEnabled(ForgeProfile forgeProfile) => Config(forgeProfile).enabled;
 

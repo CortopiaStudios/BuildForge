@@ -160,8 +160,8 @@ public sealed class InjectVariantFailure : IForgePlugin
 {
     public string DisplayName => "Variant failure proof";
     public int Order => 750;
-    public bool IsApplicable(BuildProfile profile) => true;
-    public bool? IsEnabled(ForgeProfile profile) => VariantFailureProof.Inject;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
+    public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.Inject;
     public void OnPreBuild(ForgeBuildContext context)
     {
         if (context.DevelopmentBuild != VariantFailureProof.ExpectedDevelopment
@@ -177,8 +177,8 @@ public sealed class InjectRestoreFailure : IForgePlugin
 {
     public string DisplayName => "Restore failure proof";
     public int Order => 760;
-    public bool IsApplicable(BuildProfile profile) => true;
-    public bool? IsEnabled(ForgeProfile profile) => VariantFailureProof.InjectRestoreFailure;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
+    public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.InjectRestoreFailure;
     public void OnPreBuild(ForgeBuildContext context) { }
     public void OnPostBuild(ForgeBuildContext context) => throw new InvalidOperationException("Injected restore failure");
 }

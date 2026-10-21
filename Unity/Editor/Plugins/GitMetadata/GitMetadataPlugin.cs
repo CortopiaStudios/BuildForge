@@ -24,7 +24,7 @@ namespace BuildForge.Editor.Plugins
         public string Description => "Add git branch, commit, and tag metadata to the build manifest.";
         public int Order => 300;
 
-        public bool IsApplicable(BuildProfile profile) => true;
+        public bool IsApplicable(BuildProfile buildProfile) => true;
 
         public void OnPreBuild(ForgeBuildContext context) { }
         public void OnPostBuild(ForgeBuildContext context) { }

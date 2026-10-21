@@ -52,7 +52,7 @@ namespace BuildForge.Editor.Plugins
         public string Description => "Turn Unity's crash reporting and Diagnostics Data on only for CI builds, always, or never.";
         public int Order => 500;
 
-        public bool IsApplicable(BuildProfile profile) => true;
+        public bool IsApplicable(BuildProfile buildProfile) => true;
 
         public bool? IsEnabled(ForgeProfile forgeProfile) => GetConfig(forgeProfile).Enabled;
 

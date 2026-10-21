@@ -42,11 +42,11 @@ namespace BuildForge.Editor.XRManagement
         static XRLoaderSelectionConfig Config(ForgeProfile profile) => profile.GetPluginConfig<XRLoaderSelectionConfig>(Key);
 
         // A configured profile with missing settings must fail validation/apply, not silently skip the plugin.
-        public bool IsApplicable(BuildProfile profile) => profile != null;
-        public bool? IsEnabled(ForgeProfile profile) => Config(profile).enabled;
-        public void SetEnabled(ForgeProfile profile, bool enabled)
+        public bool IsApplicable(BuildProfile buildProfile) => buildProfile != null;
+        public bool? IsEnabled(ForgeProfile forgeProfile) => Config(forgeProfile).enabled;
+        public void SetEnabled(ForgeProfile forgeProfile, bool enabled)
         {
-            var config = Config(profile); config.enabled = enabled; profile.SetPluginConfig(Key, config);
+            var config = Config(forgeProfile); config.enabled = enabled; forgeProfile.SetPluginConfig(Key, config);
         }
         static BuildTargetGroup Group(BuildProfile profile)
             => BuildPipeline.GetBuildTargetGroup(BuildProfileUtility.GetBuildTarget(profile));
@@ -58,11 +58,11 @@ namespace BuildForge.Editor.XRManagement
             return config.enabled && pluginOn ? config.loaders : Manager(group)?.activeLoaders ?? Array.Empty<XRLoader>();
         }
 
-        public IReadOnlyList<string> Validate(ForgeProfile profile, string variant)
+        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile, string variant)
         {
-            var config = Config(profile);
+            var config = Config(forgeProfile);
             if (!config.enabled) return Array.Empty<string>();
-            if (Manager(Group(profile.BuildProfile)) == null) return new[] { "XR Management settings are missing for this platform." };
+            if (Manager(Group(forgeProfile.BuildProfile)) == null) return new[] { "XR Management settings are missing for this platform." };
             if (config.loaders.Any(l => l == null)) return new[] { "An XR loader reference is missing; install its provider or repair the selection." };
             if (config.loaders.Distinct().Count() != config.loaders.Count) return new[] { "The XR loader selection contains a duplicate." };
             if (config.loaders.Any(l => string.IsNullOrEmpty(AssetDatabase.GetAssetPath(l))))
@@ -84,15 +84,15 @@ namespace BuildForge.Editor.XRManagement
             return JsonUtility.ToJson(snapshot);
         }
 
-        public void ApplyToEditor(ForgeProfile profile, BuildTargetGroup group, string variant)
+        public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant)
         {
             // Turned off for this profile: leave the current loaders alone. Apply
             // and builds skip a disabled plugin, but resuming after a build
             // re-applies every recorded entry of the applied profile.
-            var config = Config(profile);
+            var config = Config(forgeProfile);
             if (!config.enabled)
                 return;
-            var errors = Validate(profile, variant);
+            var errors = Validate(forgeProfile, variant);
             if (errors.Count > 0) throw new InvalidOperationException(string.Join("\n", errors));
             SetLoaders(group, config.loaders);
         }
@@ -135,12 +135,12 @@ namespace BuildForge.Editor.XRManagement
             section.Add("loaders", string.Join(";", EffectiveLoaders(context.ForgeProfile, context.BuildTargetGroup).Select(l => l.GetType().FullName)));
             manifest.AddSection(section);
         }
-        public string DescribeBuild(ForgeProfile profile, bool isCI, string variant)
-            => Config(profile).loaders.Count == 0 ? "disable XR for this profile" : "use " + string.Join(", ", Config(profile).loaders.Select(l => l == null ? "(missing)" : l.name));
+        public string DescribeBuild(ForgeProfile forgeProfile, bool isCI, string variant)
+            => Config(forgeProfile).loaders.Count == 0 ? "disable XR for this profile" : "use " + string.Join(", ", Config(forgeProfile).loaders.Select(l => l == null ? "(missing)" : l.name));
 
-        public void OnDrawProfileGUI(ForgeProfile profile)
+        public void OnDrawProfileGUI(ForgeProfile forgeProfile)
         {
-            var config = Config(profile);
+            var config = Config(forgeProfile);
             EditorGUILayout.HelpBox("Only the selected loaders are enabled, in this order. An enabled empty list disables XR.", MessageType.None);
             var changed = false;
             for (var i = 0; i < config.loaders.Count; i++)
@@ -154,7 +154,7 @@ namespace BuildForge.Editor.XRManagement
                 EditorGUILayout.EndHorizontal();
             }
             if (GUILayout.Button("Add Loader")) { config.loaders.Add(null); changed = true; }
-            if (changed) profile.SetPluginConfig(Key, config);
+            if (changed) forgeProfile.SetPluginConfig(Key, config);
         }
     }
 }
