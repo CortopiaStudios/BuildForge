@@ -529,6 +529,7 @@ Tests/
     ForgeProfileOutputPathTests.cs         # Output path placeholders and extensions
     ForgeSettingsPluginToggleTests.cs     # Plugin enable/disable precedence tests
     GitHelperTests.cs                     # Git process runner tests
+    InterruptedOperationTests.cs           # Builds, Apply and Activate stop after an Apply or a build that did not finish
     MainToolbarTests.cs                    # Main toolbar menus, labels and Build buttons
     MangleForFilenameTests.cs             # Output path sanitization tests
     NormalizeValueTests.cs                 # Diff value normalization
