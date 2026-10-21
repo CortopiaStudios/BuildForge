@@ -513,6 +513,7 @@ Tests/
     AndroidKeystoreEnvPluginTests.cs       # Keystore settings during and after a build
     BuildEnvironmentTests.cs               # CI detection precedence
     BuildWindowLabelTests.cs               # Build window labels in fixed-width controls
+    BuildWindowStaleWarningsTests.cs       # The build window notices settings that changed since it computed its warnings
     BuildManifestTests.cs                  # Manifest serialization tests
     BuildManifestSectionTests.cs           # Manifest plugin sections
     BuildManifestWriterTests.cs            # Manifest file writing and cleanup

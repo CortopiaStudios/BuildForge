@@ -21,6 +21,13 @@ namespace BuildForge.Editor.UI
         // A plugin's throw when asked whether it runs, per profile, for the list's icons: asked
         // at a refresh, as the warnings are, not for every row on every repaint.
         Dictionary<ForgeProfile, string> listCallErrors = new();
+        // What the warnings were computed from (see SettingsFingerprint), recorded at a
+        // refresh, and whether it changed since: the window then says so instead of
+        // computing them again, which runs git per profile and can write defines.
+        string refreshedSettings;
+        bool settingsChanged;
+        double settingsCheckedTime;
+        const double SettingsCheckSeconds = 1.0;
         static GUIStyle cachedWordWrapStyle;
         static GUIStyle cachedTitleStyle;
         static GUIStyle cachedTitleSeparatorStyle;
@@ -124,6 +131,7 @@ namespace BuildForge.Editor.UI
             // reflected until an event reaches this window. OnInspectorUpdate runs
             // ~10x/s while the window is visible; repainting here keeps the
             // display live without per-frame cost.
+            CheckSettingsChanged();
             Repaint();
         }
 
@@ -172,6 +180,59 @@ namespace BuildForge.Editor.UI
                 if (warnings.Count > 0)
                     validationWarnings[profile] = warnings;
             }
+
+            refreshedSettings = SettingsFingerprint(allProfiles, ForgeSettings.instance);
+            settingsChanged = false;
+            settingsCheckedTime = EditorApplication.timeSinceStartup;
+        }
+
+        /// <summary>
+        /// At most once a second, whether what the warnings were computed from changed
+        /// since the last refresh. Once it did, it stays changed until the next refresh.
+        /// </summary>
+        void CheckSettingsChanged()
+        {
+            if (settingsChanged || refreshedSettings == null)
+                return;
+            var now = EditorApplication.timeSinceStartup;
+            if (now - settingsCheckedTime < SettingsCheckSeconds)
+                return;
+            settingsCheckedTime = now;
+            settingsChanged = SettingsFingerprint(allProfiles, ForgeSettings.instance) != refreshedSettings;
+        }
+
+        internal const string SettingsChangedNotice = "Settings changed: Refresh to update the warnings.";
+
+        /// <summary>
+        /// What the window's warnings read, as text to compare: each profile's Build Forge
+        /// settings, its Build Profile's name and scripting defines, and Project Settings >
+        /// Build Forge (<paramref name="projectSettings"/>). BUILD_PROFILE_ defines are left
+        /// out: Build Forge writes them itself, a refresh among others. Compared by content,
+        /// not with EditorUtility.GetDirtyCount: a build dirties the Build Profile though it
+        /// puts the defines back, and the Inspector saves an edit right away, which may reset
+        /// the count.
+        /// </summary>
+        internal static string SettingsFingerprint(IEnumerable<ForgeProfile> profiles, UnityEngine.Object projectSettings)
+        {
+            var text = new System.Text.StringBuilder();
+            foreach (var profile in profiles)
+            {
+                if (profile == null)
+                {
+                    text.Append("-\n");
+                    continue;
+                }
+                text.Append(EditorJsonUtility.ToJson(profile)).Append('\n');
+                var buildProfile = profile.BuildProfile;
+                if (buildProfile == null)
+                    continue;
+                var defines = (buildProfile.scriptingDefines ?? Array.Empty<string>())
+                    .Where(d => !d.StartsWith(BuildProfileDefines.Prefix, StringComparison.Ordinal));
+                text.Append(buildProfile.name).Append(": ").Append(string.Join(";", defines)).Append('\n');
+            }
+            if (projectSettings != null)
+                text.Append(EditorJsonUtility.ToJson(projectSettings));
+            return text.ToString();
         }
 
         /// <summary>
@@ -600,6 +661,9 @@ namespace BuildForge.Editor.UI
             var buildOnlyError = BuildOnlyError(profile);
             if (buildOnlyError != null)
                 EditorGUILayout.HelpBox(buildOnlyError, MessageType.Error);
+            // The warnings below, like the list's icons, are from the last refresh.
+            if (settingsChanged)
+                DrawSettingsChanged();
             if (validationWarnings.TryGetValue(profile, out var warnings))
             {
                 foreach (var warning in warnings)
@@ -626,6 +690,26 @@ namespace BuildForge.Editor.UI
             }
 
             EditorGUILayout.EndVertical();
+        }
+
+        /// <summary>The notice that settings the warnings read changed since they were computed, with Refresh.</summary>
+        void DrawSettingsChanged()
+        {
+            // No FlexibleSpace: inside the scroll view it would stretch the row.
+            EditorGUILayout.BeginHorizontal(GUILayout.ExpandHeight(false));
+            EditorGUILayout.LabelField(SettingsChangedNotice, EditorStyles.wordWrappedMiniLabel, GUILayout.ExpandWidth(true));
+            if (GUILayout.Button(new GUIContent("Refresh", "Find profiles again and recompute the warnings."),
+                    GUILayout.Height(20f), GUILayout.ExpandWidth(false)))
+            {
+                // After this frame: the warnings drawn below would change in the middle of it.
+                EditorApplication.delayCall += () =>
+                {
+                    if (this == null) return;
+                    RefreshProfiles();
+                    Repaint();
+                };
+            }
+            EditorGUILayout.EndHorizontal();
         }
 
         /// <summary>Large platform icon, profile name, and a one-line subtitle, like the Build Profiles window's header.</summary>

@@ -14,7 +14,7 @@ One row per Unity Build Profile with Build Forge settings, sorted by platform, t
 
 Click a row to select it, double-click to open its Unity Build Profile, with the Build Forge section, in the Inspector. When the window opens, it selects the active profile.
 
-The toolbar's **Refresh** button finds profiles again and recomputes the warnings. Use it after adding Build Forge settings to a profile while the window is open; actions such as Activate and Apply refresh by themselves.
+The toolbar's **Refresh** button finds profiles again and recomputes the warnings. The window computes the warnings, which the row icons and the details' Warnings show, when it opens, on Refresh, when a variant is picked and after its Activate, Apply and Revert to Baseline, not as you edit settings elsewhere. When a profile's Build Forge settings, its Build Profile's scripting defines (apart from the `BUILD_PROFILE_` ones Build Forge maintains) or Project Settings > Build Forge change after that, the details say **Settings changed: Refresh to update the warnings.**, with a **Refresh** button: press it then. Press Refresh too after adding Build Forge settings to a profile while the window is open.
 
 ### Notices about the editor state
 
