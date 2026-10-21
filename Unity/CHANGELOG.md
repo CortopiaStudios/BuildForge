@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- When Build Forge cannot undo the applied profile's settings before a build and applies the undone ones again, it applies them in the order of the Apply, so Play Mode Follows Applied Profile's copy follows its platform's settings again. They were applied in reverse, so the copy took the platform's settings from before the Apply
+
 ## [0.9.4] - 2026-10-20
 
 ### Changed

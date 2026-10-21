@@ -278,6 +278,9 @@ namespace BuildForge.Editor.Core
             {
                 if (appliedProfile != null)
                 {
+                    // Restored newest first; applied again in the Apply's order, so a
+                    // Play Mode mirror copies its platform as the plugins leave it.
+                    restoredEntries.Reverse();
                     var reapply = ResumeAfterBuild(restoredEntries, appliedProfile, resolve, variant);
                     failures.AddRange(reapply.Failures);
                     reapplied = reapply.Failures.Count == 0

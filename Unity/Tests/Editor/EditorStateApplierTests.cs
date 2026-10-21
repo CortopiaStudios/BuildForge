@@ -647,5 +647,53 @@ namespace BuildForge.Tests.Editor
 
             Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
         }
+
+        // A stopped build re-applies what it restored in the Apply's order: a Play Mode
+        // mirror copies its platform as the plugins leave it, so it comes after them.
+        [Test]
+        public void Suspend_RestoreFailure_ReappliesInTheApplysOrder()
+        {
+            var loaders = new ChainPlugin("loaders-before", () => "loaders-applied");
+            var source = new ChainPlugin("source-before", () => "source-applied");
+            var mirror = new ChainPlugin("standalone-before", () => source.State);
+            var plugins = new Dictionary<string, IForgeEditorApplicable>
+            {
+                { "Loaders", loaders }, { "Source", source }, { "Mirror", mirror },
+            };
+            Func<string, IForgeEditorApplicable> resolve = name => plugins.TryGetValue(name, out var p) ? p : null;
+            EditorStateApplier.Apply(entries, new[]
+            {
+                new EditorStatePair { PluginTypeName = "Loaders", Group = BuildTargetGroup.Android, Plugin = loaders },
+                new EditorStatePair { PluginTypeName = "Source", Group = BuildTargetGroup.Android, Plugin = source },
+                new EditorStatePair { PluginTypeName = "Mirror", Group = BuildTargetGroup.Standalone, Plugin = mirror },
+            }, profileA, resolve, null);
+            Assert.AreEqual("source-applied", mirror.State);
+            loaders.FailRestore = true;
+            LogAssert.Expect(LogType.Error, new Regex(@"Loaders\|Android: restore failed"));
+
+            Assert.Throws<AggregateException>(() => EditorStateApplier.SuspendForBuild(entries, resolve, profileA, null));
+
+            Assert.AreEqual("source-applied", source.State);
+            Assert.AreEqual("source-applied", mirror.State);
+        }
+
+        /// <summary>A plugin whose state is one string, which applying sets from <c>apply</c>.</summary>
+        class ChainPlugin : IForgeEditorApplicable
+        {
+            public string State;
+            public bool FailRestore;
+            readonly Func<string> apply;
+
+            public ChainPlugin(string state, Func<string> apply) { State = state; this.apply = apply; }
+
+            public string CaptureEditorState(BuildTargetGroup group) => State;
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) => State = apply();
+            public void RestoreEditorState(BuildTargetGroup group, string json)
+            {
+                if (FailRestore)
+                    throw new InvalidOperationException("restore boom");
+                State = json;
+            }
+        }
     }
 }
