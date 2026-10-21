@@ -151,7 +151,7 @@ In an OpenXR 1.18 project, switching between a Meta Quest profile and another An
 
 **Known limitation**: "Additional Graphics Queue (Vulkan)" and "Offscreen Rendering Only (Vulkan)" are not overridable per-profile. These settings live on Unity's internal `OpenXREditorSettings` class, which is not part of the public API. They're written to the player boot config at build time by Unity's `OpenXRBuildProcessor`. A future Unity OpenXR update exposing these publicly would allow Build Forge to support them.
 
-Conditional on `com.unity.xr.openxr` being installed. The plugin assembly uses `defineConstraints` and `versionDefines` in its `.asmdef` — it is automatically excluded when OpenXR is not present. No manual scripting defines needed.
+Conditional on `com.unity.xr.openxr` being installed. The plugin assembly uses `defineConstraints` and `versionDefines` in its `.asmdef` — it is automatically excluded when OpenXR is not present, or older than 1.16.0, or XR Plug-in Management is older than 4.5.3. No manual scripting defines needed.
 
 ### Android Keystore Env
 

@@ -5,5 +5,5 @@
   "includePlatforms": ["Editor"],
   "autoReferenced": true,
   "defineConstraints": ["BUILDFORGE_XR_MANAGEMENT"],
-  "versionDefines": [{"name": "com.unity.xr.management", "expression": "4.0.0", "define": "BUILDFORGE_XR_MANAGEMENT"}]
+  "versionDefines": [{"name": "com.unity.xr.management", "expression": "4.5.3", "define": "BUILDFORGE_XR_MANAGEMENT"}]
 }

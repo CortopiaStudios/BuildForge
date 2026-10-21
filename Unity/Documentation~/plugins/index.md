@@ -4,14 +4,14 @@ Build Forge ships ten plugins. Each has its own fixed order: a build runs the pl
 
 | Order | Plugin | Needs | Per-profile switch | Changes for a build | Apply | Manifest section |
 |---|---|---|---|---|---|---|
-| 100 | [XR Loaders](xr-loaders.md) | XR Plug-in Management 4.0+ | Enabled, off by default | The platform's XR loader list | Yes | `XRLoaders` |
-| 200 | [OpenXR](openxr.md) | OpenXR | None | The platform's OpenXR settings and features | Yes | `OpenXR` |
+| 100 | [XR Loaders](xr-loaders.md) | XR Plug-in Management 4.5.3+ | Enabled, off by default | The platform's XR loader list | Yes | `XRLoaders` |
+| 200 | [OpenXR](openxr.md) | OpenXR 1.16.0+, XR Plug-in Management 4.5.3+ | None | The platform's OpenXR settings and features | Yes | `OpenXR` |
 | 300 | [Git Metadata](git-metadata.md) | Git on PATH | None | Nothing; manifest only | No | `Git` |
 | 400 | [Build Number](build-number.md) | Git, or an environment variable | Enabled, off by default | Android version code, iOS build number | No | `BuildNumber` |
 | 500 | [Cloud Diagnostics](cloud-diagnostics.md) | | Enabled, off by default | Crash reporting and Diagnostics Data, and with them the symbol upload | No | |
 | 600 | [Android Keystore Env](android-keystore-env.md) | An Android profile | Enabled, off by default | Android keystore path, passwords and key alias | No | |
-| 700 | [Addressables Stripper](addressables-stripper.md) | Addressables | None | Which groups and labelled entries are in the build | No | `Addressables` |
-| 800 | [Addressables Rebuild](addressables-rebuild.md) | Addressables | Enabled, off by default | Builds the Addressables content | No | |
+| 700 | [Addressables Stripper](addressables-stripper.md) | Addressables 2.7.4+ | None | Which groups and labelled entries are in the build | No | `Addressables` |
+| 800 | [Addressables Rebuild](addressables-rebuild.md) | Addressables 2.7.4+ | Enabled, off by default | Builds the Addressables content | No | |
 | 900 | [Android Manifest](android-manifest.md) | An Android profile | None | The main manifest file and Custom Main Manifest | No | `AndroidManifest` |
 | 1000 | [XR Vendor Filter](xr-vendor-filter.md) | An Android profile | Enabled, off by default | Which vendor libraries reach the Gradle project, and the vendors' manifest entries | No | `XRVendorFilter` |
 
@@ -22,7 +22,7 @@ Build Forge ships ten plugins. Each has its own fixed order: a build runs the pl
 - **For the whole project**: **Project Settings > Build Forge > Installed Plugins** has a toggle per plugin, all on by default. A plugin turned off there is hidden from every Build Forge section and skipped by every build.
 - **For one profile**: plugins with a per-profile switch show an **Enabled** checkbox in the profile's Build Forge section. They start off, so installing Build Forge does not change what a build produces until you enable them. Git Metadata, OpenXR, Addressables Stripper and Android Manifest have no switch: Git Metadata only writes the manifest, and the others change nothing until the profile configures overrides, exclusions or a manifest. (With **Meta Quest Setup** on, a build of a [Meta Quest profile](openxr.md#meta-quest-build-profiles) also turns on the features OpenXR's own Meta Quest setup turns on in the editor, while that setup hasn't run, as in a fresh CI checkout. It is off by default.)
 
-A plugin that does not apply to a profile is skipped for it, and its foldout explains why: Android Keystore Env, Android Manifest and XR Vendor Filter apply only to Android profiles, and OpenXR only to platforms with OpenXR settings. The Addressables plugins apply whenever the Addressables package is installed: without Addressables settings, a build that has exclusions or Addressables Rebuild on stops, because content built before would ship.
+A plugin that does not apply to a profile is skipped for it, and its foldout explains why: Android Keystore Env, Android Manifest and XR Vendor Filter apply only to Android profiles, and OpenXR only to platforms with OpenXR settings. The Addressables plugins apply whenever the Addressables package is installed, 2.7.4 or later: without Addressables settings, a build that has exclusions or Addressables Rebuild on stops, because content built before would ship.
 
 ## Order
 

@@ -121,7 +121,7 @@ namespace BuildForge.Editor.Core
                 missing.Add($"{inProjectSettings} in Project Settings > Build Forge");
             return missing.Count == 0 ? null
                 : $"Build Forge cannot load the plugin settings {string.Join(", ", missing)}: the plugin, or a class of its " +
-                  "settings, is gone or was renamed, so builds would leave the settings out. Install the package that provides " +
+                  "settings, is gone or was renamed, so builds would leave the settings out. Install, or update, the package that provides " +
                   "the plugin, correct the class in the asset if an update renamed it, or remove the settings if the plugin is " +
                   "gone for good; see Troubleshooting.";
         }

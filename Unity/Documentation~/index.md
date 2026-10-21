@@ -17,7 +17,7 @@ Build Forge leaves to Unity what Build Profiles already do. Scenes, scripting de
 ## Requirements
 
 - Unity 6000.3 or later.
-- For the optional plugins: XR Plug-in Management 4.0 or later (XR Loaders), OpenXR (OpenXR), Addressables (Addressables Stripper and Addressables Rebuild).
+- For the optional plugins: XR Plug-in Management 4.5.3 or later (XR Loaders), OpenXR 1.16.0 and XR Plug-in Management 4.5.3 or later (OpenXR), Addressables 2.7.4 or later (Addressables Stripper and Addressables Rebuild).
 - For CI builds: the standalone Unity CLI (`unity`) on the build machine. The tested combination is CLI 1.0.0-beta.13 with Unity 6000.3.23f1 on Windows.
 
 Tested with Unity 6000.3.0f1, 6000.3.23f1, 6000.6.0f1, 6000.6.4f1, 6000.6.6f1 and 6000.7.0b4 (pre-release, checked); [Installation](installation.md#tested-with) lists the package versions. The package's tests and real player builds have been run on Windows editors. macOS and Linux have not been verified. Newer versions are expected to work; where Build Forge cannot read a Unity internal it needs, a build stops rather than building something else.

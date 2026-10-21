@@ -19,13 +19,19 @@
   "precompiledReferences": [],
   "autoReferenced": true,
   "defineConstraints": [
-    "BUILDFORGE_OPENXR"
+    "BUILDFORGE_OPENXR",
+    "BUILDFORGE_XR_MANAGEMENT"
   ],
   "versionDefines": [
     {
       "name": "com.unity.xr.openxr",
-      "expression": "1.0.0",
+      "expression": "1.16.0",
       "define": "BUILDFORGE_OPENXR"
+    },
+    {
+      "name": "com.unity.xr.management",
+      "expression": "4.5.3",
+      "define": "BUILDFORGE_XR_MANAGEMENT"
     }
   ],
   "noEngineReferences": false

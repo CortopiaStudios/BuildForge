@@ -68,11 +68,11 @@ Four bundled plugins live in assemblies that compile only when their Unity packa
 
 | Plugin | Needs |
 |---|---|
-| XR Loaders | `com.unity.xr.management` 4.0.0 or later |
-| OpenXR | `com.unity.xr.openxr` (which brings XR Plug-in Management) |
-| Addressables Stripper, Addressables Rebuild | `com.unity.addressables`, with Addressables settings created in the project |
+| XR Loaders | `com.unity.xr.management` 4.5.3 or later |
+| OpenXR | `com.unity.xr.openxr` 1.16.0 or later, with `com.unity.xr.management` 4.5.3 or later, which OpenXR brings |
+| Addressables Stripper, Addressables Rebuild | `com.unity.addressables` 2.7.4 or later, with Addressables settings created in the project |
 
-No scripting defines are needed. While a package is missing, **Project Settings > Build Forge** lists its plugins under **Available Plugins** with an **Install** button, which adds the package through the Package Manager.
+No scripting defines are needed. While a package is missing, **Project Settings > Build Forge** lists its plugins under **Available Plugins** with an **Install** button, which adds the package through the Package Manager. With an older version of the package, the plugins are left out, and Project Settings lists them under neither heading: update the package in the Package Manager. Until then, builds and Apply stop for a profile that stores settings for them, and for every profile while Project Settings > Build Forge does; see [Troubleshooting](troubleshooting.md#build-forge-cannot-load-the-plugin-settings-). On a machine where such a profile is applied, Build Forge can't restore what the plugin applied either, so Revert to Baseline before updating Build Forge, or update the package first.
 
 ## What changes when the package is installed
 

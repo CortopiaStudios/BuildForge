@@ -5,6 +5,6 @@
   "overrideReferences": true,
   "precompiledReferences": ["nunit.framework.dll"],
   "autoReferenced": false,
-  "defineConstraints": ["UNITY_INCLUDE_TESTS", "BUILDFORGE_OPENXR"],
-  "versionDefines": [{"name": "com.unity.xr.openxr", "expression": "1.0.0", "define": "BUILDFORGE_OPENXR"}]
+  "defineConstraints": ["UNITY_INCLUDE_TESTS", "BUILDFORGE_OPENXR", "BUILDFORGE_XR_MANAGEMENT"],
+  "versionDefines": [{"name": "com.unity.xr.openxr", "expression": "1.16.0", "define": "BUILDFORGE_OPENXR"}, {"name": "com.unity.xr.management", "expression": "4.5.3", "define": "BUILDFORGE_XR_MANAGEMENT"}]
 }

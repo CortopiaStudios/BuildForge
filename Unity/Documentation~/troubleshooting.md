@@ -47,7 +47,7 @@ The message names the cause. The common ones:
 
 A profile's Build Forge settings, or **Project Settings > Build Forge**, hold settings whose class Unity cannot find, so a build or an Apply would leave them out: the plugin would read its defaults, or not run at all. Both stop before they change anything. The message names the settings by their plugin's key, and the class with its assembly. The build window shows the same message in red and disables Apply and Build for the profile. Unity keeps the settings in the file meanwhile.
 
-- **The package that provides the plugin was removed**, or did not install: install it. Unity loads the settings again once it has reloaded scripts.
+- **The package that provides the plugin was removed**, did not install, or is older than the plugin needs (see [Installation](installation.md)): install or update it. Unity loads the settings again once it has reloaded scripts.
 - **An update renamed or moved the class**, as Build Forge 0.9.1 moved six plugins into assemblies of their own (see the changelog): correct the class's `type:` line under `references` in the file, for example `asm: BuildForge.Editor` to `asm: BuildForge.Editor.BuildNumber`. Entering the plugin's settings again in the profile also clears the message, and replaces what was saved.
 - **The plugin is gone for good**: remove its settings from the file in a text editor, the entry with its key under `pluginConfigs` and the entry with the same `rid` under `references`:
 

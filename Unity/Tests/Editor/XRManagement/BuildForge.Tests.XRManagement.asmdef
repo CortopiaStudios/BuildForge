@@ -7,7 +7,7 @@
   "autoReferenced": false,
   "defineConstraints": ["UNITY_INCLUDE_TESTS", "BUILDFORGE_XR_MANAGEMENT"],
   "versionDefines": [
-    {"name": "com.unity.xr.management", "expression": "4.0.0", "define": "BUILDFORGE_XR_MANAGEMENT"},
+    {"name": "com.unity.xr.management", "expression": "4.5.3", "define": "BUILDFORGE_XR_MANAGEMENT"},
     {"name": "com.unity.xr.management", "expression": "4.7.0", "define": "BUILDFORGE_XR_MANAGEMENT_4_7"}
   ]
 }
