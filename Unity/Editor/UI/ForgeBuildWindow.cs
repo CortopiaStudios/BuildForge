@@ -660,11 +660,6 @@ namespace BuildForge.Editor.UI
         }
 
         /// <summary>
-        /// Applied-profile status under the list: missing asset, drift against
-        /// the state as applied, and the reminder that an applied profile lives
-        /// in version-controlled settings assets.
-        /// </summary>
-        /// <summary>
         /// A build that did not finish stops the next one until it is cleared here, once the
         /// files it changed are restored (see <see cref="InterruptedBuildMarker"/>).
         /// </summary>
@@ -676,18 +671,30 @@ namespace BuildForge.Editor.UI
             var canMutate = ForgeEditorState.CanMutate(out var reason);
             DrawWarningBoxWithButtons(unfinished, (new GUIContent("Clear",
                     canMutate ? "Builds can start again. Clear only once the files that build changed are restored." : reason),
-                canMutate, () =>
+                canMutate, () => EditorApplication.delayCall += () =>
                 {
-                    if (EditorUtility.DisplayDialog("Clear the unfinished build?",
+                    if (!EditorUtility.DisplayDialog("Clear the unfinished build?",
                             "Builds then start from the project files as they are. Clear only after restoring the files the " +
                             "build that did not finish changed (check git status and git diff).", "Clear", "Cancel"))
+                        return;
+                    try
                     {
                         InterruptedBuildMarker.Clear();
                         Debug.Log("[Build Forge] Cleared the record of a build that did not finish.");
                     }
+                    catch (Exception e)
+                    {
+                        EditorUtility.DisplayDialog("Build Forge", $"{InterruptedBuildMarker.FilePath} could not be deleted: {e.Message}", "OK");
+                    }
+                    if (this != null) Repaint();
                 }));
         }
 
+        /// <summary>
+        /// Applied-profile status under the list: missing asset, drift against
+        /// the state as applied, and the reminder that an applied profile lives
+        /// in version-controlled settings assets.
+        /// </summary>
         void DrawEditorState(ForgeProfile appliedProfile)
         {
             if (!ForgeEditorState.HasAppliedGuid)
