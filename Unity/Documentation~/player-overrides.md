@@ -31,7 +31,7 @@ A typical use: after a version bump in Project Settings, the profiles' copies st
 
 ## Single Profile mode
 
-A dropdown selects any Unity Build Profile in the project, also ones without Build Forge settings. The table lists the Player Settings the profile changes, as **Property**, **Platform Default** (the Project Settings value) and **Unity Build Profile Override**. A profile without Player Settings of its own says so, as does a copy identical to Project Settings.
+A dropdown selects any Unity Build Profile in the project, also ones without Build Forge settings. The table lists the Player Settings the profile changes, as **Property**, **Platform Default** (the Project Settings value) and **Unity Build Profile Override**. A profile without Player Settings of its own says so, as does a copy identical to Project Settings. When Project Settings can't be read, or the two files have no setting in common because one wasn't read as expected, the view says it could not compare them rather than that they match; the Matrix says the same for each such profile. The window reads the asset files, so it needs assets serialized as text (**Edit > Project Settings > Editor > Asset Serialization: Force Text**, Unity's default).
 
 The same view is in the Build Forge settings Inspector (Assets > Build Forge > Edit Build Forge Settings) as the **Player Overrides** foldout, with the number of differences in its title.
 

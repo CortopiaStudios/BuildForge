@@ -74,7 +74,7 @@ namespace BuildForge.Editor.UI
         {
             if (projectSettingsMissing || matrix == null)
             {
-                EditorGUILayout.HelpBox("ProjectSettings/ProjectSettings.asset could not be read.", MessageType.Warning);
+                EditorGUILayout.HelpBox(PlayerSettingsDiffView.ProjectSettingsUnreadableMessage, MessageType.Warning);
                 return;
             }
             if (profiles.Count == 0)
@@ -92,11 +92,16 @@ namespace BuildForge.Editor.UI
                 return;
             }
 
-            var withOwn = $"{profileColumns} Unity Build Profile{(profileColumns == 1 ? "" : "s")} with Player Settings of " +
-                          (profileColumns == 1 ? "its own" : "their own");
+            // A profile that shares no setting with Project Settings was not compared; it doesn't match.
+            if (matrix.Uncompared.Count > 0)
+                EditorGUILayout.HelpBox(PlayerSettingsDiffView.CouldNotCompareMessage(matrix.Uncompared), MessageType.Warning);
+            var compared = profileColumns - matrix.Uncompared.Count;
+            var withOwn = $"{compared} Unity Build Profile{(compared == 1 ? "" : "s")} with Player Settings of " +
+                          (compared == 1 ? "its own" : "their own");
             if (matrix.Rows.Count == 0)
             {
-                EditorGUILayout.HelpBox($"The {withOwn} match{(profileColumns == 1 ? "es" : "")} Project Settings.", MessageType.Info);
+                if (compared > 0)
+                    EditorGUILayout.HelpBox($"The {withOwn} match{(compared == 1 ? "es" : "")} Project Settings.", MessageType.Info);
                 DrawUsingProjectSettings();
                 return;
             }

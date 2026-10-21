@@ -61,6 +61,8 @@ namespace BuildForge.Editor.Core
         public readonly List<Row> Rows = new();
         /// <summary>Profiles on platforms where no profile has Player Settings of its own.</summary>
         public readonly List<string> UsingProjectSettings = new();
+        /// <summary>Profiles whose Player Settings share no setting with Project Settings: not compared, rather than matching.</summary>
+        public readonly List<string> Uncompared = new();
 
         public int ProfileColumnCount => Columns.Count(c => c.Kind == ColumnKind.Profile);
 
@@ -102,7 +104,9 @@ namespace BuildForge.Editor.Core
                 {
                     var profile = profiles[i];
                     var entries = PlayerSettingsDiffComputer.ComputeDiff(
-                        profile.PlayerSettings, projectSettings, profile.Target, profile.DedicatedServer);
+                        profile.PlayerSettings, projectSettings, profile.Target, profile.DedicatedServer, out var compared);
+                    if (compared == 0)
+                        matrix.Uncompared.Add(profile.Name);
                     diffs[i] = entries.GroupBy(e => e.PropertyPath).ToDictionary(g => g.Key, g => g.First());
                     matrix.Columns.Add(new Column
                     {

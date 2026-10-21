@@ -197,5 +197,18 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual("1", PlayerSettingsDiffComputer.DisplayValue(batching, "m_StaticBatching", BuildTarget.Android),
                 "Expanded batching entries resolve like the diff's rows.");
         }
+
+        [Test]
+        public void AProfileSharingNoSettingWithProjectSettings_IsUncompared_NotMatching()
+        {
+            var matrix = PlayerSettingsMatrix.Build(new[]
+            {
+                Profile("Quest", BuildTarget.Android, OwnCopy()),
+                Profile("Misread", BuildTarget.Android, new Dictionary<string, string> { ["unrelated"] = "x" }),
+            }, Project);
+
+            CollectionAssert.AreEqual(new[] { "Misread" }, matrix.Uncompared);
+            StringAssert.Contains("'Misread'", global::BuildForge.Editor.UI.PlayerSettingsDiffView.CouldNotCompareMessage(matrix.Uncompared));
+        }
     }
 }

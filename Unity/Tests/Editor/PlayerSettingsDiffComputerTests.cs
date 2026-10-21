@@ -243,6 +243,22 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual(0, diffs.Count);
         }
 
+        // No setting in common means the files couldn't be compared, not that they match.
+        [Test]
+        public void SettingsInCommon_AreCounted()
+        {
+            var platform = new Dictionary<string, string> { ["productName"] = "My Game", ["bundleVersion"] = "1.0" };
+
+            PlayerSettingsDiffComputer.ComputeDiff(new Dictionary<string, string> { ["productName"] = "My Game" }, platform,
+                BuildTarget.StandaloneWindows64, false, out var some);
+            var diffs = PlayerSettingsDiffComputer.ComputeDiff(new Dictionary<string, string> { ["unrelated"] = "x" }, platform,
+                BuildTarget.StandaloneWindows64, false, out var none);
+
+            Assert.AreEqual(1, some);
+            Assert.AreEqual(0, none);
+            Assert.IsEmpty(diffs);
+        }
+
         [Test]
         public void SpacingInsideAValue_IsADifference()
         {

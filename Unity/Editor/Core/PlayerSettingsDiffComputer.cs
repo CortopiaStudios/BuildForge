@@ -13,7 +13,20 @@ namespace BuildForge.Editor.Core
             Dictionary<string, string> platformMap,
             BuildTarget buildTarget,
             bool dedicatedServer = false)
+            => ComputeDiff(profileMap, platformMap, buildTarget, dedicatedServer, out _);
+
+        /// <summary>
+        /// <paramref name="compared"/> is how many settings both sides hold. None means the
+        /// two couldn't be compared, as when a file wasn't read as expected, not that they match.
+        /// </summary>
+        public static List<Configuration.DiffEntry> ComputeDiff(
+            Dictionary<string, string> profileMap,
+            Dictionary<string, string> platformMap,
+            BuildTarget buildTarget,
+            bool dedicatedServer,
+            out int compared)
         {
+            compared = 0;
             var diffs = new List<Configuration.DiffEntry>();
             var targetKeys = GetTargetKeys(buildTarget, dedicatedServer);
             profileMap = ExpandPerPlatformArrays(profileMap, targetKeys);
@@ -29,6 +42,7 @@ namespace BuildForge.Editor.Core
 
                 if (!platformMap.TryGetValue(key, out var platformValue))
                     continue;
+                compared++;
 
                 var perPlatform = IsPerPlatformProperty(platformValue) || IsPerPlatformProperty(profileValue);
                 if (perPlatform)

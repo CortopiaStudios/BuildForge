@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using BuildForge.Editor.Configuration;
@@ -43,10 +44,27 @@ namespace BuildForge.Editor.UI
             ComputeDiff();
         }
 
+        /// <summary>Why Player Settings can't be compared with Project Settings: the window compares text files.</summary>
+        internal const string ProjectSettingsUnreadableMessage =
+            "ProjectSettings/ProjectSettings.asset could not be read, so Player Settings can't be compared with it. " + TextAssetsNote;
+
+        const string TextAssetsNote =
+            "The window reads assets serialized as text (Edit > Project Settings > Editor > Asset Serialization: Force Text).";
+
+        /// <summary>For profiles whose Player Settings share no setting with Project Settings.</summary>
+        internal static string CouldNotCompareMessage(IEnumerable<string> profileNames)
+            => $"Build Forge could not compare the Player Settings of {string.Join(", ", profileNames.Select(n => $"'{n}'"))} " +
+               "with Project Settings: they have no setting in common, so a file was not read as expected. " + TextAssetsNote;
+
+        bool projectSettingsUnreadable;
+        bool nothingCompared;
+
         public void ComputeDiff()
         {
             diffs = new List<DiffEntry>();
             hasPlayerSettings = false;
+            projectSettingsUnreadable = false;
+            nothingCompared = false;
 
             if (buildProfile == null)
                 return;
@@ -60,14 +78,18 @@ namespace BuildForge.Editor.UI
 
             var platformLines = ExtractPlatformPlayerSettingsYaml();
             if (platformLines == null)
+            {
+                projectSettingsUnreadable = true;
                 return;
+            }
 
             var profileMap = ParseYamlToPropertyMap(profileLines);
             var platformMap = ParseYamlToPropertyMap(platformLines);
 
             diffs = PlayerSettingsDiffComputer.ComputeDiff(
                 profileMap, platformMap, BuildProfileUtility.GetBuildTarget(buildProfile),
-                BuildProfileUtility.IsDedicatedServer(buildProfile));
+                BuildProfileUtility.IsDedicatedServer(buildProfile), out var compared);
+            nothingCompared = compared == 0;
         }
 
         /// <summary>
@@ -96,6 +118,18 @@ namespace BuildForge.Editor.UI
                     "The Unity Build Profile has no Player Settings overrides. " +
                     "It uses the platform defaults as-is.",
                     MessageType.Info);
+                return;
+            }
+
+            // Before "identical": a file that couldn't be read, or wasn't read as expected, compared nothing.
+            if (projectSettingsUnreadable)
+            {
+                EditorGUILayout.HelpBox(ProjectSettingsUnreadableMessage, MessageType.Warning);
+                return;
+            }
+            if (nothingCompared)
+            {
+                EditorGUILayout.HelpBox(CouldNotCompareMessage(new[] { buildProfile.name }), MessageType.Warning);
                 return;
             }
 
