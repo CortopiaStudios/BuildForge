@@ -12,7 +12,7 @@ Builds run on the active Unity Build Profile only. Activate the profile in the b
 
 ### Build or Apply is missing or disabled
 
-The build window shows **Apply**, **Build** and **Build and Run** only for the active profile; for any other profile the action bar has **Activate** instead. A disabled button gives its reason as its tooltip. The usual ones: the profile has nothing to apply, meaning no plugin with editor settings and no variants (Apply); no variant is picked yet, in a project with variants; the selected variant is not allowed for the profile; or the editor is in Play Mode, compiling, importing or building. The main toolbar's **Build** and **Build and Run** are disabled for the same reasons, and while the active Build Profile has no Build Forge settings or Unity is on a platform profile.
+The build window shows **Apply**, **Build** and **Build and Run** only for the active profile; for any other profile the action bar has **Activate** instead. A disabled button gives its reason as its tooltip. The usual ones: the profile has nothing to apply, meaning no plugin with editor settings and no variants (Apply); no variant is picked yet, in a project with variants; the selected variant is not allowed for the profile; a plugin failed to load, or Unity cannot load plugin settings (the details pane shows it in red); or the editor is in Play Mode, compiling, importing or building. The main toolbar's **Build** and **Build and Run** are disabled for the same reasons, and while the active Build Profile has no Build Forge settings or Unity is on a platform profile.
 
 ### The build stops before it starts
 
@@ -23,7 +23,7 @@ The message names the cause. The common ones:
 | Build Forge refuses to remove previous build output in … | The destination is unsafe to clean, for example it contains the project. Choose a dedicated folder; see [Remove Previous Build Output](settings.md#remove-previous-build-output). |
 | Build Forge could not delete … | A file from the previous build is in use, usually because the player is still running. |
 | Build Forge cannot build '…': a folder is in the way | An old Android export folder sits where the APK goes. |
-| Build Forge plugin … could not be loaded | The plugin's constructor failed, and the error is in parentheses. Fix the plugin, or turn it off in **Project Settings > Build Forge > Installed Plugins**, where it is listed as "(failed to load)". |
+| Build Forge plugin … could not be loaded | The plugin's constructor failed, and the error is in parentheses. Builds and Apply stop, and the build window disables them with this reason in red. Fix the plugin, or turn it off in **Project Settings > Build Forge > Installed Plugins**, where it is listed as "(failed to load)". |
 | Build Forge cannot load the plugin settings … | [Plugin settings that Unity cannot load](#build-forge-cannot-load-the-plugin-settings-) |
 | Build Forge can't tell what these editor settings hold | An Apply or a build that wrote the applied profile's settings did not finish. Revert to Baseline or Re-apply it in the build window; see [When an Apply or a build did not finish](concepts.md#when-an-apply-or-a-build-did-not-finish). |
 | '…' has no '…' setting on Unity …, or Unity Build Profile '…' stores no … | Unity renamed a Build Profile setting that Build Forge applies or reads. Update Build Forge for your Unity version. |
@@ -41,7 +41,7 @@ The message names the cause. The common ones:
 
 ### "Build Forge cannot load the plugin settings …"
 
-A profile's Build Forge settings, or **Project Settings > Build Forge**, hold settings whose class Unity cannot find, so a build would leave them out: the plugin would read its defaults, or not run at all. The message names the settings by their plugin's key, and the class with its assembly. The build window shows the same message before a build. Unity keeps the settings in the file meanwhile.
+A profile's Build Forge settings, or **Project Settings > Build Forge**, hold settings whose class Unity cannot find, so a build or an Apply would leave them out: the plugin would read its defaults, or not run at all. Both stop before they change anything. The message names the settings by their plugin's key, and the class with its assembly. The build window shows the same message in red and disables Apply and Build for the profile. Unity keeps the settings in the file meanwhile.
 
 - **The package that provides the plugin was removed**, or did not install: install it. Unity loads the settings again once it has reloaded scripts.
 - **An update renamed or moved the class**, as Build Forge 0.9.1 moved six plugins into assemblies of their own (see the changelog): correct the class's `type:` line under `references` in the file, for example `asm: BuildForge.Editor` to `asm: BuildForge.Editor.BuildNumber`. Entering the plugin's settings again in the profile also clears the message, and replaces what was saved.

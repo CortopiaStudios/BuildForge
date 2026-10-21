@@ -192,6 +192,9 @@ namespace BuildForge.Editor.UI
             string tooltip;
             if (!state.CanMutate)
                 tooltip = state.MutateReason;
+            else if (state.ActiveForgeProfile != null && ForgePluginRegistry.BlockingError(state.ActiveForgeProfile) is string blocking)
+                // Apply stops for it, as builds do; the menu lists the entries unavailable.
+                tooltip = blocking;
             else if (drift.Count > 0)
                 // The window's drift warning, and how the toolbar re-applies.
                 tooltip = $"Editor settings differ from '{state.ActiveForgeProfile.DisplayName}' as applied: " +
@@ -360,7 +363,9 @@ namespace BuildForge.Editor.UI
             var profile = state.ActiveForgeProfile;
             var variants = ForgeSettings.instance.BuildVariants;
             var canApply = profile != null && (state.Applied || variants.Count > 0 || ForgeEditorState.HasEditorApplicableSettings(profile));
-            return ApplyEntries(canApply, variants, v => BuildVariants.ProfileError(profile, v),
+            // A plugin or plugin settings that can't load stop Apply as they stop a build.
+            var blocking = profile != null ? ForgePluginRegistry.BlockingError(profile) : null;
+            return ApplyEntries(canApply, variants, v => BuildVariants.ProfileError(profile, v) ?? blocking,
                 state.Applied, ForgeEditorState.AppliedVariant, state.AnythingApplied, state.CanMutate);
         }
 
@@ -384,11 +389,12 @@ namespace BuildForge.Editor.UI
         /// Build Profile has no single set of Build Forge settings, for
         /// <paramref name="noProfileReason"/>) with the build window's variant, and is
         /// enabled when the window's Build would be: a variant is picked once the project
-        /// has variants, it is allowed for the profile (<paramref name="variantError"/>
-        /// otherwise) and mutating is not refused. The tooltip names what it builds.
+        /// has variants, nothing stops the profile's build (<paramref name="profileError"/>
+        /// says why otherwise: a variant it doesn't allow, or a plugin or plugin settings
+        /// that can't load) and mutating is not refused. The tooltip names what it builds.
         /// </summary>
         internal static BuildButton BuildButtonFor(bool run, string profileName, string noProfileReason, string variant,
-            bool variantsConfigured, string variantError, bool canMutate, string mutateReason)
+            bool variantsConfigured, string profileError, bool canMutate, string mutateReason)
         {
             var label = run ? "Build and Run" : "Build";
             if (!canMutate)
@@ -397,8 +403,8 @@ namespace BuildForge.Editor.UI
                 return new BuildButton(label, noProfileReason, false);
             if (variantsConfigured && variant == null)
                 return new BuildButton(label, PickVariantReason, false);
-            if (variantError != null)
-                return new BuildButton(label, variantError, false);
+            if (profileError != null)
+                return new BuildButton(label, profileError, false);
             var what = variantsConfigured ? $"'{profileName}' with variant '{variant}'" : $"'{profileName}'";
             var tooltip = $"Build {what} through Build Forge{(run ? ", then run it" : "")}.";
             if (variantsConfigured)
@@ -418,7 +424,8 @@ namespace BuildForge.Editor.UI
                     ? $"No Unity Build Profile is active; Unity is on the {EditorUserBuildSettings.activeBuildTarget} platform profile."
                     : state.ResolveError);
             return BuildButtonFor(run, profile?.DisplayName, noProfileReason, variant, ForgeSettings.instance.BuildVariants.Count > 0,
-                profile != null ? BuildVariants.ProfileError(profile, variant) : null, state.CanMutate, state.MutateReason);
+                profile != null ? BuildVariants.ProfileError(profile, variant) ?? ForgePluginRegistry.BlockingError(profile) : null,
+                state.CanMutate, state.MutateReason);
         }
 
         static void ShowProfileMenu(Rect rect)

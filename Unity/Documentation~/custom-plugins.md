@@ -178,7 +178,7 @@ forgeProfile.SetPluginConfig("MyStudio.MyPlugin", config);
 
 The configuration is stored as a managed reference, so each field is a readable line in the Build Profile asset and a change is a one-line diff. Unity writes every serialized field, including ones the current settings do not use.
 
-Renaming or moving the class, its namespace or its assembly makes stored data an unknown type: Unity keeps it and logs a warning, and it comes back when the type returns. Until then, builds of the profiles that hold it stop, and so do builds of every profile when it is in Project Settings ([Troubleshooting](troubleshooting.md#build-forge-cannot-load-the-plugin-settings-)). The same goes for the class of a `[SerializeReference]` field in your configuration. Use Unity's `[MovedFrom]` attribute when you rename it.
+Renaming or moving the class, its namespace or its assembly makes stored data an unknown type: Unity keeps it and logs a warning, and it comes back when the type returns. Until then, builds and Apply of the profiles that hold it stop, and so do those of every profile when it is in Project Settings ([Troubleshooting](troubleshooting.md#build-forge-cannot-load-the-plugin-settings-)). The same goes for the class of a `[SerializeReference]` field in your configuration. Use Unity's `[MovedFrom]` attribute when you rename it.
 
 Project-wide settings work the same way through `ForgeSettings.instance.GetGlobalPluginConfig<T>(key)` and `SetGlobalPluginConfig(key, config)`, which saves `ProjectSettings/ForgeSettings.asset` immediately. Draw them in `OnDrawSettingsGUI`.
 

@@ -137,7 +137,7 @@ namespace BuildForge.Editor.Core
                     $"{platform} in Unity's Build Profiles window, which applies to the current user, or start the editor " +
                     "with -enableAllDerivedPlatforms, as on a build machine.");
             }
-            var pluginError = ForgePluginRegistry.LoadError() ?? ForgePluginRegistry.MissingSettingsError(forgeProfile);
+            var pluginError = ForgePluginRegistry.BlockingError(forgeProfile);
             if (pluginError != null)
                 throw new InvalidOperationException(pluginError);
             // An Apply or a build that did not finish left recorded editor settings in an

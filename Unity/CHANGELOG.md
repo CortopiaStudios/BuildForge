@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Apply stops before it changes anything while a plugin that is on in Project Settings failed to load, or while Unity cannot load plugin settings, as builds already did. Apply used to write what was left and record the profile as applied; a Re-apply first undid the profile's earlier settings, so OpenXR overrides could disappear while the profile still showed as applied. The build window and the main toolbar show the reason in red and disable Apply and Build for the profile; Build used to stay enabled and fail when clicked
 - `ForgeBuildRunner.RunBuild` throws the new `ForgeBuildRestoreException` when the player was built but a restore or cleanup step after the build failed, once every other step has run. It used to return the player's report, which says Succeeded, so a script that judged the build by it took a possibly modified project for a clean build. The exception's `Report` is that report and its `Failures` lists the failed steps. A player build that fails is still reported by the returned report, and the build window, the toolbar and `BuildForge.CommandLine.Build` are unchanged
 
 ## [0.9.5] - 2026-10-21

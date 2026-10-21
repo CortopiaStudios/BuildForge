@@ -110,6 +110,15 @@ namespace BuildForge.Editor.Core
         }
 
         /// <summary>
+        /// Why builds and Apply of the profile stop before they change anything: a plugin
+        /// that failed to load (<see cref="LoadError()"/>) or plugin settings Unity cannot
+        /// load (<see cref="MissingSettingsError"/>). Null otherwise. Cheap enough to call
+        /// on every repaint: the settings check is a native one unless something is missing.
+        /// </summary>
+        internal static string BlockingError(ForgeProfile profile)
+            => LoadError() ?? MissingSettingsError(profile);
+
+        /// <summary>
         /// Reads the plugin's [ForgePlugin] EnabledByDefault flag.
         /// </summary>
         public static bool IsEnabledByDefault(IForgePlugin plugin)

@@ -345,6 +345,13 @@ namespace BuildForge.Editor.Core
             if (interrupted != null && !IsApplied(profile))
                 throw new InvalidOperationException(interrupted);
 
+            // What stops a build of the profile stops its Apply: a plugin that would not
+            // run, or settings that would read as defaults, would leave part of it out of
+            // the editor while it counts as applied. Re-apply would first undo what is there.
+            var pluginError = ForgePluginRegistry.BlockingError(profile);
+            if (pluginError != null)
+                throw new InvalidOperationException($"'{profile.DisplayName}' was not applied: {pluginError}");
+
             var guid = GetGuid(profile.BuildProfile);
             if (string.IsNullOrEmpty(guid))
                 throw new InvalidOperationException(

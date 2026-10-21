@@ -238,5 +238,71 @@ namespace BuildForge.Tests.Editor
                 UnityEngine.Object.DestroyImmediate(native);
             }
         }
+
+        // What stops a build stops Apply, before it undoes the applied profile or writes anything.
+        [Test]
+        public void Apply_StopsBeforeItChangesAnything_WhileAPluginFailedToLoad()
+        {
+            var previousSettings = EditorJsonUtility.ToJson(ForgeSettings.instance);
+            var native = VariantRulesTests.CreateNativeProfile();
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            ForgePluginRegistry.GetPlugins();
+            var failure = (typeof(PluginLoadFailureTests), "Its constructor threw.");
+            ForgePluginRegistry.LoadFailures.Add(failure);
+            try
+            {
+                var settings = new SerializedObject(ForgeSettings.instance);
+                settings.FindProperty("buildVariants").arraySize = 0;
+                settings.FindProperty("variantRules").arraySize = 0;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                var fp = new SerializedObject(forge);
+                fp.FindProperty("buildProfile").objectReferenceValue = native;
+                fp.ApplyModifiedPropertiesWithoutUndo();
+                var ledger = EditorJsonUtility.ToJson(ForgeEditorStateStore.instance);
+
+                var message = Assert.Throws<InvalidOperationException>(() => ForgeEditorState.Apply(forge)).Message;
+                StringAssert.StartsWith($"'{forge.DisplayName}' was not applied: ", message);
+                StringAssert.Contains("could not be loaded", message);
+                Assert.AreEqual(ledger, EditorJsonUtility.ToJson(ForgeEditorStateStore.instance));
+            }
+            finally
+            {
+                ForgePluginRegistry.LoadFailures.Remove(failure);
+                EditorJsonUtility.FromJsonOverwrite(previousSettings, ForgeSettings.instance);
+                UnityEngine.Object.DestroyImmediate(forge);
+                UnityEngine.Object.DestroyImmediate(native);
+            }
+        }
+
+        [Test]
+        public void Apply_StopsBeforeItChangesAnything_WhileSettingsCannotBeLoaded()
+        {
+            var previousSettings = EditorJsonUtility.ToJson(ForgeSettings.instance);
+            var folder = NewTempFolder();
+            var native = VariantRulesTests.CreateNativeProfile();
+            AssetDatabase.CreateAsset(native, folder + "/Native.asset");
+            try
+            {
+                var stale = ImportWithMissingSettingsType(folder);
+                var fp = new SerializedObject(stale);
+                fp.FindProperty("buildProfile").objectReferenceValue = native;
+                fp.ApplyModifiedPropertiesWithoutUndo();
+                var settings = new SerializedObject(ForgeSettings.instance);
+                settings.FindProperty("buildVariants").arraySize = 0;
+                settings.FindProperty("variantRules").arraySize = 0;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                var ledger = EditorJsonUtility.ToJson(ForgeEditorStateStore.instance);
+
+                var message = Assert.Throws<InvalidOperationException>(() => ForgeEditorState.Apply(stale)).Message;
+                StringAssert.StartsWith($"'{stale.DisplayName}' was not applied: ", message);
+                StringAssert.Contains("cannot load the plugin settings 'Fake'", message);
+                Assert.AreEqual(ledger, EditorJsonUtility.ToJson(ForgeEditorStateStore.instance));
+            }
+            finally
+            {
+                EditorJsonUtility.FromJsonOverwrite(previousSettings, ForgeSettings.instance);
+                AssetDatabase.DeleteAsset(folder);
+            }
+        }
     }
 }

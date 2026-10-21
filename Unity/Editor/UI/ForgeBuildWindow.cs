@@ -163,10 +163,6 @@ namespace BuildForge.Editor.UI
                 var stray = BuildVariants.StrayWarning(profile, ForgeEditorState.IsApplied(profile));
                 if (stray != null)
                     warnings.Add(stray);
-                // Builds stop for these; the window says so before one starts.
-                var pluginError = ForgePluginRegistry.LoadError() ?? ForgePluginRegistry.MissingSettingsError(profile);
-                if (pluginError != null)
-                    warnings.Add(pluginError);
                 foreach (var plugin in plugins)
                 {
                     if (ForgeSettings.instance.IsPluginDisabledWithDefault(
@@ -340,8 +336,11 @@ namespace BuildForge.Editor.UI
             if (isApplied) DrawTag("Applied", outlined: false);
 
             GUIContent issue = null;
+            var blockingError = hasBuildProfile ? ForgePluginRegistry.BlockingError(profile) : null;
             if (sharedError != null)
                 issue = EditorGUIUtility.TrIconContent("console.erroricon.sml", sharedError);
+            else if (blockingError != null)
+                issue = EditorGUIUtility.TrIconContent("console.erroricon.sml", blockingError);
             else if (!hasBuildProfile)
                 issue = EditorGUIUtility.TrIconContent("console.warnicon.sml", "No Unity Build Profile is assigned.");
             else if (warnings != null)
@@ -584,6 +583,10 @@ namespace BuildForge.Editor.UI
                 editorStatus = "activate, then apply, to iterate on this profile in the editor";
             EditorGUILayout.LabelField("Editor", editorStatus);
 
+            // Live, not from the refresh: Apply and Build stop for it, and their buttons follow it.
+            var blockingError = ForgePluginRegistry.BlockingError(profile);
+            if (blockingError != null)
+                EditorGUILayout.HelpBox(blockingError, MessageType.Error);
             if (validationWarnings.TryGetValue(profile, out var warnings))
             {
                 foreach (var warning in warnings)
@@ -949,6 +952,7 @@ namespace BuildForge.Editor.UI
                 ? selectedProfile : null;
             var activeBuildProfile = BuildProfile.GetActiveBuildProfile();
             var isActive = selection != null && selection.BuildProfile == activeBuildProfile;
+            var blockingError = selection != null ? ForgePluginRegistry.BlockingError(selection) : null;
 
             // The labels leave out the profile, which the details pane names above, and
             // the variant, which the details header shows, so they fit the fixed slots.
@@ -985,6 +989,7 @@ namespace BuildForge.Editor.UI
                     if (!hasSomethingToApply) { reason = "This profile has no plugin settings to apply."; enabled = false; }
                     else if (AwaitsVariant(variant)) { reason = PickVariantReason; enabled = false; }
                     else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
+                    else if (blockingError != null) { reason = blockingError; enabled = false; }
                     else if (!canMutate) { reason = mutateReason; enabled = false; }
                     else
                     {
@@ -1009,6 +1014,7 @@ namespace BuildForge.Editor.UI
                     bool enabled;
                     if (AwaitsVariant(variant)) { reason = PickVariantReason; enabled = false; }
                     else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
+                    else if (blockingError != null) { reason = blockingError; enabled = false; }
                     else if (!canMutate) { reason = mutateReason; enabled = false; }
                     else { reason = null; enabled = true; }
 
