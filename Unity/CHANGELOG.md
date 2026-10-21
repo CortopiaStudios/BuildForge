@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-10-21
+
 ### Changed
 - While an Apply or a build that wrote the applied profile's settings did not finish, builds stop before they start, and so do Apply and Activate of another profile, with a message that names the settings. That happens when the editor quits during an Apply, or during a build while a profile is applied, or when Build Forge couldn't undo a stopped Apply or apply the profile again after a build. **Revert to Baseline** and **Re-apply** of the applied profile restore those settings to their state from before, whole, which also undoes anything changed in them since, and log which settings they restore. The build window explains the state, the toolbar's drift tooltip lists those settings with `(Apply did not finish)` or `(build did not finish)`, and Dismiss Drift leaves them reported. The per-user editor-state file, `UserSettings/ForgeEditorState.asset`, records how far each setting's Apply or build got; files written by earlier versions read as finished, so an Apply or a build interrupted under an earlier version isn't recognized as such: if one was, check those settings in version control after updating
 - A plugin's capture right after it applied its settings to the editor (`IForgeEditorApplicable.CaptureEditorState`) that throws or returns null stops the Apply, as a failing capture before it does. The Apply used to succeed and record the settings from before it as the applied ones
