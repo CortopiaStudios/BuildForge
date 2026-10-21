@@ -67,8 +67,8 @@ namespace BuildForge.Editor.OpenXR
                 if (metaQuestProfile == null)
                     warnings.Add($"Build Forge cannot tell whether Unity Build Profile '{forgeProfile.BuildProfile.name}' is a Meta Quest " +
                                  $"profile: Unity {Application.unityVersion} stores no m_PlatformId in it. Update Build Forge.");
-                var unreadable = MetaQuestSetupError(config, buildTargetGroup, metaQuestProfile == true, openxrSettings.GetFeatures<OpenXRFeature>())
-                                 ?? MetaQuestUtilityCheckWarning(buildTargetGroup, openxrSettings.GetFeatures<OpenXRFeature>());
+                var unreadable = MetaQuestSetupError(config, buildTargetGroup, metaQuestProfile == true)
+                                 ?? MetaQuestUtilityCheckWarning(buildTargetGroup);
                 if (unreadable != null)
                     warnings.Add(unreadable);
                 var setupWarning = MetaQuestSetupWarning(metaQuestProfile == true, config,
@@ -519,6 +519,34 @@ namespace BuildForge.Editor.OpenXR
                $"{string.Join(", ", groups.Select(n => $"'{n}'"))}, ticked for {group} in XR Plug-in Management, " +
                "require it. Untick the group, or " + (onlyListedFeatures ? "list the feature." : "remove the Disable override.");
 
+        /// <summary>
+        /// After a write: throws when a feature isn't in the state <paramref name="expected"/> gives it
+        /// (null: none). OpenXR's setter refuses without a word, so a build would otherwise go out with
+        /// the refused state, and an Apply record it as applied. <paramref name="refusal"/> words the
+        /// error, given the groups ticked for <paramref name="group"/> that require a feature that
+        /// stayed on (none for one that stayed off).
+        /// </summary>
+        internal static void VerifyFeatureStates(IEnumerable<OpenXRFeature> features, Func<OpenXRFeature, bool?> expected,
+            BuildTargetGroup group, Func<OpenXRFeature, IReadOnlyList<string>, string> refusal)
+        {
+            foreach (var feature in features)
+            {
+                var state = expected(feature);
+                if (state == null || feature.enabled == state.Value)
+                    continue;
+                var groups = state.Value ? new List<string>() : RequiringGroups(GetFeatureId(feature), EnabledFeatureSets(group));
+                throw new InvalidOperationException(refusal(feature, groups));
+            }
+        }
+
+        /// <summary>After writing the profile's overrides for <paramref name="group"/>: throws when a managed feature didn't take its override.</summary>
+        static void VerifyOverrides(OpenXRProfileConfig config, OpenXRSettings settings, BuildTargetGroup group, bool includeInteractionProfiles)
+            => VerifyFeatureStates(OpenXRSettingsState.GetManagedFeatures(settings, includeInteractionProfiles),
+                feature => OpenXRSettingsState.Override(config, feature), group,
+                (feature, groups) => groups.Count > 0
+                    ? RefusedDisableMessage(FormatFeatureName(GetFeatureUiName(feature)), groups, group, config.OnlyListedFeatures)
+                    : $"OpenXR feature '{feature.GetType().FullName}' did not accept its configured override.");
+
         static readonly string[] MetaQuestAutoEnabledInteractionProfileIds =
         {
             "com.unity.openxr.feature.input.oculustouch",
@@ -616,12 +644,12 @@ namespace BuildForge.Editor.OpenXR
 
         /// <summary>
         /// What Build Forge cannot read of OpenXR's own Meta Quest setup: BuildProfileUtilityOpenXR's flag
-        /// and feature list, both internal, and the features' ids. Null when it reads all of them, or when
-        /// the OpenXR version predates the setup, so that a later OpenXR that changes them is told apart
-        /// from one without the setup instead of looking like it.
+        /// and feature list, both internal (the features' ids come from their public attribute). Null when
+        /// it reads both, or when the OpenXR version predates the setup, so that a later OpenXR that changes
+        /// them is told apart from one without the setup instead of looking like it.
         /// </summary>
         internal static string MetaQuestUtilityUnreadable(string openXRVersion, bool? utilityInitialized,
-            IReadOnlyCollection<string> utilityFeatureIds, IEnumerable<OpenXRFeature> features)
+            IReadOnlyCollection<string> utilityFeatureIds)
         {
             var numeric = openXRVersion?.Split('-')[0];
             if (numeric != null && Version.TryParse(numeric, out var version) && version < MetaQuestUtilityVersion)
@@ -630,8 +658,6 @@ namespace BuildForge.Editor.OpenXR
                 return "BuildProfileUtilityOpenXR or its isMetaQuestInitialized flag";
             if (utilityFeatureIds == null)
                 return "BuildProfileUtilityOpenXR's metaFeatureIds";
-            if (features.Any(f => f != null && new SerializedObject(f).FindProperty("featureIdInternal") == null))
-                return "the features' featureIdInternal";
             return null;
         }
 
@@ -639,13 +665,12 @@ namespace BuildForge.Editor.OpenXR
         /// Why a build of a Meta Quest profile with Meta Quest Setup on cannot run the setup, or null:
         /// without OpenXR's state the build would leave out the features the setup promises.
         /// </summary>
-        internal static string MetaQuestSetupError(OpenXRProfileConfig config, BuildTargetGroup group, bool metaQuestProfile,
-            IEnumerable<OpenXRFeature> features)
+        internal static string MetaQuestSetupError(OpenXRProfileConfig config, BuildTargetGroup group, bool metaQuestProfile)
         {
             if (!config.MetaQuestSetup || group != BuildTargetGroup.Android || !metaQuestProfile)
                 return null;
             var version = OpenXRVersion();
-            var unreadable = MetaQuestUtilityUnreadable(version, MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds(), features);
+            var unreadable = MetaQuestUtilityUnreadable(version, MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds());
             return unreadable == null ? null
                 : $"Meta Quest Setup is on for this profile, but Build Forge cannot read {unreadable} in OpenXR {version ?? "(unknown version)"}, " +
                   "so it cannot tell which features OpenXR turns on for a Meta Quest profile, and builds of the profile stop. " +
@@ -653,12 +678,12 @@ namespace BuildForge.Editor.OpenXR
         }
 
         /// <summary>For an Android profile, that the checks of OpenXR's Meta Quest setup cannot run, or null.</summary>
-        internal static string MetaQuestUtilityCheckWarning(BuildTargetGroup group, IEnumerable<OpenXRFeature> features)
+        internal static string MetaQuestUtilityCheckWarning(BuildTargetGroup group)
         {
             if (group != BuildTargetGroup.Android)
                 return null;
             var version = OpenXRVersion();
-            var unreadable = MetaQuestUtilityUnreadable(version, MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds(), features);
+            var unreadable = MetaQuestUtilityUnreadable(version, MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds());
             return unreadable == null ? null
                 : $"Build Forge cannot read {unreadable} in OpenXR {version ?? "(unknown version)"}, so it cannot check OpenXR's own " +
                   "Meta Quest setup: warnings about features a Meta Quest profile's CI builds would lack, or that OpenXR turns off " +
@@ -731,12 +756,13 @@ namespace BuildForge.Editor.OpenXR
                    "file with isMetaQuestInitialized: 1 and the features on, as the editor leaves them.";
         }
 
+        /// <summary>
+        /// The feature's id, from its OpenXRFeatureAttribute: public, unlike the featureIdInternal OpenXR
+        /// copies it into, and what OpenXR's feature groups compare their ids with. "" for a feature
+        /// without the attribute, which OpenXR's groups don't switch.
+        /// </summary>
         static string GetFeatureId(OpenXRFeature feature)
-        {
-            var so = new SerializedObject(feature);
-            var idProp = so.FindProperty("featureIdInternal");
-            return idProp != null ? idProp.stringValue : "";
-        }
+            => feature.GetType().GetCustomAttribute<OpenXRFeatureAttribute>()?.FeatureId ?? "";
 
         public bool IsApplicable(BuildProfile profile)
         {
@@ -769,7 +795,7 @@ namespace BuildForge.Editor.OpenXR
                 TickedFeatureGroups(context.BuildTargetGroup), context.BuildTargetGroup, includeInteractionProfiles);
             if (conflict != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + conflict);
-            var setupError = MetaQuestSetupError(config, context.BuildTargetGroup, MetaQuestProfileActive, settings.GetFeatures<OpenXRFeature>());
+            var setupError = MetaQuestSetupError(config, context.BuildTargetGroup, MetaQuestProfileActive);
             if (setupError != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + setupError);
             var metaQuestSetup = config.MetaQuestSetup
@@ -797,20 +823,7 @@ namespace BuildForge.Editor.OpenXR
             foreach (var warning in FeatureControlledSettingWarnings(config, settings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles)
                          .Except(controlledBefore))
                 Debug.LogWarning("[Build Forge/OpenXR] " + warning);
-            foreach (var feature in OpenXRSettingsState.GetManagedFeatures(settings, includeInteractionProfiles))
-            {
-                var typeName = feature.GetType().FullName;
-                var state = OpenXRSettingsState.Override(config, feature);
-                if (state == false && feature.enabled)
-                {
-                    var groups = RequiringGroups(GetFeatureId(feature), EnabledFeatureSets(context.BuildTargetGroup));
-                    if (groups.Count > 0)
-                        throw new InvalidOperationException(RefusedDisableMessage(
-                            FormatFeatureName(GetFeatureUiName(feature)), groups, context.BuildTargetGroup, config.OnlyListedFeatures));
-                }
-                if (state != null && feature.enabled != state.Value)
-                    throw new InvalidOperationException($"OpenXR feature '{typeName}' did not accept its configured override.");
-            }
+            VerifyOverrides(config, settings, context.BuildTargetGroup, includeInteractionProfiles);
             if (config.OnlyListedFeatures)
             {
                 var notListed = NotListedFeatures(config, settings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles);
@@ -855,6 +868,10 @@ namespace BuildForge.Editor.OpenXR
             if (conflict != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + conflict);
             OpenXRSettingsState.Apply(config, group, includeInteractionProfiles);
+            // As in a build: a refused override stops the Apply, which puts back what it wrote,
+            // instead of being recorded as applied.
+            if (settings != null)
+                VerifyOverrides(config, settings, group, includeInteractionProfiles);
         }
 
         public void RestoreEditorState(BuildTargetGroup group, string json)

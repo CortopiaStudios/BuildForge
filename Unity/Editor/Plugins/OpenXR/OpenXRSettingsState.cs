@@ -206,14 +206,16 @@ namespace BuildForge.Editor.OpenXR
         /// the target matches the source; without, it turns nothing off, and the
         /// target keeps the features it has on itself, such as hand tracking for a
         /// tool that runs in Play Mode. A feature only one platform has keeps its
-        /// state.
+        /// state. Returns the state it gave each feature it wrote, which OpenXR can
+        /// refuse (see <see cref="SetEnabled"/>).
         /// </summary>
-        public static void CopyFeatureStates(BuildTargetGroup source, BuildTargetGroup target, bool match)
+        public static Dictionary<OpenXRFeature, bool> CopyFeatureStates(BuildTargetGroup source, BuildTargetGroup target, bool match)
         {
+            var written = new Dictionary<OpenXRFeature, bool>();
             var from = OpenXRSettings.GetSettingsForBuildTargetGroup(source);
             var to = OpenXRSettings.GetSettingsForBuildTargetGroup(target);
             if (from == null || to == null)
-                return;
+                return written;
 
             var sourceStates = new Dictionary<string, bool>();
             foreach (var feature in GetManagedFeatures(from, true))
@@ -225,8 +227,12 @@ namespace BuildForge.Editor.OpenXR
             using (new RefusalPlatform(target))
                 foreach (var feature in GetManagedFeatures(to, true))
                     if (sourceStates.TryGetValue(feature.GetType().FullName, out var enabled) && (enabled || match))
+                    {
                         SetEnabled(feature, enabled);
+                        written[feature] = enabled;
+                    }
             Flush(to);
+            return written;
         }
 
         /// <summary>

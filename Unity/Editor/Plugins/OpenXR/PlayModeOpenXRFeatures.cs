@@ -39,7 +39,12 @@ namespace BuildForge.Editor.OpenXR
             var conflict = match ? OpenXRPlugin.MatchConflictError(source, group, OpenXRPlugin.TickedFeatureGroups(group)) : null;
             if (conflict != null)
                 throw new System.InvalidOperationException("[Build Forge/OpenXR] " + conflict);
-            OpenXRSettingsState.CopyFeatureStates(source, group, match);
+            var written = OpenXRSettingsState.CopyFeatureStates(source, group, match);
+            // A state OpenXR refused stops the Apply, which puts back what it wrote, instead of being
+            // recorded as applied.
+            OpenXRPlugin.VerifyFeatureStates(written.Keys, feature => written[feature], group,
+                (feature, groups) => $"OpenXR feature '{feature.GetType().FullName}' did not take the state Play Mode Follows " +
+                                     $"Applied Profile copied from {source}.");
         }
 
         public void RestoreEditorState(BuildTargetGroup group, string json)

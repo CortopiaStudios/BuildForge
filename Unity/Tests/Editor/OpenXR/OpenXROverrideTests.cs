@@ -678,25 +678,20 @@ namespace BuildForge.Tests.OpenXR
         // a part Build Forge cannot read is reported instead of taken for a version without it.
         [Test] public void MetaQuestUtilityUnreadable_TellsAnOpenXRWithoutTheSetupFromOneBuildForgeCannotRead()
         {
-            var features = new OpenXRFeature[] { controller };
             var ids = new[] { "com.unity.openxr.feature.metaquest" };
-            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable("1.16.1", null, null, features), "OpenXR 1.16 has no such step.");
-            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable("1.18.0", false, ids, features));
-            StringAssert.Contains("isMetaQuestInitialized", OpenXRPlugin.MetaQuestUtilityUnreadable("1.18.0", null, ids, features));
-            StringAssert.Contains("metaFeatureIds", OpenXRPlugin.MetaQuestUtilityUnreadable("1.19.0-pre.1", true, null, features));
-            StringAssert.Contains("isMetaQuestInitialized", OpenXRPlugin.MetaQuestUtilityUnreadable(null, null, ids, features),
+            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable("1.16.1", null, null), "OpenXR 1.16 has no such step.");
+            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable("1.18.0", false, ids));
+            StringAssert.Contains("isMetaQuestInitialized", OpenXRPlugin.MetaQuestUtilityUnreadable("1.18.0", null, ids));
+            StringAssert.Contains("metaFeatureIds", OpenXRPlugin.MetaQuestUtilityUnreadable("1.19.0-pre.1", true, null));
+            StringAssert.Contains("isMetaQuestInitialized", OpenXRPlugin.MetaQuestUtilityUnreadable(null, null, ids),
                 "An unknown version is not taken for an old one.");
         }
 
         // Fails on an OpenXR version whose Meta Quest setup Build Forge can no longer read, before
         // a build of a profile with Meta Quest Setup on would stop for it.
         [Test] public void MetaQuestUtility_IsReadableInTheInstalledOpenXR()
-        {
-            var features = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Android)?.GetFeatures<OpenXRFeature>()
-                           ?? new OpenXRFeature[0];
-            Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable(OpenXRPlugin.OpenXRVersion(),
-                OpenXRPlugin.MetaQuestUtilityInitialized(), OpenXRPlugin.MetaQuestUtilityFeatureIds(), features));
-        }
+            => Assert.IsNull(OpenXRPlugin.MetaQuestUtilityUnreadable(OpenXRPlugin.OpenXRVersion(),
+                OpenXRPlugin.MetaQuestUtilityInitialized(), OpenXRPlugin.MetaQuestUtilityFeatureIds()));
 
         static OpenXREditorStateSnapshot Snapshot(string renderMode, string latency, params OpenXRFeatureState[] features)
         {
@@ -1101,6 +1096,18 @@ namespace BuildForge.Tests.OpenXR
                 OpenXRPlugin.RequiredFeatureConflictError(onlyListed, features, ticked, BuildTargetGroup.Standalone, true));
         }
 
+        // A feature's id comes from its public attribute, which OpenXR's groups compare with, so the
+        // check still finds the conflict where OpenXR's internal copy of the id can't be read.
+        [Test] public void TheGroupConflictCheck_TakesAFeaturesIdFromItsAttribute()
+        {
+            SetFeatureId(controller, "");
+            var disables = new OpenXRProfileConfig();
+            disables.DisabledFeatures.Add(typeof(KHRSimpleControllerProfile).FullName);
+
+            StringAssert.Contains("'Controllers', ticked for Standalone", OpenXRPlugin.RequiredFeatureConflictError(disables,
+                new OpenXRFeature[] { controller }, new[] { RequiringControllers(true) }, BuildTargetGroup.Standalone, true));
+        }
+
         // OpenXR refuses for the platform in activeBuildTarget: the one being written, while Build Forge writes.
         [Test] public void Apply_PointsOpenXRsRefusalAtThePlatformItWrites_AndPutsItBack()
         {
@@ -1165,6 +1172,144 @@ namespace BuildForge.Tests.OpenXR
             }
             finally
             {
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, standaloneOriginal);
+                OpenXRSettingsState.Restore(BuildTargetGroup.Android, androidOriginal);
+            }
+        }
+
+        /// <summary>Sets Build Forge's global OpenXR options until disposed, then puts the previous ones back.</summary>
+        internal sealed class GlobalOptions : System.IDisposable
+        {
+            readonly bool showInteractionProfiles, matchInPlayMode;
+
+            public GlobalOptions(bool showInteractionProfiles, bool matchInPlayMode)
+            {
+                var config = OpenXRPlugin.GetGlobalConfig();
+                this.showInteractionProfiles = config.ShowInteractionProfileOverrides;
+                this.matchInPlayMode = config.MatchPlatformFeaturesInPlayMode;
+                Set(showInteractionProfiles, matchInPlayMode);
+            }
+
+            public void Dispose() => Set(showInteractionProfiles, matchInPlayMode);
+
+            static void Set(bool showInteractionProfiles, bool matchInPlayMode)
+            {
+                var config = OpenXRPlugin.GetGlobalConfig();
+                config.ShowInteractionProfileOverrides = showInteractionProfiles;
+                config.MatchPlatformFeaturesInPlayMode = matchInPlayMode;
+                OpenXRPlugin.SaveGlobalConfig(config);
+            }
+        }
+
+        /// <summary>A Unity Build Profile for the target, made in code by Unity's own factory.</summary>
+        internal static BuildProfile CreateNativeProfile(BuildTarget target)
+        {
+            var create = typeof(BuildProfile).GetMethod("CreateInstance", BindingFlags.Static | BindingFlags.NonPublic,
+                null, new[] { typeof(BuildTarget), typeof(StandaloneBuildSubtarget) }, null);
+            Assert.IsNotNull(create, "Unity's native profile factory changed.");
+            return (BuildProfile)create.Invoke(null, new object[] { target, StandaloneBuildSubtarget.Player });
+        }
+
+        /// <summary>Build Forge settings for <paramref name="buildProfile"/>, made in code.</summary>
+        internal static ForgeProfile ForgeProfileFor(BuildProfile buildProfile)
+        {
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            var so = new SerializedObject(forge);
+            so.FindProperty("buildProfile").objectReferenceValue = buildProfile;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return forge;
+        }
+
+        /// <summary>Turns a feature on or off as data, without its callbacks or OpenXR's refusal.</summary>
+        internal static void SetEnabledAsData(OpenXRFeature feature, bool enabled)
+        {
+            var so = new SerializedObject(feature);
+            so.FindProperty(OpenXRSettingsState.EnabledField).boolValue = enabled;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        // OpenXR's setter refuses without a word, here as for a group OpenXR still holds as ticked
+        // after the project unticked it. Apply stops on that, as a build does, and puts back what it
+        // wrote instead of recording the refused state as applied.
+        [Test] public void Apply_StopsWhenOpenXRRefusesAnOverride_AndPutsBackWhatItWrote()
+        {
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            var refusal = typeof(OpenXRFeature).GetField("canSetFeatureDisabled", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(refusal, "OpenXRFeature's feature-group refusal is an OpenXR internal.");
+            var original = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            var originalRefusal = refusal.GetValue(null);
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                using (new GlobalOptions(showInteractionProfiles: true, matchInPlayMode: false))
+                {
+                    SetEnabledAsData(standalone.GetFeature<KHRSimpleControllerProfile>(), true);
+                    // A feature the Apply does turn on, so that it has something to put back when it stops.
+                    SetEnabledAsData(standalone.GetFeature<OculusTouchControllerProfile>(), false);
+                    config.EnabledFeatures.Add(typeof(OculusTouchControllerProfile).FullName);
+                    config.DisabledFeatures.Add(typeof(KHRSimpleControllerProfile).FullName);
+                    forge.SetPluginConfig("OpenXR", config);
+                    var before = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson();
+                    refusal.SetValue(null, (System.Func<string, bool>)(_ => false));
+                    var plugin = new OpenXRPlugin();
+                    var entries = new List<EditorStateEntry>();
+                    var pair = new EditorStatePair { PluginTypeName = nameof(OpenXRPlugin), Group = BuildTargetGroup.Standalone, Plugin = plugin };
+                    LogAssert.Expect(LogType.Error,
+                        new Regex("apply failed\\. OpenXR feature '[^']*KHRSimpleControllerProfile' did not accept its configured override"));
+
+                    var stopped = Assert.Throws<EditorStateApplyException>(
+                        () => EditorStateApplier.Apply(entries, new[] { pair }, forge, _ => plugin, null));
+
+                    StringAssert.Contains("did not accept its configured override", stopped.Message);
+                    CollectionAssert.IsEmpty(entries, "Nothing is recorded as applied.");
+                    Assert.AreEqual(before, OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true).ToJson(),
+                        "What the Apply wrote is put back.");
+                }
+            }
+            finally
+            {
+                refusal.SetValue(null, originalRefusal);
+                Object.DestroyImmediate(forge);
+                OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, original);
+            }
+        }
+
+        // The same for the Play Mode copy: a state OpenXR refuses stops the Apply.
+        [Test] public void ThePlayModeCopy_StopsWhenOpenXRRefusesAState()
+        {
+            Assume.That(BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Android, BuildTarget.Android),
+                "This editor has no Android Build Support.");
+            var standalone = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Standalone);
+            var android = OpenXRSettings.GetSettingsForBuildTargetGroup(BuildTargetGroup.Android);
+            Assert.That(standalone, Is.Not.Null, "The OpenXR test host must contain Standalone settings.");
+            Assert.That(android, Is.Not.Null, "The OpenXR test host must contain Android settings.");
+            var refusal = typeof(OpenXRFeature).GetField("canSetFeatureDisabled", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(refusal, "OpenXRFeature's feature-group refusal is an OpenXR internal.");
+            var standaloneOriginal = OpenXRSettingsState.Capture(BuildTargetGroup.Standalone, true);
+            var androidOriginal = OpenXRSettingsState.Capture(BuildTargetGroup.Android, true);
+            var originalRefusal = refusal.GetValue(null);
+            var native = CreateNativeProfile(BuildTarget.Android);
+            var forge = ForgeProfileFor(native);
+            try
+            {
+                using (new GlobalOptions(showInteractionProfiles: false, matchInPlayMode: true))
+                {
+                    SetEnabledAsData(standalone.GetFeature<KHRSimpleControllerProfile>(), true);
+                    SetEnabledAsData(android.GetFeature<KHRSimpleControllerProfile>(), false);
+                    refusal.SetValue(null, (System.Func<string, bool>)(_ => false));
+
+                    var stopped = Assert.Throws<System.InvalidOperationException>(
+                        () => new PlayModeOpenXRFeatures().ApplyToEditor(forge, BuildTargetGroup.Standalone));
+
+                    StringAssert.Contains("did not take the state Play Mode Follows Applied Profile copied from Android", stopped.Message);
+                }
+            }
+            finally
+            {
+                refusal.SetValue(null, originalRefusal);
+                Object.DestroyImmediate(forge);
+                Object.DestroyImmediate(native);
                 OpenXRSettingsState.Restore(BuildTargetGroup.Standalone, standaloneOriginal);
                 OpenXRSettingsState.Restore(BuildTargetGroup.Android, androidOriginal);
             }
