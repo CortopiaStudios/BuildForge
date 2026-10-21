@@ -165,6 +165,9 @@ namespace BuildForge.Editor.Core
 
             var buildProfile = forgeProfile.BuildProfile;
             var buildTarget = BuildProfileUtility.GetBuildTarget(buildProfile);
+            var outputPathError = ForgeProfile.OutputPathError(forgeProfile.OutputPath);
+            if (outputPathError != null)
+                throw new InvalidOperationException(outputPathError);
             var outputPath = forgeProfile.GetResolvedOutputPath(buildTarget, resolvedVariant);
 
             // A CI build doesn't go out with another version than its variant rule's; before
@@ -890,6 +893,9 @@ namespace BuildForge.Editor.Core
         internal static List<string> ProfileWarnings(ForgeProfile profile, IReadOnlyList<ForgeProfile> all)
         {
             var warnings = new List<string>();
+            var outputPathError = ForgeProfile.OutputPathError(profile.OutputPath);
+            if (outputPathError != null)
+                warnings.Add(outputPathError);
             if (ForgeSettings.instance.BuildVariants.Count > 0 && !profile.OutputPath.Contains("{Variant}"))
                 warnings.Add("The output path has no {Variant} placeholder, so the variants' builds overwrite each other.");
             if (ForgeSettings.instance.MaintainBuildProfileDefines)

@@ -311,5 +311,30 @@ namespace BuildForge.Tests.Editor
             Assert.That(result, Does.EndWith(".exe"));
             Assert.That(result, Does.Not.Contain("{"));
         }
+
+        // A network path keeps its leading "\\server", and a template that doesn't start at a
+        // root stays relative when a placeholder at its start is empty.
+        [TestCase(@"\\buildserver\releases\{Variant}\Game", @"\\buildserver\releases\Game")]
+        [TestCase("//nas/builds/{Variant}/Game", "//nas/builds/Game")]
+        [TestCase(@"\\\\nas\builds\Game", @"\\nas\builds\Game")]
+        [TestCase("{Variant}/Builds/Game", "Builds/Game")]
+        [TestCase("{Variant}/{Variant}/Game", "Game")]
+        [TestCase("/{Variant}/Builds", "/Builds")]
+        [TestCase(@"C:\Builds\{Variant}\Game", @"C:\Builds\Game")]
+        [TestCase("Builds//Game/", "Builds/Game")]
+        public void CollapseEmptySegments_KeepsANetworkPrefix_AndRelativeTemplatesRelative(string template, string expected)
+            => Assert.AreEqual(expected, ForgeProfile.CollapseEmptySegments(template.Replace("{Variant}", ""), template));
+
+        [TestCase(@"\\?\C:\Builds\Game")]
+        [TestCase(@"\\.\pipe\Game")]
+        [TestCase("//?/C:/Builds/Game")]
+        public void ExtendedLengthAndDevicePaths_AreRefused(string template)
+            => StringAssert.Contains("extended-length or device path", ForgeProfile.OutputPathError(template));
+
+        [TestCase(@"\\nas\builds\{Variant}")]
+        [TestCase("Builds/{Target}/{ProfileName}")]
+        [TestCase(@"D:\Builds")]
+        public void OtherPaths_AreAccepted(string template)
+            => Assert.IsNull(ForgeProfile.OutputPathError(template));
     }
 }

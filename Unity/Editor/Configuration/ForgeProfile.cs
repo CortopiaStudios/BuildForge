@@ -28,7 +28,7 @@ namespace BuildForge.Editor.Configuration
         // duplicated Build Profile's copy belongs to the duplicate.
         [NonSerialized] BuildProfile owner;
 
-        [Tooltip("Output path for the build, relative to the project root. " +
+        [Tooltip("Output path for the build, relative to the project root unless absolute (a drive letter or a network path). " +
                  "Supports {ProfileName} (the Unity Build Profile's name), {Target}, {ProjectName} and {Variant} " +
                  "(the variant name, empty and collapsed in a project without variants) placeholders. " +
                  "Leave it empty to follow the default template. With Remove Previous Build Output on, the files the previous build " +
@@ -168,7 +168,7 @@ namespace BuildForge.Editor.Configuration
                 .Replace("{ProfileName}", DisplayName)
                 .Replace("{Target}", target.ToString())
                 .Replace("{Variant}", variant ?? "");
-            path = CollapseEmptySegments(path);
+            path = CollapseEmptySegments(path, OutputPath);
 
             var extension = GetRequiredExtension(target);
             if (extension != null && !path.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
@@ -177,13 +177,50 @@ namespace BuildForge.Editor.Configuration
             return path;
         }
 
-        /// <summary>"Builds/Quest//Game" (an empty {Variant}) becomes "Builds/Quest/Game".</summary>
-        internal static string CollapseEmptySegments(string path)
+        /// <summary>
+        /// "Builds/Quest//Game" (an empty {Variant}) becomes "Builds/Quest/Game". Decided from
+        /// the <paramref name="template"/> (the path itself when none is given): a network
+        /// path's leading "\\server" or "//server" stays, and a template that starts with
+        /// neither a separator nor a drive letter stays relative, so "{Variant}/Builds" in a
+        /// project without variants becomes "Builds", not "/Builds" at the drive's root.
+        /// </summary>
+        internal static string CollapseEmptySegments(string path, string template = null)
         {
+            template ??= path;
+            var prefix = "";
+            if (IsNetworkPath(template) && path.Length >= 2)
+            {
+                prefix = path.Substring(0, 2);
+                path = path.Substring(2).TrimStart('/', '\\');
+            }
             while (path.Contains("//")) path = path.Replace("//", "/");
             while (path.Contains("\\\\")) path = path.Replace("\\\\", "\\");
-            return path.TrimEnd('/', '\\');
+            if (prefix.Length == 0 && !IsRootedTemplate(template))
+                path = path.TrimStart('/', '\\');
+            return prefix + path.TrimEnd('/', '\\');
         }
+
+        static bool IsSeparator(char c) => c == '/' || c == '\\';
+
+        /// <summary>"\\server\share" or "//server/share".</summary>
+        internal static bool IsNetworkPath(string template)
+            => template.Length >= 2 && IsSeparator(template[0]) && IsSeparator(template[1]);
+
+        // Checked by its first characters: Path.IsPathRooted throws on some characters a template may hold.
+        static bool IsRootedTemplate(string template)
+            => template.Length > 0 && IsSeparator(template[0])
+               || template.Length >= 2 && template[1] == ':' && char.IsLetter(template[0]);
+
+        /// <summary>
+        /// Why a build can't go to the output path, or null: an extended-length ("\\?\") or
+        /// device ("\\.\") path, which Unity's player build isn't known to take.
+        /// </summary>
+        internal static string OutputPathError(string template)
+            => template.StartsWith(@"\\?\", StringComparison.Ordinal) || template.StartsWith(@"\\.\", StringComparison.Ordinal)
+               || template.StartsWith("//?/", StringComparison.Ordinal) || template.StartsWith("//./", StringComparison.Ordinal)
+                ? $"The output path '{template}' is an extended-length or device path, which Build Forge doesn't support. " +
+                  "Use a path with a drive letter, a network path (\\\\server\\share) or one relative to the project."
+                : null;
 
         string GetRequiredExtension(BuildTarget target)
         {

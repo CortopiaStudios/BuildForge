@@ -1106,5 +1106,78 @@ namespace BuildForge.Tests.Editor
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         static extern bool CreateDirectoryW(string path, IntPtr security);
+
+        // On Windows the checks also apply where the destination really leads: a junction that
+        // points into a protected folder is refused, under its own name and through a parent.
+        [TestCase(false)]
+        [TestCase(true)]
+        public void JunctionIntoTheProjectsAssets_IsRejected(bool throughAParent)
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var assets = Path.Combine(project, "Assets");
+            Directory.CreateDirectory(Path.Combine(assets, "Players"));
+            var link = Path.Combine(root, "Checkout", "Out");
+            CreateLink(link, assets);
+            var target = throughAParent ? Path.Combine(link, "Players") : link;
+
+            var message = Assert.Throws<InvalidOperationException>(() => BuildOutputDirectory.ValidateDestination(target, roots)).Message;
+
+            StringAssert.Contains("it is inside the project's Assets directory, where it leads through a link", message);
+            StringAssert.Contains($"'{Path.GetFullPath(target)}'", message);
+        }
+
+        [Test]
+        public void JunctionIntoThePackageSourceOrGitMetadata_IsRejected()
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var package = Path.Combine(root, "Package");
+            Directory.CreateDirectory(Path.Combine(package, "Editor"));
+            var withPackage = new BuildOutputDirectory.Roots
+                { Project = roots.Project, Repository = roots.Repository, Editor = roots.Editor, Package = package };
+            var toPackage = Path.Combine(root, "Elsewhere", "ToPackage");
+            CreateLink(toPackage, package);
+            StringAssert.Contains("overlaps the Build Forge package source, where it leads through a link",
+                Assert.Throws<InvalidOperationException>(() =>
+                    BuildOutputDirectory.ValidateDestination(Path.Combine(toPackage, "Editor"), withPackage)).Message);
+
+            var objects = Path.Combine(root, "Checkout", ".git", "objects");
+            Directory.CreateDirectory(objects);
+            var toGit = Path.Combine(root, "Elsewhere", "ToGit");
+            CreateLink(toGit, objects);
+            StringAssert.Contains("it is inside Git metadata, where it leads through a link",
+                Assert.Throws<InvalidOperationException>(() => BuildOutputDirectory.ValidateDestination(toGit, roots)).Message);
+        }
+
+        [Test]
+        public void JunctionIntoAnotherUnityProjectsLibrary_IsRejected()
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var other = Path.Combine(root, "Other Project");
+            Directory.CreateDirectory(Path.Combine(other, "Assets"));
+            Directory.CreateDirectory(Path.Combine(other, "ProjectSettings"));
+            File.WriteAllText(Path.Combine(other, "ProjectSettings", "ProjectVersion.txt"), "m_EditorVersion: 6000.3.0f1");
+            Directory.CreateDirectory(Path.Combine(other, "Library", "Cache"));
+            var link = Path.Combine(root, "Elsewhere", "ToLibrary");
+            CreateLink(link, Path.Combine(other, "Library"));
+
+            StringAssert.Contains("it is inside the Library directory of the Unity project",
+                Assert.Throws<InvalidOperationException>(() =>
+                    BuildOutputDirectory.ValidateDestination(Path.Combine(link, "Cache"), roots)).Message);
+        }
+
+        [Test]
+        public void ThePhysicalPath_FollowsAJunction_AndKeepsWhatDoesNotExistYet()
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var real = Path.Combine(root, "Real");
+            Directory.CreateDirectory(real);
+            var link = Path.Combine(root, "Elsewhere", "Linked");
+            CreateLink(link, real);
+
+            Assert.AreEqual(Path.Combine(Path.GetFullPath(real), "Not", "Yet"),
+                BuildOutputDirectory.PhysicalPath(Path.Combine(Path.GetFullPath(link), "Not", "Yet")));
+            var plain = Path.GetFullPath(Path.Combine(root, "Plain"));
+            Assert.AreEqual(plain, BuildOutputDirectory.PhysicalPath(plain), "A folder without links leads where it says.");
+        }
     }
 }

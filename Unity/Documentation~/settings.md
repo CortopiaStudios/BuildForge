@@ -58,7 +58,7 @@ Edits are written to the Build Profile asset immediately, so the file always mat
 
 ## Output path
 
-The output path is a template, relative to the Unity project folder unless it is absolute:
+The output path is a template, relative to the Unity project folder unless it is absolute, with a drive letter or as a network path such as `\\buildserver\releases\{Variant}`. An extended-length (`\\?\`) or device (`\\.\`) path stops the build. A placeholder that is empty, such as `{Variant}` in a project without variants, drops out with its separator, and a relative template stays relative:
 
 | Placeholder | Becomes |
 |---|---|
@@ -115,7 +115,7 @@ Without a record, as on a first build or in a fresh CI workspace, only the artif
 
 The build stops before it starts when the destination:
 
-- contains the project or repository root, lies inside a Unity project's own folders or Git metadata, is itself a Unity project or checkout, overlaps the package source or the Unity editor installation, or is a drive root;
+- contains the project or repository root, lies inside a Unity project's own folders or Git metadata, is itself a Unity project or checkout, overlaps the package source or the Unity editor installation, or is a drive root, on Windows also where it leads through a junction or symbolic link (macOS and Linux check the path as written);
 - cannot be read;
 - holds a file that cannot be deleted, usually because the player is still running;
 - holds a folder where the artifact file goes, typically an old Android export folder.

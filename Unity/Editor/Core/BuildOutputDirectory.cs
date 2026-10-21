@@ -71,6 +71,28 @@ namespace BuildForge.Editor.Core
                 };
             }
 
+            /// <summary>
+            /// A copy with each root where it really leads on Windows (see <see cref="PhysicalPath"/>),
+            /// or as written where that can't be told.
+            /// </summary>
+            public Roots Physical() => new Roots
+            {
+                Project = Leads(Project),
+                Repository = Leads(Repository),
+                Package = Leads(Package),
+                Editor = Leads(Editor),
+                normalized = true,
+            };
+
+            static string Leads(string root)
+            {
+                if (string.IsNullOrWhiteSpace(root))
+                    return null;
+                var written = Normalize(root);
+                try { return PhysicalPath(written) ?? written; }
+                catch (Exception) { return written; }
+            }
+
             public static Roots Current() => new Roots
             {
                 Project = Path.GetDirectoryName(Application.dataPath),
@@ -336,44 +358,112 @@ namespace BuildForge.Editor.Core
         /// project or Git checkout itself, and a filesystem root. Short (8.3)
         /// names are expanded first. Links at or above the destination are fine:
         /// the build writes through them, so deleting through them hits the same files.
+        /// On Windows the same checks also apply where the destination really leads,
+        /// so a junction pointing into Assets is refused; macOS and Linux check the
+        /// path as written. Returns the path as written, normalized.
         /// </summary>
         internal static string ValidateDestination(string directory, Roots roots)
         {
             directory = Normalize(directory);
+            CheckDestination(directory, roots, null);
+            string physical;
+            try
+            {
+                physical = PhysicalPath(directory);
+            }
+            catch (IOException e)
+            {
+                Reject(directory, $"Build Forge can't tell where it leads. {e.Message}");
+                throw;
+            }
+            if (physical != null && !string.Equals(physical, directory, PathComparison))
+                CheckDestination(physical, roots.Physical(), directory);
+            return directory;
+        }
+
+        /// <summary>
+        /// <see cref="ValidateDestination"/>'s checks of <paramref name="directory"/>. With
+        /// <paramref name="written"/>, the directory is where that path leads through a link,
+        /// and the message names both.
+        /// </summary>
+        static void CheckDestination(string directory, Roots roots, string written)
+        {
+            void Refuse(string reason)
+                => Reject(written ?? directory, written == null ? reason : $"{reason}, where it leads through a link ('{directory}')");
+
             var projectRoot = Normalize(roots.Project);
             if (IsWithin(projectRoot, directory) ||
                 (!string.IsNullOrEmpty(roots.Repository) && IsWithin(Normalize(roots.Repository), directory)))
-                Reject(directory, "it contains the project or repository root");
+                Refuse("it contains the project or repository root");
 
             if (!string.IsNullOrEmpty(roots.Package) &&
                 (IsWithin(directory, Normalize(roots.Package)) || IsWithin(Normalize(roots.Package), directory)))
-                Reject(directory, "it overlaps the Build Forge package source");
+                Refuse("it overlaps the Build Forge package source");
 
             if (!string.IsNullOrEmpty(roots.Editor) &&
                 (IsWithin(directory, Normalize(roots.Editor)) || IsWithin(Normalize(roots.Editor), directory)))
-                Reject(directory, "it overlaps the Unity editor installation");
+                Refuse("it overlaps the Unity editor installation");
 
             foreach (var name in ProjectFolders)
             {
                 if (IsWithin(directory, Path.Combine(projectRoot, name)))
-                    Reject(directory, $"it is inside the project's {name} directory");
+                    Refuse($"it is inside the project's {name} directory");
             }
 
             if (Directory.Exists(directory) && IsUnityProjectOrCheckout(directory))
-                Reject(directory, "it is a Unity project or a Git checkout");
+                Refuse("it is a Unity project or a Git checkout");
 
             string below = null;
             for (var ancestor = new DirectoryInfo(directory); ancestor != null; below = ancestor.Name, ancestor = ancestor.Parent)
             {
                 if (ancestor.Name.Equals(".git", StringComparison.OrdinalIgnoreCase))
-                    Reject(directory, "it is inside Git metadata");
+                    Refuse("it is inside Git metadata");
                 if (below != null && ProjectFolders.Contains(below, StringComparer.OrdinalIgnoreCase) && IsUnityProject(ancestor.FullName))
-                    Reject(directory, $"it is inside the {below} directory of the Unity project '{ancestor.FullName}'");
+                    Refuse($"it is inside the {below} directory of the Unity project '{ancestor.FullName}'");
                 if (ancestor.Parent == null && string.Equals(Normalize(ancestor.FullName), directory, PathComparison))
-                    Reject(directory, "it is a filesystem root");
+                    Refuse("it is a filesystem root");
             }
+        }
 
-            return directory;
+        /// <summary>
+        /// Where a normalized path really leads on Windows, through junctions, symbolic links
+        /// and subst drives: the final path of its nearest existing folder, with the part that
+        /// doesn't exist yet added back. The path as written when no part of it exists, as on
+        /// an offline share. Null on macOS and Linux, which check the path as written. Throws
+        /// <see cref="IOException"/> when Windows can't tell.
+        /// </summary>
+        internal static string PhysicalPath(string path)
+        {
+            if (!IsWindows)
+                return null;
+            var existing = path;
+            var rest = new List<string>();
+            while (!Directory.Exists(existing))
+            {
+                var parent = Path.GetDirectoryName(existing);
+                if (parent == null)
+                    return path;
+                rest.Insert(0, Path.GetFileName(existing));
+                existing = parent;
+            }
+            using (var handle = CreateFileW(ExtendedPath(existing), 0, FileShareAll, IntPtr.Zero, OpenExisting, BackupSemantics, IntPtr.Zero))
+            {
+                if (handle.IsInvalid)
+                    throw new IOException($"Windows can't open '{existing}' (error {Marshal.GetLastWin32Error()}).");
+                var buffer = new StringBuilder(1024);
+                var length = GetFinalPathNameByHandleW(handle, buffer, (uint)buffer.Capacity, 0);
+                if (length >= buffer.Capacity)
+                {
+                    buffer = new StringBuilder((int)length + 1);
+                    length = GetFinalPathNameByHandleW(handle, buffer, (uint)buffer.Capacity, 0);
+                }
+                if (length == 0 || length >= buffer.Capacity)
+                    throw new IOException($"Windows can't tell where '{existing}' leads (error {Marshal.GetLastWin32Error()}).");
+                var final = buffer.ToString();
+                final = final.StartsWith(@"\\?\UNC\", StringComparison.Ordinal) ? @"\\" + final.Substring(8)
+                    : final.StartsWith(@"\\?\", StringComparison.Ordinal) ? final.Substring(4) : final;
+                return Normalize(rest.Count == 0 ? final : Path.Combine(new[] { final }.Concat(rest).ToArray()));
+            }
         }
 
         /// <summary>
@@ -855,6 +945,17 @@ namespace BuildForge.Editor.Core
 
         [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         static extern uint GetLongPathNameW(string shortPath, StringBuilder longPath, uint bufferLength);
+
+        const uint FileShareAll = 7; // read, write and delete
+        const uint OpenExisting = 3;
+        const uint BackupSemantics = 0x02000000; // needed to open a directory
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFileW(string fileName, uint desiredAccess, uint shareMode,
+            IntPtr securityAttributes, uint creationDisposition, uint flagsAndAttributes, IntPtr templateFile);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern uint GetFinalPathNameByHandleW(Microsoft.Win32.SafeHandles.SafeFileHandle file, StringBuilder path, uint length, uint flags);
 
         // ------------------------------------------------------------ paths
 
