@@ -269,6 +269,8 @@ For any Build Profile asset, `buildProfile.GetComponent<ForgeProfile>()` does th
 
 `ForgeSettings.instance.IsPluginEnabled(typeof(SomePlugin))` tells whether a plugin is on in **Project Settings > Build Forge > Installed Plugins**; the plugin's own `IsEnabled` decides per profile.
 
+`ForgeSettings.instance.BuildVariants` lists the project's variants, empty when it has none, and `SupportsVariant(variant)` on a `ForgeProfile` tells whether the profile builds one: every variant, unless the profile restricts them to its Allowed Variants.
+
 Unity build callbacks, such as `IPostGenerateGradleAndroidProject` for changes to the generated Android project, run inside Build Forge's build with the built profile active, so they can read the profile's settings this way. `ForgeBuildRunner.IsForgeBuildInProgress` tells them whether the build is Build Forge's.
 
 ## Public API

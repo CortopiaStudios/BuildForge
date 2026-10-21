@@ -52,10 +52,15 @@ namespace BuildForge.Editor.Configuration
         [Tooltip("Optional explanation shown when a variant is unavailable on this profile.")]
         [SerializeField] string variantRestrictionReason;
 
-        public string VariantRestrictionReason => variantRestrictionReason;
+        internal string VariantRestrictionReason => variantRestrictionReason;
         internal bool RestrictVariants => restrictVariants;
         internal IReadOnlyList<string> AllowedVariants => allowedVariants;
 
+        /// <summary>
+        /// Whether this profile builds <paramref name="variant"/>: any variant, unless Restrict
+        /// Variants limits it to the Allowed Variants. Null or empty, for a project without
+        /// variants, is always true.
+        /// </summary>
         public bool SupportsVariant(string variant) => string.IsNullOrEmpty(variant)
             || !restrictVariants || (allowedVariants?.Contains(variant) ?? false);
 
@@ -116,9 +121,12 @@ namespace BuildForge.Editor.Configuration
         }
 
         /// <summary>The template used when a profile stores no output path.</summary>
-        public const string DefaultOutputPath = "Builds/{Target}/{ProfileName}/{Variant}/{ProjectName}";
+        internal const string DefaultOutputPath = "Builds/{Target}/{ProfileName}/{Variant}/{ProjectName}";
 
-        /// <summary>The effective output path template: the stored one, or <see cref="DefaultOutputPath"/>.</summary>
+        /// <summary>
+        /// The effective output path template: the stored one, or the default,
+        /// <c>Builds/{Target}/{ProfileName}/{Variant}/{ProjectName}</c>, when the profile stores none.
+        /// </summary>
         public string OutputPath => string.IsNullOrEmpty(outputPath) ? DefaultOutputPath : outputPath;
 
         /// <summary>

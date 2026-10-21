@@ -36,19 +36,19 @@ namespace BuildForge.Runtime
         public string ProductName
         {
             get => productName;
-            set => productName = value;
+            internal set => productName = value;
         }
 
         public string ProductVersion
         {
             get => productVersion;
-            set => productVersion = value;
+            internal set => productVersion = value;
         }
 
         public string BuildNumber
         {
             get => buildNumber;
-            set => buildNumber = value;
+            internal set => buildNumber = value;
         }
 
         // Target
@@ -57,26 +57,26 @@ namespace BuildForge.Runtime
         public string BuildProfile
         {
             get => buildProfile;
-            set => buildProfile = value;
+            internal set => buildProfile = value;
         }
 
         /// <summary>The Build Forge build variant the player was built with, such as "Internal"; empty when the project defines none.</summary>
         public string BuildVariant
         {
             get => buildVariant;
-            set => buildVariant = value;
+            internal set => buildVariant = value;
         }
 
         public string BuildTarget
         {
             get => buildTarget;
-            set => buildTarget = value;
+            internal set => buildTarget = value;
         }
 
         public string BuildTargetGroup
         {
             get => buildTargetGroup;
-            set => buildTargetGroup = value;
+            internal set => buildTargetGroup = value;
         }
 
         /// <summary>
@@ -88,7 +88,7 @@ namespace BuildForge.Runtime
         public bool DevelopmentBuild
         {
             get => developmentBuild;
-            set => developmentBuild = value;
+            internal set => developmentBuild = value;
         }
 
         /// <summary>
@@ -102,7 +102,7 @@ namespace BuildForge.Runtime
         public string ManagedCodeVariant
         {
             get => managedCodeVariant;
-            set => managedCodeVariant = value;
+            internal set => managedCodeVariant = value;
         }
 
         // Environment
@@ -110,19 +110,19 @@ namespace BuildForge.Runtime
         public string UnityVersion
         {
             get => unityVersion;
-            set => unityVersion = value;
+            internal set => unityVersion = value;
         }
 
         public string BuildForgeVersion
         {
             get => buildForgeVersion;
-            set => buildForgeVersion = value;
+            internal set => buildForgeVersion = value;
         }
 
         public string BuildTimestamp
         {
             get => buildTimestamp;
-            set => buildTimestamp = value;
+            internal set => buildTimestamp = value;
         }
 
         public IReadOnlyList<ManifestSection> PluginSections => pluginSections;
@@ -157,7 +157,7 @@ namespace BuildForge.Runtime
         public string Name
         {
             get => name;
-            set => name = value;
+            internal set => name = value;
         }
 
         public IReadOnlyList<ManifestEntry> Entries => entries;

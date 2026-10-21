@@ -394,6 +394,7 @@ Scenes, scripting defines, build options, and Player Settings are configured on 
 
 ```
 Runtime/
+  AssemblyInfo.cs                          # Internals visible to the core, which writes the manifest, and its tests
   BuildManifest.cs                         # JSON manifest, readable at runtime
   BuildManifestLoader.cs                   # Loads manifest from StreamingAssets
 

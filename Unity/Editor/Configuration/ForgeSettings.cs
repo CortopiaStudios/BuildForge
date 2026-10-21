@@ -55,7 +55,7 @@ namespace BuildForge.Editor.Configuration
         [Tooltip("Global plugin configuration objects keyed by plugin key, stored as managed references so they read as plain YAML.")]
         [SerializeField] List<PluginConfigSlot> globalPluginConfigs = new();
 
-        public bool InterceptBuilds
+        internal bool InterceptBuilds
         {
             get => interceptBuilds;
             set
@@ -65,7 +65,7 @@ namespace BuildForge.Editor.Configuration
             }
         }
 
-        public bool WriteBuildManifest
+        internal bool WriteBuildManifest
         {
             get => writeBuildManifest;
             set
@@ -75,7 +75,7 @@ namespace BuildForge.Editor.Configuration
             }
         }
 
-        public bool LogManifestContents
+        internal bool LogManifestContents
         {
             get => logManifestContents;
             set
@@ -106,7 +106,7 @@ namespace BuildForge.Editor.Configuration
             SaveSettings();
         }
 
-        public bool MangleProductName
+        internal bool MangleProductName
         {
             get => mangleProductName;
             set
@@ -122,7 +122,7 @@ namespace BuildForge.Editor.Configuration
         /// Save Project, a reload, or quit, so the .asset file lags behind the
         /// Inspector. Disable if the extra write per edit causes trouble.
         /// </summary>
-        public bool SaveProfilesOnEdit
+        internal bool SaveProfilesOnEdit
         {
             get => saveProfilesOnEdit;
             set
@@ -136,7 +136,7 @@ namespace BuildForge.Editor.Configuration
         /// Keep a <c>BUILD_PROFILE_&lt;NAME&gt;</c> scripting define in every
         /// referenced Unity Build Profile. Off by default. See BuildProfileDefines.
         /// </summary>
-        public bool MaintainBuildProfileDefines
+        internal bool MaintainBuildProfileDefines
         {
             get => maintainBuildProfileDefines;
             set
@@ -151,7 +151,7 @@ namespace BuildForge.Editor.Configuration
         /// that platform's XR state to Standalone, which Play Mode runs on. Off by
         /// default. See IForgePlayModeMirror.
         /// </summary>
-        public bool PlayModeFollowsAppliedProfile
+        internal bool PlayModeFollowsAppliedProfile
         {
             get => playModeFollowsAppliedProfile;
             set
@@ -165,7 +165,7 @@ namespace BuildForge.Editor.Configuration
         /// Show a successful editor build in the file browser afterwards, like
         /// Unity's own Build button (default). Skipped for CI builds.
         /// </summary>
-        public bool RevealBuildInFileBrowser
+        internal bool RevealBuildInFileBrowser
         {
             get => revealBuildInFileBrowser;
             set
@@ -175,11 +175,11 @@ namespace BuildForge.Editor.Configuration
             }
         }
 
-        /// <summary>Project-wide build variant names; see BuildVariants.</summary>
+        /// <summary>The project's variant names, as Project Settings > Build Forge lists them; empty when it has none.</summary>
         public IReadOnlyList<string> BuildVariants => buildVariants;
 
         /// <summary>Suffix variant builds' product name with the variant ("Game (Internal)") unless the variant's rule decides otherwise. Default on.</summary>
-        public bool MarkVariantBuilds
+        internal bool MarkVariantBuilds
         {
             get => markVariantBuilds;
             set
