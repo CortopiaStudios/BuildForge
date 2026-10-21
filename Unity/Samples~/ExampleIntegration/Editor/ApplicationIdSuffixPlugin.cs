@@ -85,11 +85,22 @@ namespace BuildForge.Samples.ExampleIntegration
                 warnings.Add(suffixError);
             if (config.variants.Count == 0)
                 warnings.Add("Application ID Suffix is enabled, but no variant is selected, so no build gets the suffix.");
-            var unknown = UnknownVariants(config);
-            if (unknown.Count > 0)
-                warnings.Add($"Application ID Suffix lists {string.Join(", ", unknown.Select(v => $"'{v}'"))}, which " +
-                             "is not a configured variant (renamed or removed?). Update the plugin's variants.");
+            var unknown = UnknownVariantsError(config);
+            if (unknown != null)
+                warnings.Add(unknown);
             return warnings;
+        }
+
+        // A stored variant name that no longer matches is a variant renamed or removed: its
+        // builds would get the production identifier and could install over, or ship as, the
+        // release. So builds stop on it, as the Addressables Stripper's do, not just warn.
+        static string UnknownVariantsError(ApplicationIdSuffixConfig config)
+        {
+            var unknown = UnknownVariants(config);
+            return unknown.Count == 0 ? null
+                : $"Application ID Suffix lists {string.Join(", ", unknown.Select(v => $"'{v}'"))}, which is not a configured " +
+                  "variant (renamed or removed). Update or remove it in the plugin's variants; builds of this profile stop " +
+                  "until then, because the renamed variant would otherwise get the production application identifier.";
         }
 
         public string DescribeBuild(ForgeProfile forgeProfile, bool isCI) => DescribeBuild(forgeProfile, isCI, null);
@@ -108,6 +119,10 @@ namespace BuildForge.Samples.ExampleIntegration
         public void OnPreBuild(ForgeBuildContext context)
         {
             var config = Config(context.ForgeProfile);
+            // Before anything else: a renamed variant's build finds no name to match.
+            var unknown = UnknownVariantsError(config);
+            if (unknown != null)
+                throw new InvalidOperationException($"{LogPrefix} {unknown}");
             if (context.BuildTarget != BuildTarget.Android || !AppliesTo(config, context.Variant))
             {
                 Debug.Log($"{LogPrefix} Application identifier unchanged for this build.");
