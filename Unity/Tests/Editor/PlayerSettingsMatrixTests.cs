@@ -210,5 +210,29 @@ namespace BuildForge.Tests.Editor
             CollectionAssert.AreEqual(new[] { "Misread" }, matrix.Uncompared);
             StringAssert.Contains("'Misread'", global::BuildForge.Editor.UI.PlayerSettingsDiffView.CouldNotCompareMessage(matrix.Uncompared));
         }
+
+        // The uncompared profile keeps its column, so it can still be selected, but it shows
+        // no value as matching and doesn't keep the others' shared value from being marked.
+        [Test]
+        public void AnUncomparedProfilesColumn_IsFlagged_AndLeftOutOfPossiblyStale()
+        {
+            var matrix = PlayerSettingsMatrix.Build(new[]
+            {
+                Profile("Quest", BuildTarget.Android, OwnCopy(("bundleVersion", "1.11.0"))),
+                Profile("Steam Frame", BuildTarget.Android, OwnCopy(("bundleVersion", "1.11.0"))),
+                Profile("Misread", BuildTarget.Android, new Dictionary<string, string> { ["unrelated"] = "x" }),
+            }, Project);
+
+            CollectionAssert.AreEqual(new[] { "Project Settings Android", "Quest", "Steam Frame", "Misread" }, ColumnTitles(matrix));
+            CollectionAssert.AreEqual(new[] { false, false, false, true }, matrix.Columns.Select(c => c.Uncompared));
+            var version = matrix.Rows.Single();
+            Assert.AreEqual("bundleVersion", version.PropertyPath);
+            Assert.IsTrue(version.PossiblyStale, "The uncompared profile neither matches nor differs.");
+            Assert.IsNull(version.Values[3], "No Project Settings value shows as the uncompared profile's own.");
+            Assert.IsFalse(version.Differs[3]);
+            StringAssert.StartsWith("Not compared", PlayerSettingsMatrixView.CellTooltip(matrix, version, 3));
+            StringAssert.StartsWith("Build Forge could not compare", PlayerSettingsMatrixView.ProfileTooltip(matrix.Columns[3]));
+            StringAssert.StartsWith("1 Player Setting differs", PlayerSettingsMatrixView.ProfileTooltip(matrix.Columns[1]));
+        }
     }
 }

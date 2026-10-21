@@ -123,7 +123,7 @@ namespace BuildForge.Editor.UI
                 DrawRow(row, propertyWidth, valueWidth);
             }
             EditorGUILayout.Space(6);
-            DrawLegend(profileColumns);
+            DrawLegend(compared);
             DrawUsingProjectSettings();
             EditorGUILayout.EndScrollView();
         }
@@ -184,21 +184,29 @@ namespace BuildForge.Editor.UI
                 else
                 {
                     var profile = profiles[column.ProfileIndex];
-                    var tooltip = $"{column.DiffCount} Player Setting{(column.DiffCount == 1 ? "" : "s")} differ" +
-                                  $"{(column.DiffCount == 1 ? "s" : "")} from Project Settings. Click to select the Unity Build Profile.";
+                    var tooltip = ProfileTooltip(column);
                     var content = new GUIContent(column.ProfileName, tooltip);
                     var rect = GUILayoutUtility.GetRect(content, EditorStyles.boldLabel, GUILayout.Width(valueWidth));
                     EditorGUIUtility.AddCursorRect(rect, MouseCursor.Link);
                     if (GUI.Button(rect, content, EditorStyles.boldLabel))
                         Select(profile);
-                    EditorGUILayout.LabelField(new GUIContent($"{column.Platform}, own Player Settings", tooltip),
-                        EditorStyles.miniLabel, GUILayout.Width(valueWidth));
+                    // Empty cells also mean matching while Show Matching Values is off, so the title says it.
+                    var subtitle = $"{column.Platform}, {(column.Uncompared ? "not compared" : "own Player Settings")}";
+                    EditorGUILayout.LabelField(new GUIContent(subtitle, tooltip), EditorStyles.miniLabel, GUILayout.Width(valueWidth));
                 }
                 EditorGUILayout.EndVertical();
             }
             EditorGUILayout.EndHorizontal();
             DrawSeparator(GUILayoutUtility.GetLastRect());
         }
+
+        // A profile's title: how many of its settings differ, or that it was not compared.
+        internal static string ProfileTooltip(PlayerSettingsMatrix.Column column)
+            => (column.Uncompared
+                   ? "Build Forge could not compare these Player Settings with Project Settings: they have no setting in common."
+                   : $"{column.DiffCount} Player Setting{(column.DiffCount == 1 ? "" : "s")} differ" +
+                     $"{(column.DiffCount == 1 ? "s" : "")} from Project Settings.") +
+               " Click to select the Unity Build Profile.";
 
         void DrawRow(PlayerSettingsMatrix.Row row, float propertyWidth, float valueWidth)
         {
@@ -230,7 +238,8 @@ namespace BuildForge.Editor.UI
                 EditorGUI.DrawRect(rect, row.PossiblyStale ? StaleColor : DiffersColor);
 
             var matching = isProfile && !row.Differs[c];
-            if (!matching || showMatchingValues)
+            // An uncompared profile has no value that matches, so its cells stay empty.
+            if (!column.Uncompared && (!matching || showMatchingValues))
             {
                 var previous = GUI.contentColor;
                 if (matching)
@@ -249,6 +258,8 @@ namespace BuildForge.Editor.UI
             var column = matrix.Columns[c];
             if (column.Kind == ColumnKind.ProjectSettings)
                 return row.Values[c];
+            if (column.Uncompared)
+                return "Not compared: this profile's Player Settings share no setting with Project Settings.";
             var shared = c;
             while (matrix.Columns[shared].Kind != ColumnKind.ProjectSettings)
                 shared--;
@@ -259,12 +270,12 @@ namespace BuildForge.Editor.UI
             return tooltip;
         }
 
-        void DrawLegend(int profileColumns)
+        void DrawLegend(int comparedColumns)
         {
             EditorGUILayout.BeginHorizontal();
             DrawSwatch(DiffersColor);
             GUILayout.Label("Differs from Project Settings", EditorStyles.miniLabel);
-            if (profileColumns >= 2)
+            if (comparedColumns >= 2)
             {
                 GUILayout.Space(12);
                 DrawSwatch(StaleColor);
@@ -297,7 +308,7 @@ namespace BuildForge.Editor.UI
             foreach (var column in matrix.Columns)
                 sb.Append(" | ").Append(column.Kind == ColumnKind.ProjectSettings
                     ? $"Project Settings ({column.Platform})"
-                    : Escape(column.ProfileName));
+                    : Escape(column.ProfileName) + (column.Uncompared ? " (not compared)" : ""));
             sb.AppendLine();
             sb.Append("---");
             foreach (var unused in matrix.Columns)

@@ -19,13 +19,14 @@ One row per Player Setting that differs from Project Settings in at least one pr
 |---|---|
 | A highlighted cell | The profile's value differs from its platform's Project Settings value. |
 | A dimmed value | The profile's value matches Project Settings. Turn off **Show Matching Values** to leave these cells empty. |
+| "not compared" under a profile's name | Build Forge could not compare the profile's Player Settings with Project Settings: the two have no setting in common, because a file wasn't read as expected. Its cells stay empty, it doesn't count toward possibly stale, and a warning above the table names it. |
 | A cell in the second highlight color | **Possibly stale**: every profile with Player Settings of its own holds the same value, unlike Project Settings. Often a Project Settings change that was not copied into the profiles; sometimes a deliberate shared override. Only marked with two or more such profiles. |
 | "used by …" under a Project Settings column | Profiles of that platform without Player Settings of their own; they build with these values. |
 | A line under the table | Profiles on platforms where no profile has Player Settings of its own. |
 
 The legend under the table names the two highlight colors. Hover a cell for both values; the tooltip of a possibly stale cell says why it is marked.
 
-Click a profile's name or one of its cells to select that Unity Build Profile and show it in the Project window. The search field filters rows by display name or property path. **Copy** puts the whole matrix on the clipboard as a Markdown table, every row whatever the filter, with property paths and raw values, followed by the profiles that build with Project Settings.
+Click a profile's name or one of its cells to select that Unity Build Profile and show it in the Project window. The search field filters rows by display name or property path. **Copy** puts the whole matrix on the clipboard as a Markdown table, every row whatever the filter, with property paths and raw values, followed by the profiles that build with Project Settings. A profile that could not be compared has `(not compared)` after its name and empty cells.
 
 A typical use: after a version bump in Project Settings, the profiles' copies still hold the old version. If every profile with Player Settings of its own holds it, the matrix marks `bundleVersion` as possibly stale; otherwise the old values show as highlighted differences.
 

@@ -37,6 +37,8 @@ namespace BuildForge.Editor.Core
             public string ProfileName;
             /// <summary>Profile columns: how many of its settings differ from Project Settings.</summary>
             public int DiffCount;
+            /// <summary>Profile columns: its Player Settings share no setting with Project Settings, so it was not compared and its cells hold no value.</summary>
+            public bool Uncompared;
             /// <summary>Project Settings columns: the group's profiles without Player Settings of their own.</summary>
             public List<string> AlsoUsedBy = new();
         }
@@ -45,14 +47,14 @@ namespace BuildForge.Editor.Core
         {
             public string PropertyPath;
             public string DisplayName;
-            /// <summary>One value per column.</summary>
+            /// <summary>One value per column; null in an uncompared profile's column.</summary>
             public string[] Values;
             /// <summary>Per column: a profile value that differs from its platform's Project Settings value.</summary>
             public bool[] Differs;
             /// <summary>
-            /// Every profile column holds the same value, and every one differs
-            /// from Project Settings: possibly a Project Settings change that was
-            /// not copied into the profiles. Only with two or more profile columns.
+            /// Every compared profile column holds the same value, and every one
+            /// differs from Project Settings: possibly a Project Settings change that
+            /// was not copied into the profiles. Only with two or more such columns.
             /// </summary>
             public bool PossiblyStale;
         }
@@ -111,7 +113,7 @@ namespace BuildForge.Editor.Core
                     matrix.Columns.Add(new Column
                     {
                         Kind = ColumnKind.Profile, Platform = group.platform, ProfileIndex = i,
-                        ProfileName = profile.Name, DiffCount = entries.Count,
+                        ProfileName = profile.Name, DiffCount = entries.Count, Uncompared = compared == 0,
                     });
                     columnTargets.Add(profile);
                 }
@@ -150,14 +152,16 @@ namespace BuildForge.Editor.Core
                         row.Values[c] = entry.ProfileValue;
                         row.Differs[c] = true;
                     }
-                    else
+                    else if (!column.Uncompared)
                     {
+                        // An uncompared profile's cells stay empty: this value would read as its own, matching.
                         row.Values[c] = shared;
                     }
                 }
 
+                // An uncompared profile neither matches nor differs.
                 var profileCells = Enumerable.Range(0, matrix.Columns.Count)
-                    .Where(c => matrix.Columns[c].Kind == ColumnKind.Profile).ToList();
+                    .Where(c => matrix.Columns[c].Kind == ColumnKind.Profile && !matrix.Columns[c].Uncompared).ToList();
                 row.PossiblyStale = profileCells.Count >= 2
                     && profileCells.All(c => row.Differs[c])
                     && profileCells.All(c => row.Values[c] == row.Values[profileCells[0]]);
