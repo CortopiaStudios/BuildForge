@@ -43,5 +43,13 @@ namespace BuildForge.Tests.Editor
             StringAssert.Contains("no platform", reason);
             StringAssert.Contains("could not check this profile's settings", PluginDisplay.Warnings(plugin, null, null)[0]);
         }
+
+        // Messages about the editor state, such as an unfinished Apply's, which also offer the
+        // way out, name a plugin whose name throws by its type.
+        [Test]
+        public void AThrowingPluginName_IsItsTypeNameInEditorStateMessages()
+        {
+            Assert.AreEqual(typeof(Throwing).FullName, ForgeEditorState.NameOrType(new Throwing()));
+        }
     }
 }

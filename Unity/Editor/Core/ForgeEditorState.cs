@@ -102,7 +102,21 @@ namespace BuildForge.Editor.Core
             if (mirror != null)
                 return mirror.DisplayName;
             var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == typeName);
-            return $"{(plugin != null ? plugin.DisplayName : typeName)} ({group})";
+            return $"{(plugin != null ? NameOrType(plugin) : typeName)} ({group})";
+        }
+
+        // A label in messages that also offer the way out, such as an unfinished Apply's:
+        // a plugin whose name throws gets its type name instead of taking the message along.
+        internal static string NameOrType(IForgePlugin plugin)
+        {
+            try
+            {
+                return plugin.DisplayName ?? plugin.GetType().FullName;
+            }
+            catch (Exception)
+            {
+                return plugin.GetType().FullName;
+            }
         }
 
         public static bool IsApplied(ForgeProfile profile)
