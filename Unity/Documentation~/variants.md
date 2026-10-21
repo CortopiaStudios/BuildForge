@@ -18,6 +18,41 @@ Nothing picks a variant for a build: the build window and the main toolbar start
 
 Adding the first variant changes every build: from then on each build names a variant, so CI commands need `-forgeVariant`, and `{Variant}` in the output path gets the variant's folder. Add the variant you release too, for example `Release` next to `Internal`.
 
+## Branching on the variant in code
+
+Code under `#if BUILD_VARIANT_INTERNAL` is compiled only in builds of that variant, and in the editor while it is applied, so a change that breaks it goes unnoticed until such a build, often on CI. To have the compiler check every variant's code in every build, set a value from each define once, and branch on the values with plain `if` statements:
+
+```csharp
+public static class Variant
+{
+    public static readonly bool Internal =
+#if BUILD_VARIANT_INTERNAL
+        true;
+#else
+        false;
+#endif
+
+    public static readonly bool Release =
+#if BUILD_VARIANT_RELEASE
+        true;
+#else
+        false;
+#endif
+}
+```
+
+```csharp
+if (Variant.Internal)
+    Debug.unityLogger.filterLogType = LogType.Log;
+else
+    Debug.unityLogger.filterLogType = LogType.Warning;
+```
+
+- The fields are `static readonly`, not `const`: with `const` the compiler knows which branch can't run and warns about it as unreachable code (CS0162); with `static readonly` it doesn't.
+- Every branch is in every player. Code that must not ship, such as the debug menu above, stays behind `#if`.
+- The class is kept by hand: add a field for a new variant, and update it when you rename one; see [Renaming a variant](#renaming-a-variant).
+- At runtime, the [build manifest](build-manifest.md)'s `BuildVariant` and `BuildProfile` hold the variant's and the Unity Build Profile's names.
+
 ## Variant rules
 
 Without rules, a variant only adds its define. **Variant Rules** in the same settings page change more. A rule names a configured variant and sets:

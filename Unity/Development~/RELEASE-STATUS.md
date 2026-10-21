@@ -68,6 +68,16 @@ change, then update the Variant Rules, every profile's Allowed Variants and
 the Addressables Stripper's exclusions; third-party plugin configs could
 join later through an optional interface.
 
+Generated build info (proposed 2026-10-14): an opt-in plugin, off by default,
+that generates a committed C# file of static readonly values chosen by the
+existing `BUILD_PROFILE_` and `BUILD_VARIANT_` defines, so that code branching
+on them with plain `if` statements compiles on every platform, where code under
+`#if` is checked only while its define is set. The profile values depend on the
+opt-in Maintain Build Profile Defines. A stale file stops builds rather than
+building with wrong values. The file is generated in the editor, never during a
+build, since writing it there would recompile in the middle of the build.
+Documentation~/variants.md shows the pattern written by hand, for variants.
+
 CI (moved here from the pre-1.0 list on 2026-10-21; the release gate stays a
 full test run on a developer machine): a GitHub Actions workflow on a Windows
 runner that calls `Tools~/run-tests.ps1` for the plain run and both
