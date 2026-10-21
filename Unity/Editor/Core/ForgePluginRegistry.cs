@@ -61,9 +61,13 @@ namespace BuildForge.Editor.Core
                 }
             }
 
-            cachedPlugins = cachedPlugins.OrderBy(p => p.Order).ToList();
+            cachedPlugins = InPluginOrder(cachedPlugins);
             return cachedPlugins;
         }
+
+        /// <summary>By Order, and plugins of the same Order by type name, so theirs doesn't depend on discovery.</summary>
+        internal static List<IForgePlugin> InPluginOrder(IEnumerable<IForgePlugin> plugins)
+            => plugins.OrderBy(p => p.Order).ThenBy(p => p.GetType().FullName, StringComparer.Ordinal).ToList();
 
         /// <summary>
         /// Why builds stop because a plugin failed to load, or null: a plugin that is on

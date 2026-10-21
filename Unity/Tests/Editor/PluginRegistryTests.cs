@@ -64,5 +64,34 @@ namespace BuildForge.Tests.Editor
                     $"should come before {plugins[i].DisplayName} (order {plugins[i].Order})");
             }
         }
+
+        sealed class Zeta : IForgePlugin
+        {
+            public string DisplayName => "Zeta";
+            public int Order => 650;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context) { }
+        }
+
+        sealed class Alpha : IForgePlugin
+        {
+            public string DisplayName => "Alpha";
+            public int Order => 650;
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context) { }
+        }
+
+        // Two plugins with the same Order run in the order of their type names, whatever
+        // order discovery found them in.
+        [Test]
+        public void PluginsWithTheSameOrder_RunByTypeName()
+        {
+            var zeta = new Zeta();
+            var alpha = new Alpha();
+            CollectionAssert.AreEqual(new IForgePlugin[] { alpha, zeta }, ForgePluginRegistry.InPluginOrder(new IForgePlugin[] { zeta, alpha }));
+            CollectionAssert.AreEqual(new IForgePlugin[] { alpha, zeta }, ForgePluginRegistry.InPluginOrder(new IForgePlugin[] { alpha, zeta }));
+        }
     }
 }
