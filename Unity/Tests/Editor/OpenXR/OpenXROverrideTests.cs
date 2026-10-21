@@ -1015,6 +1015,57 @@ namespace BuildForge.Tests.OpenXR
             }
         }
 
+        static System.Type EditorSettingsType()
+        {
+            var type = typeof(OpenXRFeatureSetManager).Assembly.GetType("UnityEditor.XR.OpenXR.OpenXREditorSettings");
+            Assert.IsNotNull(type, "OpenXR keeps the ticked feature groups elsewhere; update Build Forge's reader.");
+            return type;
+        }
+
+        /// <summary>Ticks or unticks a group as XR Plug-in Management does, in OpenXR's editor settings.</summary>
+        internal static void SetFeatureGroupTicked(Object editorSettings, BuildTargetGroup group, string id, bool ticked)
+        {
+            var select = editorSettings.GetType().GetMethod("SetFeatureSetSelected", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.IsNotNull(select, "OpenXR's editor settings changed; update the test.");
+            select.Invoke(editorSettings, new object[] { group, id, ticked });
+        }
+
+        // Build Forge reads which groups are ticked from OpenXR's editor settings itself, as they
+        // hold them per platform, because asking OpenXR would initialize its feature groups.
+        [Test] public void TickedFeatureGroupIds_AreTheOnesOpenXRsEditorSettingsHoldForThePlatform()
+        {
+            var settings = ScriptableObject.CreateInstance(EditorSettingsType());
+            try
+            {
+                SetFeatureGroupTicked(settings, BuildTargetGroup.Standalone, "vendor.one", true);
+                SetFeatureGroupTicked(settings, BuildTargetGroup.Standalone, "vendor.two", true);
+                SetFeatureGroupTicked(settings, BuildTargetGroup.Android, "vendor.three", true);
+                SetFeatureGroupTicked(settings, BuildTargetGroup.Android, "vendor.unticked", true);
+                SetFeatureGroupTicked(settings, BuildTargetGroup.Android, "vendor.unticked", false);
+
+                CollectionAssert.AreEquivalent(new[] { "vendor.one", "vendor.two" },
+                    OpenXRPlugin.TickedFeatureGroupIds(settings, BuildTargetGroup.Standalone));
+                CollectionAssert.AreEquivalent(new[] { "vendor.three" }, OpenXRPlugin.TickedFeatureGroupIds(settings, BuildTargetGroup.Android));
+                CollectionAssert.IsEmpty(OpenXRPlugin.TickedFeatureGroupIds(settings, BuildTargetGroup.iOS));
+                CollectionAssert.IsEmpty(OpenXRPlugin.TickedFeatureGroupIds(null, BuildTargetGroup.Standalone),
+                    "A project without the settings has nothing ticked.");
+            }
+            finally { Object.DestroyImmediate(settings); }
+        }
+
+        // Settings that don't hold the lists, as from an OpenXR that changed them, stop builds and
+        // Apply rather than read as nothing ticked.
+        [Test] public void TickedFeatureGroupIds_SettingsWithoutTheirLists_Throw()
+        {
+            var other = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                StringAssert.Contains("hold no Keys and Values lists", Assert.Throws<System.InvalidOperationException>(
+                    () => OpenXRPlugin.TickedFeatureGroupIds(other, BuildTargetGroup.Standalone)).Message);
+            }
+            finally { Object.DestroyImmediate(other); }
+        }
+
         static OpenXRFeatureSetManager.FeatureSet RequiringControllers(bool ticked) => new OpenXRFeatureSetManager.FeatureSet
         {
             name = "Controllers", isEnabled = ticked,

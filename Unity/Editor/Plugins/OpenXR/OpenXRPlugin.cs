@@ -298,16 +298,20 @@ namespace BuildForge.Editor.OpenXR
         }
 
         /// <summary>
-        /// The feature groups ticked for the platform in XR Plug-in Management, read from
-        /// the project's OpenXR editor settings, so also in batch mode. Throws when OpenXR's
-        /// can't be read: builds and Apply check them before writing.
+        /// The feature groups ticked for the platform in XR Plug-in Management, as OpenXR lists
+        /// them, read without OpenXRFeatureSetManager: its first use initializes it, which refreshes
+        /// and saves every platform's OpenXR settings and turns on the features ticked groups
+        /// require. OpenXR leaves that to the editor's first update, which in batch mode comes after
+        /// a build started, so reading through it would change the project before the build's
+        /// marker and snapshot. Throws when OpenXR's can't be read: builds and Apply check them
+        /// before writing.
         /// </summary>
         internal static List<OpenXRFeatureSetManager.FeatureSet> TickedFeatureGroups(BuildTargetGroup group)
         {
             try
             {
-                return OpenXRFeatureSetManager.FeatureSetsForBuildTarget(group)
-                    .Where(s => s != null && s.isEnabled && s.featureIds != null)
+                return DeclaredFeatureGroups(group, TickedFeatureGroupIds(FindEditorSettings(), group))
+                    .Where(s => s.isEnabled && s.featureIds != null)
                     .ToList();
             }
             catch (Exception e)
@@ -316,6 +320,119 @@ namespace BuildForge.Editor.OpenXR
                     $"Build Forge can't read the OpenXR feature groups ticked for {group}: {e.Message} Update Build Forge for this OpenXR version.", e);
             }
         }
+
+        // OpenXR leaves out its own test groups.
+        const string TestFeatureSetId = "com.unity.xr.test.featureset";
+
+        /// <summary>
+        /// The feature groups the installed packages declare for the platform, as OpenXR's
+        /// InitializeFeatureSets makes them: one per [OpenXRFeatureSet] that lists the platform, a
+        /// later one replacing an earlier one with the same id (ignoring case), OpenXR's test groups
+        /// left out. A group is ticked (isEnabled) when <paramref name="tickedIds"/> holds its id.
+        /// </summary>
+        internal static List<OpenXRFeatureSetManager.FeatureSet> DeclaredFeatureGroups(BuildTargetGroup group,
+            ICollection<string> tickedIds)
+        {
+            var sets = new List<OpenXRFeatureSetManager.FeatureSet>();
+            foreach (var type in TypeCache.GetTypesWithAttribute<OpenXRFeatureSetAttribute>())
+            {
+                foreach (var attribute in type.GetCustomAttributes<OpenXRFeatureSetAttribute>())
+                {
+                    // A group without an id can't be ticked.
+                    if (attribute.FeatureSetId == null || attribute.FeatureSetId.Contains(TestFeatureSetId)
+                        || attribute.SupportedBuildTargets == null || Array.IndexOf(attribute.SupportedBuildTargets, group) < 0)
+                        continue;
+                    var featureSet = new OpenXRFeatureSetManager.FeatureSet
+                    {
+                        isEnabled = tickedIds.Contains(attribute.FeatureSetId),
+                        name = attribute.UiName,
+                        description = attribute.Description,
+                        featureSetId = attribute.FeatureSetId,
+                        downloadText = "",
+                        downloadLink = "",
+                        featureIds = attribute.FeatureIds,
+                        requiredFeatureIds = attribute.RequiredFeatureIds,
+                        defaultFeatureIds = attribute.DefaultFeatureIds,
+                        isInstalled = true,
+                    };
+                    var same = sets.FindIndex(s => string.Compare(s.featureSetId, featureSet.featureSetId, true) == 0);
+                    if (same >= 0)
+                        sets[same] = featureSet;
+                    else
+                        sets.Add(featureSet);
+                }
+            }
+            return sets;
+        }
+
+        // OpenXR's internal class for its editor settings, which keep the groups ticked per platform.
+        const string EditorSettingsTypeName = "UnityEditor.XR.OpenXR.OpenXREditorSettings";
+
+        // Kept once found, as OpenXR keeps its own.
+        static UnityEngine.Object editorSettings;
+
+        /// <summary>
+        /// The project's OpenXR Editor Settings asset, found as OpenXR finds it, or null when there
+        /// is none: not through OpenXREditorSettings.Instance, which creates one. Throws when this
+        /// OpenXR has no such class.
+        /// </summary>
+        internal static UnityEngine.Object FindEditorSettings()
+        {
+            if (editorSettings != null)
+                return editorSettings;
+            var type = typeof(OpenXRFeatureSetManager).Assembly.GetType(EditorSettingsTypeName)
+                       ?? throw new InvalidOperationException($"OpenXR has no {EditorSettingsTypeName}, where it keeps them.");
+            // The last one found, as OpenXR takes it.
+            foreach (var guid in AssetDatabase.FindAssets("t:" + type.Name))
+            {
+                var asset = AssetDatabase.LoadAssetAtPath(AssetDatabase.GUIDToAssetPath(guid), type);
+                if (asset != null)
+                    editorSettings = asset;
+            }
+            return editorSettings;
+        }
+
+        /// <summary>
+        /// The ids of the groups ticked for the platform in OpenXR's editor settings, read from the
+        /// lists they serialize, which hold what OpenXR's IsFeatureSetSelected answers from; none
+        /// without the settings. Throws when the lists can't be read.
+        /// </summary>
+        internal static HashSet<string> TickedFeatureGroupIds(UnityEngine.Object settings, BuildTargetGroup group)
+        {
+            var ids = new HashSet<string>();
+            if (settings == null)
+                return ids;
+            var where = $"OpenXR's editor settings ('{AssetDatabase.GetAssetPath(settings)}')";
+            var so = new SerializedObject(settings);
+            var keys = so.FindProperty("Keys");
+            var values = so.FindProperty("Values");
+            if (!IsList(keys) || !IsList(values))
+                throw new InvalidOperationException($"{where} hold no Keys and Values lists.");
+            // OpenXR pairs them up to the shorter list; the first entry for a platform counts.
+            for (var i = 0; i < Math.Min(keys.arraySize, values.arraySize); i++)
+            {
+                var key = keys.GetArrayElementAtIndex(i);
+                if (key.propertyType != SerializedPropertyType.Enum && key.propertyType != SerializedPropertyType.Integer)
+                    throw new InvalidOperationException($"{where} hold Keys that aren't platforms.");
+                if (key.intValue != (int)group)
+                    continue;
+                var featureSets = values.GetArrayElementAtIndex(i).FindPropertyRelative("featureSets");
+                if (!IsList(featureSets))
+                    throw new InvalidOperationException($"{where} hold no featureSets list for {group}.");
+                for (var j = 0; j < featureSets.arraySize; j++)
+                {
+                    var id = featureSets.GetArrayElementAtIndex(j);
+                    if (id.propertyType != SerializedPropertyType.String)
+                        throw new InvalidOperationException($"{where} hold featureSets for {group} that aren't ids.");
+                    ids.Add(id.stringValue);
+                }
+                break;
+            }
+            return ids;
+        }
+
+        static bool IsList(SerializedProperty property)
+            => property != null && property.isArray && property.propertyType == SerializedPropertyType.Generic;
 
         /// <summary>
         /// Why the profile can't be written for <paramref name="group"/>, or null: a Disable
