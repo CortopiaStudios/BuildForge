@@ -32,6 +32,10 @@ The exclusions exist only while the build runs, so content built before it, for 
 
 The per-user Addressables preference is not taken into account, because what a build contains must not depend on the machine.
 
+## Without Addressables settings
+
+With the Addressables package installed but no Addressables settings in the project, for example after `Assets/AddressableAssetsData` was deleted or never committed, no exclusion can take effect, while Unity's player build still copies the content built before into the player. A build whose variant has exclusions therefore stops before anything changes. The foldout says so and lists the stored exclusions with **Remove**, for a project that no longer uses Addressables; creating the settings again in **Window > Asset Management > Addressables > Groups** brings the group and label lists back.
+
 ## Renamed or removed groups and labels
 
 Exclusions are stored by name. After a group or label is renamed or removed, an exclusion of the old name would exclude nothing, and the content it excluded would ship. A build that uses such an exclusion therefore stops before anything changes, and the foldout lists it as not found, with **Remove**.

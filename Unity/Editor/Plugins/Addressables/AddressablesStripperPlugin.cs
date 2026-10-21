@@ -50,13 +50,19 @@ namespace BuildForge.Editor.Addressables
         public string Description => "Exclude Addressables groups and labels from the build.";
         public int Order => 700;
 
-        public bool IsApplicable(BuildProfile profile)
-        {
-            return AddressableAssetSettingsDefaultObject.Settings != null;
-        }
+        // Also without Addressables settings: exclusions that can't take effect then stop
+        // the build (see MissingSettingsMessage) instead of the plugin being skipped.
+        public bool IsApplicable(BuildProfile profile) => true;
 
-        public string NotApplicableReason(BuildProfile profile) =>
-            AddressablesRebuildPlugin.NotInitializedMessage;
+        /// <summary>
+        /// Without Addressables settings nothing can be excluded, while Unity's player build
+        /// still copies the content built before from Library into the player.
+        /// </summary>
+        internal const string MissingSettingsMessage =
+            "Addressables exclusions are set, but the Addressables settings are missing, so they would exclude nothing " +
+            "and content built before would ship. Create the settings in Window > Asset Management > Addressables > " +
+            "Groups, or remove the exclusions in this profile's Addressables Stripper settings if the project no longer " +
+            "uses Addressables. Builds that use them stop until then.";
 
         /// <summary>
         /// Exclusions only take effect if Addressables content is built between
@@ -100,13 +106,13 @@ namespace BuildForge.Editor.Addressables
                 messages.Add(unknownVariants);
 
             var config = stored.ForVariant(variant);
-            if ((config.ExcludedGroups.Count > 0 || config.ExcludedLabels.Count > 0)
-                && !ContentRebuildGuaranteed(forgeProfile))
-            {
-                messages.Add(MisconfigurationMessage);
-            }
-
             var settings = AddressableAssetSettingsDefaultObject.Settings;
+            var excludes = config.ExcludedGroups.Count > 0 || config.ExcludedLabels.Count > 0;
+            if (excludes && settings == null)
+                messages.Add(MissingSettingsMessage);
+            else if (excludes && !ContentRebuildGuaranteed(forgeProfile))
+                messages.Add(MisconfigurationMessage);
+
             var exclusionError = settings != null ? ExclusionError(config, settings) : null;
             if (exclusionError != null)
                 messages.Add(exclusionError);
@@ -235,12 +241,14 @@ namespace BuildForge.Editor.Addressables
             if (config.ExcludedGroups.Count == 0 && config.ExcludedLabels.Count == 0)
                 return;
 
+            // Before the rebuild check, whose advice to turn on Addressables Rebuild wouldn't help.
+            var settings = AddressableAssetSettingsDefaultObject.Settings;
+            if (settings == null)
+                throw new InvalidOperationException($"[Build Forge/Addressables] {MissingSettingsMessage}");
+
             if (!ContentRebuildGuaranteed(context.ForgeProfile))
                 throw new InvalidOperationException(
                     $"[Build Forge/Addressables] {MisconfigurationMessage}");
-
-            var settings = AddressableAssetSettingsDefaultObject.Settings;
-            if (settings == null) return;
 
             // Before anything changes: an exclusion that can't take effect would ship its content.
             var exclusionError = ExclusionError(config, settings);
@@ -363,9 +371,29 @@ namespace BuildForge.Editor.Addressables
             bool changed = false;
 
             var settings = AddressableAssetSettingsDefaultObject.Settings;
-            // Silent: the profile inspector already shows NotApplicableReason.
             if (settings == null)
+            {
+                // Nothing to pick from; stored exclusions stop builds, so each can be removed here.
+                var stored = new[] { config.ExcludedGroups, config.ExcludedLabels }
+                    .Concat(config.VariantExclusions.SelectMany(v => new[] { v.groups, v.labels }));
+                if (!stored.Any(list => list.Count > 0))
+                {
+                    EditorGUILayout.HelpBox(AddressablesRebuildPlugin.NotInitializedMessage, MessageType.Info);
+                    return;
+                }
+                EditorGUILayout.HelpBox(MissingSettingsMessage, MessageType.Error);
+                var none = new List<string>();
+                changed |= DrawNotFound(config.ExcludedGroups, none, "Group");
+                changed |= DrawNotFound(config.ExcludedLabels, none, "Label");
+                foreach (var extra in config.VariantExclusions)
+                {
+                    changed |= DrawNotFound(extra.groups, none, $"'{extra.variant}' group");
+                    changed |= DrawNotFound(extra.labels, none, $"'{extra.variant}' label");
+                }
+                if (changed)
+                    SaveConfig(forgeProfile, config);
                 return;
+            }
 
             EditorGUILayout.HelpBox(
                 "Excluded groups and entries with an excluded label are stripped from the build.\n" +

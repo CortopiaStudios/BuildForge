@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using BuildForge.Editor.Configuration;
 using BuildForge.Editor.Core;
 using UnityEditor;
@@ -27,12 +28,23 @@ namespace BuildForge.Editor.Addressables
         public string Description => "Rebuild Addressables content before the player build.";
         public int Order => 800;
 
-        public bool IsApplicable(BuildProfile profile)
-        {
-            return AddressableAssetSettingsDefaultObject.Settings != null;
-        }
+        // Also without Addressables settings: turned on, it then stops the build (see
+        // MissingSettingsMessage) instead of being skipped. Off, its switch filters it out.
+        public bool IsApplicable(BuildProfile profile) => true;
 
-        public string NotApplicableReason(BuildProfile profile) => NotInitializedMessage;
+        /// <summary>
+        /// Turned on without Addressables settings, nothing is rebuilt, while Unity's player
+        /// build still copies the content built before from Library into the player.
+        /// </summary>
+        internal const string MissingSettingsMessage =
+            "Addressables Rebuild is on for this profile, but the Addressables settings are missing, so no content " +
+            "would be rebuilt and content built before would ship. Create the settings in Window > Asset Management > " +
+            "Addressables > Groups, or turn Addressables Rebuild off for this profile. Builds of this profile stop until then.";
+
+        public IReadOnlyList<string> Validate(ForgeProfile forgeProfile)
+            => AddressableAssetSettingsDefaultObject.Settings == null
+                ? new[] { MissingSettingsMessage }
+                : System.Array.Empty<string>();
 
         // The serialized field keeps its historical name (rebuildBeforeBuild);
         // it is this plugin's enable switch.
@@ -50,10 +62,7 @@ namespace BuildForge.Editor.Addressables
             var config = GetConfig(context.ForgeProfile);
             var settings = AddressableAssetSettingsDefaultObject.Settings;
             if (settings == null)
-            {
-                Debug.LogWarning("[Build Forge/Addressables] No Addressable Asset Settings found. Skipping rebuild.");
-                return;
-            }
+                throw new System.InvalidOperationException($"[Build Forge/Addressables] {MissingSettingsMessage}");
 
             if (config.CleanBeforeRebuild)
             {
@@ -88,9 +97,13 @@ namespace BuildForge.Editor.Addressables
 
         public void OnDrawProfileGUI(ForgeProfile forgeProfile)
         {
-            // Silent: the profile inspector already shows NotApplicableReason.
             if (AddressableAssetSettingsDefaultObject.Settings == null)
+            {
+                // Greyed out while the switch is off; turned on, builds of the profile stop.
+                EditorGUILayout.HelpBox(MissingSettingsMessage,
+                    GetConfig(forgeProfile).RebuildBeforeBuild ? MessageType.Error : MessageType.Info);
                 return;
+            }
 
             var config = GetConfig(forgeProfile);
             bool changed = false;
