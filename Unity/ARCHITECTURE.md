@@ -403,7 +403,7 @@ Exception: `CommandLineBuild.cs` uses namespace `BuildForge` (not `BuildForge.Ed
 
 ## Public API Surface
 
-Everything not listed here is `internal` — implementation detail, free to change between releases. Tests access internals via `InternalsVisibleTo`: the core assembly grants it to the test assemblies, and for the Play Mode mirror only to the XR Loaders and OpenXR assemblies (`Editor/AssemblyInfo.cs`); each plugin assembly grants it to its tests; the runtime assembly grants it to the core, which writes the manifest, and to the core's tests (`Runtime/AssemblyInfo.cs`).
+Everything not listed here is `internal` — implementation detail, free to change between releases. Tests access internals via `InternalsVisibleTo`: the core assembly grants it to the test assemblies, and for the Play Mode mirror only to the XR Loaders and OpenXR assemblies (`Editor/AssemblyInfo.cs`); each plugin assembly grants it to its tests; the runtime assembly grants it to the core, which writes the manifest, and to the core's tests (`Runtime/AssemblyInfo.cs`). `PublicApiSurfaceTests` lists the public types and the public and protected members each declares, so a change to either fails the suite until the list is changed on purpose.
 
 **Runtime** (game code): `BuildManifest`, `ManifestSection`, `ManifestEntry`, `BuildManifestLoader`.
 

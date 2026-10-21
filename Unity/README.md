@@ -559,7 +559,7 @@ Tests/
     PluginDisplayTests.cs                  # A plugin that throws for a window gets a fallback and one logged error
     PluginLoadFailureTests.cs              # Builds and Apply stop for plugins or plugin settings that can't load, or plugins that can't say whether they run
     PluginRegistryTests.cs                 # Plugin discovery tests
-    PublicApiSurfaceTests.cs               # Locks the public API surface
+    PublicApiSurfaceTests.cs               # Locks the public types and their members
     Addressables/GroupExclusionTests.cs    # Addressables Stripper group exclusion and names it can't find
     Addressables/MissingAddressablesSettingsTests.cs # Builds stop for exclusions or Rebuild without Addressables settings
     Addressables/VariantExclusionTests.cs  # Addressables Stripper exclusions per variant
