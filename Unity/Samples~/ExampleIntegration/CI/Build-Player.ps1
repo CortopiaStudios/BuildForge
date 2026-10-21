@@ -172,7 +172,11 @@ function Invoke-Unity([string[]]$ForgeArguments, [string]$Log) {
         return $process.ExitCode
     }
 
-    $arguments = @('run', $ProjectPath, '--non-interactive')
+    # "unity run" takes a project path or the name of a project registered in Unity Hub, and
+    # tries the name first: a bare relative path such as Client would build the registered
+    # project of that name, so a relative path goes as ./Client.
+    $runProject = if ([IO.Path]::IsPathRooted($ProjectPath) -or $ProjectPath -match '^\.{1,2}([\\/]|$)') { $ProjectPath } else { "./$ProjectPath" }
+    $arguments = @('run', $runProject, '--non-interactive')
     if ($TimeoutSeconds -gt 0) {
         $arguments += @('--timeout', "$TimeoutSeconds")
     }

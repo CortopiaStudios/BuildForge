@@ -105,7 +105,14 @@ if [ -z "$editor" ]; then
     echo 'The Unity CLI ("unity") is not on the PATH. Install it, or pass --editor with the path of a Unity editor.' >&2
     exit 2
   fi
-  cli_args=(run "$project" --non-interactive)
+  # "unity run" takes a project path or the name of a project registered in Unity Hub, and
+  # tries the name first: a bare relative path such as Client would build the registered
+  # project of that name, so a relative path goes as ./Client.
+  case "$project" in
+    /* | ./* | ../* | . | .. | [A-Za-z]:*) run_project="$project" ;;
+    *) run_project="./$project" ;;
+  esac
+  cli_args=(run "$run_project" --non-interactive)
   if [ -n "$timeout" ]; then
     cli_args+=(--timeout "$timeout")
   fi
