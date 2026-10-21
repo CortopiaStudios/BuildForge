@@ -558,6 +558,7 @@ Tests/
     Addressables/GroupExclusionTests.cs    # Addressables Stripper group exclusion and names it can't find
     Addressables/MissingAddressablesSettingsTests.cs # Builds stop for exclusions or Rebuild without Addressables settings
     Addressables/VariantExclusionTests.cs  # Addressables Stripper exclusions per variant
+    OpenXR/OpenXRFeatureGroupTests.cs      # Feature group checks before builds, Apply and the Play Mode copy write; groups read without initializing OpenXR's
     OpenXR/OpenXROverrideTests.cs          # OpenXR feature overrides and feature groups
     OpenXR/SerializedPropertySnapshotTests.cs # Property capture/apply round trips (with the OpenXR tests)
     XRManagement/PlayModeXRLoadersTests.cs # Play Mode mirror of the platform's XR loaders
