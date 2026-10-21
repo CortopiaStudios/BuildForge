@@ -508,7 +508,7 @@ Samples~/
 Tests/
   Editor/
     Fixtures/                              # Test data (ProjectSettings.txt, PerPlatformGlobal.txt, PerPlatformProfile.txt)
-    ActivationSummaryTests.cs              # Activate's summary line and active-profile mismatch warnings
+    ActivationSummaryTests.cs              # Activate's summary line, active-profile mismatch warnings and the applied-profile reminder
     AndroidKeystoreEnvConfigTests.cs       # Keystore env resolution and validation
     AndroidKeystoreEnvPluginTests.cs       # Keystore settings during and after a build
     BuildEnvironmentTests.cs               # CI detection precedence

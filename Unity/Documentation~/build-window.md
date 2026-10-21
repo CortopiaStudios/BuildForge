@@ -21,7 +21,7 @@ The toolbar's **Refresh** button finds profiles again and recomputes the warning
 While something is applied, the top of the details pane explains the editor state:
 
 - A warning when Unity switched to another Build Profile, or to a platform profile, without Build Forge, with the fixes. See [When Unity switches profiles on its own](concepts.md#when-unity-switches-profiles-on-its-own).
-- Then either the drift notice, naming the editor settings that differ from the profile as applied, with **Dismiss Drift**, while plugin settings have drifted, and **Revert to Baseline** buttons (see [Drift](concepts.md#drift)), or a reminder that the applied settings live in version-controlled assets, so revert to baseline before committing them, with a **Revert to Baseline** button.
+- Then either the drift notice, naming the editor settings that differ from the profile as applied, with **Dismiss Drift**, while plugin settings have drifted, and **Revert to Baseline** buttons (see [Drift](concepts.md#drift)), or a reminder that names what is applied, the plugin settings the Apply changed as the drift notice names them, such as `OpenXR (Android)`, and the variant's defines with the Unity Build Profile that holds them, and says that these live in version-controlled assets: Revert to Baseline before committing them and Apply again afterwards. It has a **Revert to Baseline** button.
 - If the applied Build Profile no longer exists, or no Build Forge settings can be found for it, only a warning that Revert to Baseline restores the settings it changed, with that button.
 
 So Revert to Baseline is always in the notices, whichever profile is selected.

@@ -796,8 +796,8 @@ namespace BuildForge.Editor.UI
 
         /// <summary>
         /// Applied-profile status under the list: missing asset, drift against
-        /// the state as applied, and the reminder that an applied profile lives
-        /// in version-controlled settings assets.
+        /// the state as applied, or the reminder naming what is applied, which
+        /// lives in version-controlled settings assets.
         /// </summary>
         void DrawEditorState(ForgeProfile appliedProfile)
         {
@@ -868,8 +868,11 @@ namespace BuildForge.Editor.UI
                 // No FlexibleSpace: inside the scroll view it would stretch the row.
                 EditorGUILayout.BeginHorizontal(GUILayout.ExpandHeight(false));
                 EditorGUILayout.LabelField(
-                    $"'{appliedProfile.DisplayName}' is applied to the editor. Its settings live in " +
-                    "version-controlled assets — revert to baseline before committing them, or commit deliberately.",
+                    AppliedReminder(appliedProfile.DisplayName,
+                        // Only what the Apply changed: a plugin that takes part without overrides writes nothing.
+                        ForgeEditorState.Entries.Where(entry => entry.expectedJson != entry.baselineJson)
+                            .Select(entry => DescribeDriftKey(entry.key)).ToList(),
+                        ForgeEditorState.AppliedVariant, appliedProfile.BuildProfile.name),
                     EditorStyles.wordWrappedMiniLabel, GUILayout.ExpandWidth(true));
                 using (new EditorGUI.DisabledScope(!revert.enabled))
                 {
@@ -878,6 +881,25 @@ namespace BuildForge.Editor.UI
                 }
                 EditorGUILayout.EndHorizontal();
             }
+        }
+
+        /// <summary>
+        /// The reminder while a profile is applied and nothing has drifted: what is applied,
+        /// the setting groups the Apply changed, as drift names them (<paramref name="applied"/>), and the
+        /// variant's defines with the Unity Build Profile that holds them, and that those
+        /// live in version-controlled assets. Pure so it can be tested.
+        /// </summary>
+        internal static string AppliedReminder(string profileName, IReadOnlyList<string> applied, string variant,
+            string buildProfileName)
+        {
+            var what = string.Join(", ", applied);
+            if (variant != null)
+                what += (what.Length > 0 ? " and " : "") +
+                        $"the defines of variant '{variant}' on Unity Build Profile '{buildProfileName}'";
+            if (what.Length == 0)
+                return $"'{profileName}' is applied to the editor, without changing any plugin settings or variant defines.";
+            return $"'{profileName}' is applied to the editor: {what}. These live in version-controlled assets: " +
+                   "Revert to Baseline before committing them and Apply again afterwards, or commit them deliberately.";
         }
 
         /// <summary>

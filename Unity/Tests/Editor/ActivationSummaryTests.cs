@@ -8,8 +8,8 @@ namespace BuildForge.Tests.Editor
     /// The line Activate logs after the domain reload (parked in SessionState
     /// across the reload, because a Console set to "Clear on Recompile" drops
     /// everything logged before it), and the warnings for a Build Profile or a
-    /// platform profile that became active behind an applied profile, and when the
-    /// drift notice offers Dismiss Drift.
+    /// platform profile that became active behind an applied profile, when the
+    /// drift notice offers Dismiss Drift, and what the reminder names while nothing drifted.
     /// </summary>
     public class ActivationSummaryTests
     {
@@ -33,6 +33,24 @@ namespace BuildForge.Tests.Editor
             Assert.IsFalse(ForgeBuildWindow.OffersDismissDrift(new[] { openXR + EditorStateApplier.BuildUnfinishedSuffix }));
             Assert.IsTrue(ForgeBuildWindow.OffersDismissDrift(new[]
                 { openXR + EditorStateApplier.BuildUnfinishedSuffix, "BuildForge.Editor.XRManagement.XRLoaderSelectionPlugin|Android" }));
+        }
+
+        // The reminder names what is applied, as drift names it, and where the variant's defines are,
+        // so it says which version-controlled settings to revert before a commit.
+        [Test]
+        public void AppliedReminder_NamesTheAppliedSettings_AndTheBuildProfileWithTheVariantsDefines()
+        {
+            Assert.AreEqual("'Quest' is applied to the editor: OpenXR (Android), Play Mode OpenXR features and the defines " +
+                            "of variant 'Develop' on Unity Build Profile 'Quest'. These live in version-controlled assets: " +
+                            "Revert to Baseline before committing them and Apply again afterwards, or commit them deliberately.",
+                ForgeBuildWindow.AppliedReminder("Quest", new[] { "OpenXR (Android)", "Play Mode OpenXR features" }, "Develop", "Quest"));
+            StringAssert.StartsWith("'Quest' is applied to the editor: OpenXR (Android). These live in version-controlled assets:",
+                ForgeBuildWindow.AppliedReminder("Quest", new[] { "OpenXR (Android)" }, null, "Quest"));
+            StringAssert.StartsWith("'Quest' is applied to the editor: the defines of variant 'Develop' on Unity Build Profile " +
+                                    "'Quest'. These live in version-controlled assets:",
+                ForgeBuildWindow.AppliedReminder("Quest", System.Array.Empty<string>(), "Develop", "Quest"));
+            Assert.AreEqual("'Quest' is applied to the editor, without changing any plugin settings or variant defines.",
+                ForgeBuildWindow.AppliedReminder("Quest", System.Array.Empty<string>(), null, "Quest"));
         }
 
         // A deleted Library/ or -buildTarget leaves a platform profile active,
