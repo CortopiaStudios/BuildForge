@@ -24,6 +24,17 @@ namespace BuildForge.Tests.Editor
             Assert.IsTrue(ForgeBuildWindow.OffersDismissDrift(new[] { openXR, ForgeEditorState.VariantDriftKey }));
         }
 
+        // Settings whose Apply or build did not finish can't be accepted as applied.
+        [Test]
+        public void DismissDrift_IsNotOfferedForSettingsWhoseApplyOrBuildDidNotFinish()
+        {
+            const string openXR = "BuildForge.Editor.OpenXR.OpenXRPlugin|Android";
+            Assert.IsFalse(ForgeBuildWindow.OffersDismissDrift(new[] { openXR + EditorStateApplier.ApplyUnfinishedSuffix }));
+            Assert.IsFalse(ForgeBuildWindow.OffersDismissDrift(new[] { openXR + EditorStateApplier.BuildUnfinishedSuffix }));
+            Assert.IsTrue(ForgeBuildWindow.OffersDismissDrift(new[]
+                { openXR + EditorStateApplier.BuildUnfinishedSuffix, "BuildForge.Editor.XRManagement.XRLoaderSelectionPlugin|Android" }));
+        }
+
         // A deleted Library/ or -buildTarget leaves a platform profile active,
         // which no Build Forge profile can reference.
         [Test]
@@ -68,6 +79,16 @@ namespace BuildForge.Tests.Editor
             StringAssert.EndsWith("Apply 'Pico' to replace them with its own, or Revert to Baseline.", gone);
         }
 
+        // While an Apply or a build did not finish, applying another profile stops, so it isn't offered.
+        [Test]
+        public void SwitchedProfileMismatch_WhileInterrupted_DoesNotOfferApply()
+        {
+            StringAssert.EndsWith("still belong to 'Quest'. Activate 'Quest' again to keep them, or Revert to Baseline.",
+                ForgeEditorState.SwitchedProfileMismatch("Pico", "Quest", "Pico", canReactivate: true, interrupted: true));
+            StringAssert.EndsWith("Revert to Baseline.",
+                ForgeEditorState.SwitchedProfileMismatch("Unmanaged", "Quest", null, canReactivate: false, interrupted: true));
+        }
+
         [Test]
         public void NothingWasApplied_NamesOnlyTheActivatedProfile()
         {
@@ -106,6 +127,29 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual(
                 "[Build Forge] Activated 'Quest', which is still applied: its plugin settings were kept, not reverted.",
                 ForgeEditorState.ReactivationSummary("Quest", null));
+        }
+
+        // An Apply or a build that did not finish leaves the profile only partly applied.
+        [Test]
+        public void TheAppliedProfileActivatedAgain_AfterAnApplyThatDidNotFinish_DoesNotClaimItsSettingsWereKept()
+        {
+            var text = ForgeEditorState.ReactivationSummary("Quest", null, interrupted: true);
+            StringAssert.Contains("did not finish for some of its settings", text);
+            StringAssert.DoesNotContain("were kept", text);
+        }
+
+        [Test]
+        public void InterruptedMessage_NamesWhatDidNotFinishAndTheWayOut()
+        {
+            var text = ForgeEditorState.InterruptedMessage("Quest", new[] { "OpenXR (Android)" }, new[] { "XR Loaders (Android)" });
+            StringAssert.Contains("the Apply of 'Quest' did not finish for OpenXR (Android)", text);
+            StringAssert.Contains("a build did not put back 'Quest''s settings for XR Loaders (Android)", text);
+            StringAssert.Contains("Revert to Baseline, or Re-apply 'Quest',", text);
+            StringAssert.Contains("builds stop", text);
+
+            var gone = ForgeEditorState.InterruptedMessage(null, new[] { "OpenXR (Android)" }, System.Array.Empty<string>());
+            StringAssert.Contains("the Apply of the applied profile did not finish", gone);
+            StringAssert.DoesNotContain("Re-apply", gone, "No Build Forge profile can apply it again.");
         }
     }
 }

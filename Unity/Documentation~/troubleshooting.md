@@ -25,6 +25,7 @@ The message names the cause. The common ones:
 | Build Forge cannot build '…': a folder is in the way | An old Android export folder sits where the APK goes. |
 | Build Forge plugin … could not be loaded | The plugin's constructor failed, and the error is in parentheses. Fix the plugin, or turn it off in **Project Settings > Build Forge > Installed Plugins**, where it is listed as "(failed to load)". |
 | Build Forge cannot load the plugin settings … | [Plugin settings that Unity cannot load](#build-forge-cannot-load-the-plugin-settings-) |
+| Build Forge can't tell what these editor settings hold | An Apply or a build that wrote the applied profile's settings did not finish. Revert to Baseline or Re-apply it in the build window; see [When an Apply or a build did not finish](concepts.md#when-an-apply-or-a-build-did-not-finish). |
 | '…' has no '…' setting on Unity …, or Unity Build Profile '…' stores no … | Unity renamed a Build Profile setting that Build Forge applies or reads. Update Build Forge for your Unity version. |
 | [Build Forge/OpenXR] Meta Quest Setup is on for this profile, but Build Forge cannot read … | [OpenXR](plugins/openxr.md#warnings) |
 | [Build Forge/OpenXR] This profile's OpenXR overrides for … hold … that OpenXR … can't take | [Overrides that no longer match OpenXR](plugins/openxr.md#overrides-that-no-longer-match-openxr) |
@@ -68,11 +69,11 @@ The Console's **Clear on Build** option clears the Console when the player build
 
 ### "post-build restore/cleanup step(s) failed"
 
-The player was built, but restoring a setting or cleaning up failed. The errors above that line name the step. The project may have been left modified: check the changed files before committing. A command-line build fails in this case.
+Restoring a setting or cleaning up failed. The line says whether the player was built, and the errors above it name the step. The project may have been left modified: check the changed files before committing. A command-line build fails in this case. If a profile was applied and its settings could not be put back or applied again after the build, the build window names them, and builds stop until Revert to Baseline or Re-apply; see [When an Apply or a build did not finish](concepts.md#when-an-apply-or-a-build-did-not-finish).
 
 ### The editor crashed during a build
 
-Restore the files the build changed from version control, typically `ProjectSettings/`, the XR settings under `Assets/XR/` and the Build Profile that was built, with the [Addressables Stripper](plugins/addressables-stripper.md) also `Assets/AddressableAssetsData/`, and with [Android Manifest](plugins/android-manifest.md) also `Assets/Plugins/Android/AndroidManifest.xml`. Don't delete an Addressables group named `BuildForge Excluded (do not delete)`: it holds entries the Stripper moved out of their groups. If a profile was applied to the editor, **Revert to Baseline** restores its plugin settings, because their baselines are on disk.
+Restore the files the build changed from version control, typically `ProjectSettings/`, the XR settings under `Assets/XR/` and the Build Profile that was built, with the [Addressables Stripper](plugins/addressables-stripper.md) also `Assets/AddressableAssetsData/`, and with [Android Manifest](plugins/android-manifest.md) also `Assets/Plugins/Android/AndroidManifest.xml`. Don't delete an Addressables group named `BuildForge Excluded (do not delete)`: it holds entries the Stripper moved out of their groups. If a profile was applied to the editor, **Revert to Baseline** or **Re-apply** restores its plugin settings, because their baselines are on disk; builds stop until you do. See [When an Apply or a build did not finish](concepts.md#when-an-apply-or-a-build-did-not-finish).
 
 ## Command line and CI
 

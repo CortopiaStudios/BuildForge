@@ -682,7 +682,10 @@ namespace BuildForge.Editor.UI
 
             if (appliedProfile == null)
             {
-                DrawWarningBoxWithButtons(ForgeEditorState.UnresolvedAppliedWarning, revert);
+                var unfinished = ForgeEditorState.InterruptedError();
+                DrawWarningBoxWithButtons(unfinished != null
+                    ? ForgeEditorState.UnresolvedAppliedWarning + " " + unfinished
+                    : ForgeEditorState.UnresolvedAppliedWarning, revert);
                 return;
             }
 
@@ -699,9 +702,19 @@ namespace BuildForge.Editor.UI
                     : selectedProfile == appliedProfile
                         ? ""
                         : $" Select '{appliedProfile.DisplayName}' to re-apply it.";
-                var text = $"Editor settings differ from '{appliedProfile.DisplayName}' as applied: " +
-                    string.Join(", ", drift.Select(DescribeDriftKey)) + ". " +
-                    "Re-apply restores the profile's state; Revert to Baseline undoes it." + where;
+                // An Apply or build that did not finish has its own message; the rest is ordinary drift.
+                var interrupted = ForgeEditorState.InterruptedError();
+                var drifted = drift.Where(key => !IsUnfinishedDriftKey(key)).ToList();
+                var parts = new List<string>();
+                if (interrupted != null)
+                    parts.Add(interrupted);
+                if (drifted.Count > 0)
+                    parts.Add($"Editor settings differ from '{appliedProfile.DisplayName}' as applied: " +
+                              string.Join(", ", drifted.Select(DescribeDriftKey)) + ". " +
+                              "Re-apply restores the profile's state; Revert to Baseline undoes it.");
+                if (where.Length > 0)
+                    parts.Add(where.Trim());
+                var text = string.Join(" ", parts);
                 (GUIContent content, bool enabled, System.Action onClick) dismiss = (new GUIContent("Dismiss Drift",
                     canMutate
                         ? "Stop reporting the current settings as drift. The profile is unchanged, and the " +
@@ -773,11 +786,16 @@ namespace BuildForge.Editor.UI
 
         /// <summary>
         /// Whether the drift notice offers Dismiss Drift: only while plugin settings
-        /// have drifted, which it accepts. A missing variant define stays reported
-        /// until Re-apply or Revert to Baseline.
+        /// have drifted, which it accepts. A missing variant define, and settings whose
+        /// Apply or build did not finish, stay reported until Re-apply or Revert to Baseline.
         /// </summary>
         internal static bool OffersDismissDrift(IReadOnlyList<string> drift)
-            => drift.Any(key => key != ForgeEditorState.VariantDriftKey);
+            => drift.Any(key => key != ForgeEditorState.VariantDriftKey && !IsUnfinishedDriftKey(key));
+
+        /// <summary>A drift key of settings whose Apply or build did not finish.</summary>
+        internal static bool IsUnfinishedDriftKey(string key)
+            => key.EndsWith(EditorStateApplier.ApplyUnfinishedSuffix, System.StringComparison.Ordinal)
+               || key.EndsWith(EditorStateApplier.BuildUnfinishedSuffix, System.StringComparison.Ordinal);
 
         /// <summary>
         /// The build plan for the selected profile: every discovered plugin in

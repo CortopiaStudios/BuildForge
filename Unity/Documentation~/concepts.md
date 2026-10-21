@@ -51,7 +51,7 @@ A build runs these steps:
 
 Step 9 runs also when the build fails or throws: Build Forge undoes its own changes, and every plugin whose pre-build step started gets its post-build step to undo its own. The bundled plugins restore everything they change. Unity's own `IPostprocessBuildWithReport` callbacks do not run on a failed build; Build Forge's restore does. A failed restore is logged as an error and makes a command-line build fail, even when the player itself was built.
 
-An editor crash or a killed editor process cannot run step 9. Restore the changed files from version control afterwards, typically `ProjectSettings/`, the XR settings under `Assets/XR/` and the Build Profile that was built. If a profile was applied at the time, **Revert to Baseline** restores the applied plugin settings, because their baselines are on disk.
+An editor crash or a killed editor process cannot run step 9. Restore the changed files from version control afterwards, typically `ProjectSettings/`, the XR settings under `Assets/XR/` and the Build Profile that was built. If a profile was applied at the time, Build Forge knows the build did not finish: **Revert to Baseline** or **Re-apply** restores the applied plugin settings, because their baselines are on disk, and builds stop until then; see [When an Apply or a build did not finish](#when-an-apply-or-a-build-did-not-finish).
 
 ## Active and applied
 
@@ -92,9 +92,15 @@ Apply is available for the active profile when it has something to apply: a plug
 
 **Revert to Baseline** restores every setting the applied profile changed, in reverse order, removes the variant defines Apply wrote, and forgets the applied profile.
 
-Settings that changed after the Apply, for example in a git pull, keep their new values. Build Forge restores the baseline only where a setting still has the value the Apply wrote, and so do Re-apply, Activate and builds. The bundled plugins compare each OpenXR setting, each feature's enabled state and its properties as a whole, and each XR Management value. A custom plugin restores its whole baseline, with a warning, unless it implements [`MergeEditorState`](custom-plugins.md#applying-settings-to-the-editor). As with `git revert`, a setting changed after the Apply to the very value the Apply wrote counts as the Apply's and goes back too.
+Settings that changed after the Apply, for example in a git pull, keep their new values. Build Forge restores the baseline only where a setting still has the value the Apply wrote, and so do Re-apply, Activate and builds, except after an Apply or a build that did not finish (see below). The bundled plugins compare each OpenXR setting, each feature's enabled state and its properties as a whole, and each XR Management value. A custom plugin restores its whole baseline, with a warning, unless it implements [`MergeEditorState`](custom-plugins.md#applying-settings-to-the-editor). As with `git revert`, a setting changed after the Apply to the very value the Apply wrote counts as the Apply's and goes back too.
 
 If a setting cannot be restored, its baseline is kept for another attempt, and Apply, Activate, Revert to Baseline and builds stop on it until a revert succeeds. When the cause is permanent, for example the package of the plugin that wrote the setting was removed, or the baseline names an XR loader that no longer exists, the dialog after the failed revert offers **Stop Tracking**: those settings keep their current values and Build Forge forgets them. As a last resort, with the editor closed, deleting `UserSettings/ForgeEditorState.asset` forgets every baseline.
+
+## When an Apply or a build did not finish
+
+When the editor quits in the middle of an Apply, or of a build while a profile is applied, or Build Forge couldn't undo a stopped Apply or apply the profile again after a build, it can't tell what the affected settings hold: they are partly written. The build window says which settings and why, and the toolbar's Apply tooltip lists them as drift with `(Apply did not finish)` or `(build did not finish)`.
+
+**Revert to Baseline** and **Re-apply** of the applied profile restore those settings to their state from before the Apply or the build, whole, without keeping changes made after the Apply as they otherwise do: what the Apply or the build wrote would look like such changes. Anything changed in those settings since is undone too, and the console says which settings it restores. Until then, builds stop, and so do Apply and Activate of another profile, which would undo the same settings without saying so. Dismiss Drift leaves them reported. In batch mode there is no Revert, so open the project in the editor first.
 
 ## Drift
 
@@ -104,7 +110,7 @@ The build window lists drifted settings, for example `OpenXR (Android)`, with **
 
 - **Re-apply** writes the profile's settings again.
 - **Revert to Baseline** undoes the Apply.
-- **Dismiss Drift** accepts the current state as the applied one, for legitimate changes such as a package upgrade rewriting its settings. The accepted changes also go into the baseline, so undoing the Apply keeps them. The profile is unchanged, and the next Apply or build writes the profile's settings again. It covers plugin settings only: a missing variant define stays reported until Re-apply or Revert to Baseline, so the build window offers Dismiss Drift only while plugin settings have drifted.
+- **Dismiss Drift** accepts the current state as the applied one, for legitimate changes such as a package upgrade rewriting its settings. The accepted changes also go into the baseline, so undoing the Apply keeps them. The profile is unchanged, and the next Apply or build writes the profile's settings again. It covers plugin settings only: a missing variant define, and settings whose Apply or build did not finish, stay reported until Re-apply or Revert to Baseline, so the build window offers Dismiss Drift only while other plugin settings have drifted.
 
 Drift is checked at most every two seconds.
 

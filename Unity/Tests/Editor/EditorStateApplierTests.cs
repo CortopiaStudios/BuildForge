@@ -353,10 +353,12 @@ namespace BuildForge.Tests.Editor
             EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null);
             Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
             Assert.AreEqual(1, entries.Count);
+            Assert.AreEqual(EditorStatePhase.Suspended, entries[0].phase, "Until the profile is applied again after the build.");
 
             var result = EditorStateApplier.ResumeAfterBuild(entries, profileA, Resolve);
             Assert.AreEqual("base+A", plugin.World[BuildTargetGroup.Android]);
-            Assert.IsFalse(result.Changed, "Same state as before the build — nothing to save.");
+            Assert.AreEqual(EditorStatePhase.Applied, entries[0].phase);
+            Assert.IsTrue(result.Changed, "Same state as before the build, but the entry is Applied again, which must be saved.");
             Assert.IsFalse(result.Cleared);
             Assert.IsEmpty(EditorStateApplier.Drift(entries, Resolve));
         }
@@ -371,6 +373,27 @@ namespace BuildForge.Tests.Editor
 
             Assert.IsTrue(result.Cleared);
             Assert.IsEmpty(entries);
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
+        }
+
+        // Without the applied profile nothing is applied again, but a group the build did
+        // not put back keeps its entry and baseline, so Revert to Baseline can still undo it.
+        [Test]
+        public void Resume_WithNullProfile_KeepsWhatTheBuildDidNotPutBack()
+        {
+            Apply(profileA, BuildTargetGroup.Android, BuildTargetGroup.Standalone);
+            EditorStateApplier.SuspendForBuild(entries, Resolve, profileA, null);
+            plugin.World[BuildTargetGroup.Android] = "built";
+
+            var result = EditorStateApplier.ResumeAfterBuild(entries, null, Resolve, null,
+                new[] { EditorStateLedger.MakeKey(PluginName, BuildTargetGroup.Android) });
+
+            Assert.IsFalse(result.Cleared, "The applied profile's traces stay while an entry does.");
+            Assert.IsTrue(result.Changed);
+            StringAssert.Contains("stays recorded for Revert to Baseline", result.Failures.Single().Message);
+            Assert.AreEqual("Fake|Android", entries.Single().key);
+            Assert.AreEqual(EditorStatePhase.Suspended, entries.Single().phase);
+            EditorStateApplier.RevertAll(entries, Resolve);
             Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
         }
 
@@ -463,9 +486,11 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual(1, result.Failures.Count);
             Assert.IsTrue(result.Changed, "The successfully re-applied entry must still be saved.");
             Assert.AreEqual("base+A", entries[0].expectedJson, "Do not record the failed apply as expected state.");
+            Assert.AreEqual(EditorStatePhase.Suspended, entries[0].phase, "Undoing it later restores its baseline whole.");
             Assert.AreEqual("base+B", entries[1].expectedJson);
             Assert.IsTrue(entries.All(e => e.baselineJson == "base"));
-            CollectionAssert.AreEqual(new[] { "Fake|Android" }, EditorStateApplier.Drift(entries, Resolve));
+            CollectionAssert.AreEqual(new[] { "Fake|Android" + EditorStateApplier.BuildUnfinishedSuffix },
+                EditorStateApplier.Drift(entries, Resolve));
         }
 
         [Test]
@@ -508,6 +533,11 @@ namespace BuildForge.Tests.Editor
         class KeyedPlugin : IForgeEditorApplicable
         {
             readonly Dictionary<BuildTargetGroup, SortedDictionary<string, string>> world = new();
+            /// <summary>ApplyToEditor writes its setting, then throws.</summary>
+            public bool ThrowAfterWriting;
+            /// <summary>The capture right after ApplyToEditor throws ("throw") or returns null ("null").</summary>
+            public string CaptureAfterApply;
+            bool afterApply;
 
             SortedDictionary<string, string> Settings(BuildTargetGroup group)
                 => world.TryGetValue(group, out var settings) ? settings : world[group] = Parse("x=1");
@@ -516,9 +546,22 @@ namespace BuildForge.Tests.Editor
 
             public void Set(BuildTargetGroup group, string key, string value) => Settings(group)[key] = value;
 
-            public string CaptureEditorState(BuildTargetGroup group) => State(group);
+            public string CaptureEditorState(BuildTargetGroup group)
+            {
+                var failing = afterApply ? CaptureAfterApply : null;
+                afterApply = false;
+                if (failing == "throw")
+                    throw new InvalidOperationException("capture after apply boom");
+                return failing == "null" ? null : State(group);
+            }
 
-            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) => Set(group, forgeProfile.name, "on");
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group)
+            {
+                Set(group, forgeProfile.name, "on");
+                afterApply = true;
+                if (ThrowAfterWriting)
+                    throw new InvalidOperationException("boom after writing");
+            }
 
             public void RestoreEditorState(BuildTargetGroup group, string json) => world[group] = Parse(json);
 
@@ -648,6 +691,278 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
         }
 
+        // ------------------------------------------------ an Apply or a build that did not finish
+
+        Func<string, IForgeEditorApplicable> ResolveKeyed(KeyedPlugin keyed) => name => name == KeyedName ? keyed : null;
+
+        static EditorStatePair KeyedPair(KeyedPlugin keyed)
+            => new EditorStatePair { PluginTypeName = KeyedName, Group = BuildTargetGroup.Android, Plugin = keyed };
+
+        // A merge would keep a failed plugin's own writes as changes made after the
+        // Apply; they are the Apply's, so they are undone whole.
+        [Test]
+        public void Apply_MergingPluginFailsAfterWriting_RestoresItsBaselineWhole()
+        {
+            var keyed = new KeyedPlugin { ThrowAfterWriting = true };
+            LogAssert.Expect(LogType.Error, new Regex(@"Keyed\|Android: apply failed\. boom after writing"));
+
+            Assert.Throws<EditorStateApplyException>(() => ApplyKeyed(keyed, profileA));
+
+            Assert.AreEqual("x=1", keyed.State(BuildTargetGroup.Android));
+            Assert.IsEmpty(entries);
+        }
+
+        [Test]
+        public void Reapply_MergingPluginFailsAfterWriting_RestoresTheBaselineFromBeforeTheFirstApply()
+        {
+            var keyed = new KeyedPlugin();
+            ApplyKeyed(keyed, profileA);
+            keyed.ThrowAfterWriting = true;
+            LogAssert.Expect(LogType.Error, new Regex(@"Keyed\|Android: apply failed"));
+
+            Assert.Throws<EditorStateApplyException>(() => ApplyKeyed(keyed, profileB));
+
+            Assert.AreEqual("x=1", keyed.State(BuildTargetGroup.Android));
+            Assert.IsEmpty(entries);
+        }
+
+        // Every pair recorded so far holds only this Apply's writes, so they are undone
+        // whole too, even where a later plugin wrote into an earlier pair's group.
+        [Test]
+        public void Apply_StoppedByALaterPair_UndoesTheEarlierPairsWhole()
+        {
+            var keyed = new KeyedPlugin();
+            plugin.ThrowOnApplyGroup = BuildTargetGroup.Standalone;
+            plugin.World[BuildTargetGroup.Standalone] = "base";
+            Func<string, IForgeEditorApplicable> resolve = name => name == KeyedName ? keyed : Resolve(name);
+            LogAssert.Expect(LogType.Error, new Regex(@"Fake\|Standalone: apply failed"));
+
+            Assert.Throws<EditorStateApplyException>(() => EditorStateApplier.Apply(entries,
+                new[] { KeyedPair(keyed), Pair(BuildTargetGroup.Standalone) }, profileA, resolve,
+                () => { if (entries.Count == 2) keyed.Set(BuildTargetGroup.Android, "y", "written later"); }));
+
+            Assert.AreEqual("x=1", keyed.State(BuildTargetGroup.Android));
+        }
+
+        [TestCase("throw", "capture after apply failed. capture after apply boom")]
+        [TestCase("null", "capture after apply failed. The applied settings could not be captured.")]
+        public void Apply_CaptureAfterApplyFails_StopsAndRestoresTheBaseline(string failure, string logged)
+        {
+            var keyed = new KeyedPlugin { CaptureAfterApply = failure };
+            LogAssert.Expect(LogType.Error, new Regex(@"Keyed\|Android: " + Regex.Escape(logged)));
+
+            var stopped = Assert.Throws<EditorStateApplyException>(() => ApplyKeyed(keyed, profileA));
+
+            Assert.AreEqual("Keyed|Android", stopped.Key);
+            Assert.AreEqual("x=1", keyed.State(BuildTargetGroup.Android));
+            Assert.IsEmpty(entries);
+        }
+
+        // The editor quit after the plugin saved its writes, before the result was
+        // recorded: the ledger on disk is the checkpoint, and undoing it restores the
+        // baseline whole instead of keeping the writes.
+        [Test]
+        public void Revert_AfterTheEditorQuitMidApply_RestoresTheBaselineWhole()
+        {
+            var keyed = new KeyedPlugin();
+            List<EditorStateEntry> onDisk = null;
+            EditorStateApplier.Apply(entries, new[] { KeyedPair(keyed) }, profileA, ResolveKeyed(keyed), () =>
+            {
+                if (entries.Count == 1 && keyed.State(BuildTargetGroup.Android) == "x=1")
+                    onDisk = entries.Select(e => JsonUtility.FromJson<EditorStateEntry>(JsonUtility.ToJson(e))).ToList();
+            });
+            Assert.AreEqual(EditorStatePhase.Applying, onDisk.Single().phase);
+            Assert.AreEqual("x=1", onDisk.Single().expectedJson);
+
+            CollectionAssert.AreEqual(new[] { "Keyed|Android" + EditorStateApplier.ApplyUnfinishedSuffix },
+                EditorStateApplier.Drift(onDisk, ResolveKeyed(keyed)));
+            Assert.IsFalse(EditorStateApplier.DismissDrift(onDisk, ResolveKeyed(keyed)),
+                "A partly applied profile must not be accepted as applied.");
+            EditorStateApplier.RevertAll(onDisk, ResolveKeyed(keyed));
+
+            Assert.AreEqual("x=1", keyed.State(BuildTargetGroup.Android));
+            Assert.IsEmpty(onDisk);
+        }
+
+        [TestCase(nameof(EditorStatePhase.Applying))]
+        [TestCase(nameof(EditorStatePhase.Suspended))]
+        public void DismissDrift_LeavesAnEntryWhoseApplyOrBuildDidNotFinish(string phaseName)
+        {
+            var phase = (EditorStatePhase)Enum.Parse(typeof(EditorStatePhase), phaseName);
+            var keyed = new KeyedPlugin();
+            ApplyKeyed(keyed, profileA);
+            keyed.Set(BuildTargetGroup.Android, "x", "2");
+            var entry = entries.Single();
+            entry.phase = phase;
+            var baseline = entry.baselineJson;
+            var expected = entry.expectedJson;
+
+            Assert.IsFalse(EditorStateApplier.DismissDrift(entries, ResolveKeyed(keyed)),
+                "A partly applied profile must not be accepted as applied.");
+            Assert.AreEqual(baseline, entry.baselineJson);
+            Assert.AreEqual(expected, entry.expectedJson);
+            Assert.AreEqual(phase, entry.phase);
+        }
+
+        // Ledgers written before the phase existed have no such field: their entries
+        // read as Applied and keep the three-way merge.
+        [Test]
+        public void EntryWrittenWithoutAPhase_ReadsAsApplied()
+        {
+            var entry = JsonUtility.FromJson<EditorStateEntry>(
+                "{\"key\":\"Keyed|Android\",\"baselineJson\":\"x=1\",\"expectedJson\":\"A=on;x=1\"}");
+            Assert.AreEqual(EditorStatePhase.Applied, entry.phase);
+        }
+
+        // The editor quit during a build: what the build wrote would look like changes
+        // made after the Apply, so undoing it restores the baseline the suspension
+        // restored, whole.
+        [Test]
+        public void Revert_AfterTheEditorQuitDuringABuild_RestoresTheSuspendedBaselineWhole()
+        {
+            var keyed = new KeyedPlugin();
+            ApplyKeyed(keyed, profileA);
+            keyed.Set(BuildTargetGroup.Android, "x", "2");
+            LogAssert.Expect(LogType.Log, KeptLog);
+            EditorStateApplier.SuspendForBuild(entries, ResolveKeyed(keyed), profileA, null);
+            Assert.AreEqual(EditorStatePhase.Suspended, entries.Single().phase);
+            keyed.Set(BuildTargetGroup.Android, "B", "on");
+            keyed.Set(BuildTargetGroup.Android, "x", "3");
+
+            CollectionAssert.AreEqual(new[] { "Keyed|Android" + EditorStateApplier.BuildUnfinishedSuffix },
+                EditorStateApplier.Drift(entries, ResolveKeyed(keyed)));
+            EditorStateApplier.RevertAll(entries, ResolveKeyed(keyed));
+
+            Assert.AreEqual("x=2", keyed.State(BuildTargetGroup.Android), "The change made before the build stays.");
+        }
+
+        [Test]
+        public void Resume_DoesNotCompleteAnApplyThatNeverFinished()
+        {
+            entries.Add(new EditorStateEntry
+            {
+                key = "Fake|Android", baselineJson = "base", expectedJson = "base", phase = EditorStatePhase.Applying
+            });
+
+            var result = EditorStateApplier.ResumeAfterBuild(entries, profileA, Resolve);
+
+            Assert.IsEmpty(plugin.Calls.Where(c => c.StartsWith("apply")));
+            Assert.IsFalse(result.Changed);
+            StringAssert.Contains("its Apply did not finish", result.Failures.Single().Message);
+            Assert.AreEqual(EditorStatePhase.Applying, entries.Single().phase);
+        }
+
+        // A plugin whose settings could not be put back after the build holds an unknown
+        // state: the profile isn't applied on top of it, nor is the mirror that copies it.
+        [Test]
+        public void Resume_LeavesAPluginThatWasNotRestored_AndTheMirrorAfterIt()
+        {
+            var mirror = new CopyMirror(plugin, BuildTargetGroup.Android);
+            Func<string, IForgeEditorApplicable> resolve = name => name == MirrorName ? mirror : Resolve(name);
+            EditorStateApplier.Apply(entries, new[] { Pair(BuildTargetGroup.Android), MirrorPair(mirror) }, profileA, resolve, null);
+            EditorStateApplier.SuspendForBuild(entries, resolve, profileA, null);
+
+            var result = EditorStateApplier.ResumeAfterBuild(entries, profileA, resolve, null,
+                new[] { EditorStateLedger.MakeKey(PluginName, BuildTargetGroup.Android) });
+
+            Assert.AreEqual(2, result.Failures.Count);
+            StringAssert.Contains("could not be put back after the build", result.Failures[0].Message);
+            StringAssert.Contains("the platform settings it copies were not", result.Failures[1].Message);
+            Assert.IsTrue(entries.All(e => e.phase == EditorStatePhase.Suspended));
+            Assert.AreEqual("base", plugin.World[BuildTargetGroup.Android]);
+            Assert.AreEqual("standalone", mirror.State, "The mirror doesn't copy a platform that wasn't put back.");
+        }
+
+        // A build of another platform touches only that platform's settings: the applied
+        // group is applied again, but the mirrors write Standalone, which the build left.
+        [Test]
+        public void Resume_RestoreFailedForTheStandaloneBuild_ReappliesTheAppliedGroup_ButNotTheMirror()
+        {
+            var mirror = new CopyMirror(plugin, BuildTargetGroup.Android);
+            Func<string, IForgeEditorApplicable> resolve = name => name == MirrorName ? mirror : Resolve(name);
+            EditorStateApplier.Apply(entries, new[] { Pair(BuildTargetGroup.Android), MirrorPair(mirror) }, profileA, resolve, null);
+            EditorStateApplier.SuspendForBuild(entries, resolve, profileA, null);
+
+            var result = EditorStateApplier.ResumeAfterBuild(entries, profileA, resolve, null,
+                new[] { EditorStateLedger.MakeKey(PluginName, BuildTargetGroup.Standalone) });
+
+            StringAssert.Contains("Mirror|Standalone: not applied again, because its settings could not be put back",
+                result.Failures.Single().Message);
+            Assert.AreEqual("base+A", plugin.World[BuildTargetGroup.Android]);
+            Assert.AreEqual(EditorStatePhase.Applied, entries[0].phase);
+            Assert.AreEqual(EditorStatePhase.Suspended, entries[1].phase);
+            Assert.AreEqual("standalone", mirror.State);
+        }
+
+        [Test]
+        public void Resume_PlatformReapplyFails_LeavesTheMirrorAfterIt()
+        {
+            var mirror = new CopyMirror(plugin, BuildTargetGroup.Android);
+            Func<string, IForgeEditorApplicable> resolve = name => name == MirrorName ? mirror : Resolve(name);
+            EditorStateApplier.Apply(entries, new[] { Pair(BuildTargetGroup.Android), MirrorPair(mirror) }, profileA, resolve, null);
+            EditorStateApplier.SuspendForBuild(entries, resolve, profileA, null);
+            plugin.ThrowOnApplyGroup = BuildTargetGroup.Android;
+            LogAssert.Expect(LogType.Error, new Regex(@"Fake\|Android: re-apply after build failed"));
+
+            var result = EditorStateApplier.ResumeAfterBuild(entries, profileA, resolve);
+
+            Assert.AreEqual(2, result.Failures.Count);
+            Assert.AreEqual("standalone", mirror.State, "The mirror doesn't copy a platform that wasn't applied again.");
+            Assert.IsTrue(entries.All(e => e.phase == EditorStatePhase.Suspended));
+        }
+
+        // The runner records, by ledger key, the editor-applicable plugins that could not put
+        // the built group back; another plugin's failure is only reported.
+        [Test]
+        public void RunPostBuild_RecordsTheEditorApplicablePluginsWhoseRestoreFailed()
+        {
+            var order = new List<string>();
+            var plugins = new IForgePlugin[]
+            {
+                new ApplicablePostBuildPlugin("applicable", order, fails: true),
+                new PostBuildPlugin("plain", order, fails: true),
+                new ApplicablePostBuildPlugin("restored", order, fails: false),
+            };
+            var context = new ForgeBuildContext(null, profileA, BuildTarget.StandaloneWindows64, "unused", true);
+            LogAssert.Expect(LogType.Error, new Regex("Post-build restore failed in plain"));
+            LogAssert.Expect(LogType.Error, new Regex("Post-build restore failed in applicable"));
+
+            var notRestored = ForgeBuildRunner.RunPostBuild(plugins, context);
+
+            CollectionAssert.AreEqual(new[] { "restored", "plain", "applicable" }, order, "In reverse order of OnPreBuild.");
+            CollectionAssert.AreEquivalent(
+                new[] { EditorStateLedger.MakeKey(typeof(ApplicablePostBuildPlugin).FullName, BuildTargetGroup.Standalone) },
+                notRestored);
+            Assert.AreEqual(2, context.PostBuildFailures.Count);
+        }
+
+        class PostBuildPlugin : IForgePlugin
+        {
+            readonly List<string> order;
+            readonly bool fails;
+
+            public PostBuildPlugin(string name, List<string> order, bool fails) { DisplayName = name; this.order = order; this.fails = fails; }
+
+            public string DisplayName { get; }
+            public bool IsApplicable(UnityEditor.Build.Profile.BuildProfile profile) => true;
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context)
+            {
+                order.Add(DisplayName);
+                if (fails)
+                    throw new InvalidOperationException("restore boom");
+            }
+        }
+
+        class ApplicablePostBuildPlugin : PostBuildPlugin, IForgeEditorApplicable
+        {
+            public ApplicablePostBuildPlugin(string name, List<string> order, bool fails) : base(name, order, fails) { }
+
+            public string CaptureEditorState(BuildTargetGroup group) => null;
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group) { }
+            public void RestoreEditorState(BuildTargetGroup group, string json) { }
+        }
+
         // A stopped build re-applies what it restored in the Apply's order: a Play Mode
         // mirror copies its platform as the plugins leave it, so it comes after them.
         [Test]
@@ -675,6 +990,7 @@ namespace BuildForge.Tests.Editor
 
             Assert.AreEqual("source-applied", source.State);
             Assert.AreEqual("source-applied", mirror.State);
+            Assert.IsTrue(entries.All(e => e.phase == EditorStatePhase.Applied));
         }
 
         /// <summary>A plugin whose state is one string, which applying sets from <c>apply</c>.</summary>
@@ -694,6 +1010,32 @@ namespace BuildForge.Tests.Editor
                     throw new InvalidOperationException("restore boom");
                 State = json;
             }
+        }
+
+        const string MirrorName = "Mirror";
+
+        static EditorStatePair MirrorPair(CopyMirror mirror)
+            => new EditorStatePair { PluginTypeName = MirrorName, Group = BuildTargetGroup.Standalone, Plugin = mirror };
+
+        /// <summary>
+        /// A Play Mode mirror that copies the fake plugin's world for one group. It takes
+        /// constructor arguments, so Build Forge's own discovery of mirrors (types with a
+        /// parameterless constructor) never picks it up in an editor running these tests.
+        /// </summary>
+        class CopyMirror : IForgePlayModeMirror
+        {
+            readonly FakePlugin source;
+            readonly BuildTargetGroup sourceGroup;
+            public string State = "standalone";
+
+            public CopyMirror(FakePlugin source, BuildTargetGroup sourceGroup) { this.source = source; this.sourceGroup = sourceGroup; }
+
+            public string DisplayName => "Copy";
+            public bool CanMirror(BuildTargetGroup group) => true;
+            public string CaptureEditorState(BuildTargetGroup group) => State;
+            public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group)
+                => State = source.World.TryGetValue(sourceGroup, out var w) ? w : "base";
+            public void RestoreEditorState(BuildTargetGroup group, string json) => State = json;
         }
     }
 }

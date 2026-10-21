@@ -89,6 +89,13 @@ namespace BuildForge.Editor.Core
         {
             if (key == VariantDriftKey)
                 return "variant define";
+            foreach (var suffix in new[]
+                     {
+                         EditorStateApplier.ApplyUnfinishedSuffix, EditorStateApplier.BuildUnfinishedSuffix,
+                         EditorStateApplier.PluginMissingSuffix
+                     })
+                if (key.EndsWith(suffix, StringComparison.Ordinal))
+                    return DescribeKey(key.Substring(0, key.Length - suffix.Length)) + suffix;
             if (!EditorStateLedger.TryParseKey(key, out var typeName, out var group))
                 return key;
             var mirror = PlayModeMirrors().FirstOrDefault(m => m.GetType().FullName == typeName);
@@ -103,6 +110,44 @@ namespace BuildForge.Editor.Core
             if (profile == null || profile.BuildProfile == null || !HasAppliedGuid)
                 return false;
             return GetGuid(profile.BuildProfile) == ForgeEditorStateStore.instance.AppliedBuildProfileGuid;
+        }
+
+        /// <summary>
+        /// Why builds, and Apply and Activate of another profile, stop: an Apply or a
+        /// build that wrote recorded editor settings did not finish (see
+        /// <see cref="EditorStatePhase"/>), so what those settings hold is unknown.
+        /// Null otherwise. The build window shows it too.
+        /// </summary>
+        public static string InterruptedError()
+        {
+            var entries = ForgeEditorStateStore.instance.EditorState;
+            var applying = entries.Where(e => e.phase == EditorStatePhase.Applying).Select(e => DescribeKey(e.key)).ToList();
+            var suspended = entries.Where(e => e.phase == EditorStatePhase.Suspended).Select(e => DescribeKey(e.key)).ToList();
+            if (applying.Count == 0 && suspended.Count == 0)
+                return null;
+            var applied = AppliedProfile;
+            return InterruptedMessage(applied != null ? applied.DisplayName : null, applying, suspended);
+        }
+
+        /// <summary>
+        /// The message for <see cref="InterruptedError"/>: the setting groups whose
+        /// Apply (<paramref name="applying"/>) or build (<paramref name="suspended"/>)
+        /// did not finish, and the way out. <paramref name="appliedName"/> is null when
+        /// no Build Forge profile can apply the profile again. Pure so it can be tested.
+        /// </summary>
+        internal static string InterruptedMessage(string appliedName, IReadOnlyList<string> applying, IReadOnlyList<string> suspended)
+        {
+            var profile = appliedName != null ? $"'{appliedName}'" : "the applied profile";
+            var what = new List<string>();
+            if (applying.Count > 0)
+                what.Add($"the Apply of {profile} did not finish for {string.Join(", ", applying)}");
+            if (suspended.Count > 0)
+                what.Add($"a build did not put back {profile}'s settings for {string.Join(", ", suspended)}");
+            var fix = appliedName != null ? $"Revert to Baseline, or Re-apply {profile}," : "Revert to Baseline";
+            return $"Build Forge can't tell what these editor settings hold: {string.Join(", and ", what)}, because a plugin " +
+                   $"failed or the editor quit. {fix} in the Build Forge window restores them to their state from before, " +
+                   "which also undoes anything changed in them since. Until then builds stop, and so do Apply and Activate " +
+                   "of another profile; in batch mode, open the project in the editor first.";
         }
 
         /// <summary>
@@ -134,7 +179,8 @@ namespace BuildForge.Editor.Core
 
             activeForgeProfile = ForgeProfileLookup.ResolveForBuildProfile(active, all, out _);
             return SwitchedProfileMismatch(active.name, applied != null ? applied.name : null,
-                activeForgeProfile != null ? activeForgeProfile.DisplayName : null, canReactivate);
+                activeForgeProfile != null ? activeForgeProfile.DisplayName : null, canReactivate,
+                InterruptedError() != null);
         }
 
         /// <summary>
@@ -143,20 +189,23 @@ namespace BuildForge.Editor.Core
         /// longer exists). The fixes: apply the active profile's Build Forge
         /// Profile (<paramref name="activeForgeName"/>, null when none references
         /// it), activate the applied profile again, which keeps its settings, or
-        /// revert. Pure so it can be tested.
+        /// revert. <paramref name="interrupted"/>: an Apply or a build did not finish
+        /// (see <see cref="InterruptedError"/>), so applying another profile stops and
+        /// isn't offered. Pure so it can be tested.
         /// </summary>
-        internal static string SwitchedProfileMismatch(string activeName, string appliedName, string activeForgeName, bool canReactivate)
+        internal static string SwitchedProfileMismatch(string activeName, string appliedName, string activeForgeName, bool canReactivate,
+            bool interrupted = false)
         {
             var owner = appliedName != null ? $"'{appliedName}'" : "a Unity Build Profile that no longer exists";
             var fixes = new List<string>();
-            if (activeForgeName != null)
+            if (activeForgeName != null && !interrupted)
                 fixes.Add($"Apply '{activeForgeName}' to replace them with its own");
             if (canReactivate && appliedName != null)
                 fixes.Add($"activate '{appliedName}' again to keep them");
             fixes.Add("Revert to Baseline");
             var fix = fixes.Count == 1 ? fixes[0] : string.Join(", ", fixes.Take(fixes.Count - 1)) + ", or " + fixes[fixes.Count - 1];
             fix = char.ToUpperInvariant(fix[0]) + fix.Substring(1);
-            if (activeForgeName == null)
+            if (activeForgeName == null && !interrupted)
                 fix += " (the active Unity Build Profile has no Build Forge settings)";
             return $"Unity switched to '{activeName}' without applying its Build Forge settings; " +
                    $"the plugin-managed editor settings still belong to {owner}. {fix}.";
@@ -290,10 +339,18 @@ namespace BuildForge.Editor.Core
             if (variantError != null)
                 throw new InvalidOperationException(variantError);
 
+            // Only Re-apply of the profile whose Apply or build did not finish undoes
+            // that; another profile's Apply would do it without saying so.
+            var interrupted = InterruptedError();
+            if (interrupted != null && !IsApplied(profile))
+                throw new InvalidOperationException(interrupted);
+
             var guid = GetGuid(profile.BuildProfile);
             if (string.IsNullOrEmpty(guid))
                 throw new InvalidOperationException(
                     $"Unity Build Profile '{profile.BuildProfile.name}' must be a saved asset to be applied.");
+            if (interrupted != null)
+                WarnRestoringUnfinished($"Re-applying '{profile.DisplayName}'");
 
             var settings = ForgeEditorStateStore.instance;
             var pairs = GetParticipatingPairs(profile);
@@ -355,8 +412,19 @@ namespace BuildForge.Editor.Core
         {
             if (!CanMutate(out var reason))
                 throw new InvalidOperationException(reason);
+            if (InterruptedError() != null)
+                WarnRestoringUnfinished("Reverting");
             RevertCore();
             Debug.Log("[Build Forge] Reverted editor settings to baseline.");
+        }
+
+        /// <summary>Says which setting groups an undo restores whole because their Apply or build did not finish.</summary>
+        static void WarnRestoringUnfinished(string action)
+        {
+            var keys = ForgeEditorStateStore.instance.EditorState
+                .Where(e => e.phase != EditorStatePhase.Applied).Select(e => DescribeKey(e.key));
+            Debug.LogWarning($"[Build Forge] {action} restores the settings whose Apply or build did not finish to their " +
+                             $"state from before, undoing anything changed in them since: {string.Join(", ", keys)}.");
         }
 
         /// <returns>True when a variant define was removed from the applied Build Profile.</returns>
@@ -436,6 +504,11 @@ namespace BuildForge.Editor.Core
                 throw new InvalidOperationException(reason);
 
             var keepApplied = IsApplied(profile);
+            // Activating another profile reverts the applied one, which would undo an
+            // unfinished Apply or build without saying so; the applied profile keeps it.
+            var interrupted = InterruptedError();
+            if (interrupted != null && !keepApplied)
+                throw new InvalidOperationException(interrupted);
             string previousName = null, previousVariant = null;
             var defineRemoved = false;
             if (HasAppliedGuid && !keepApplied)
@@ -457,9 +530,10 @@ namespace BuildForge.Editor.Core
                 BuildVariants.StripFromProfile(profile.BuildProfile);
 
             var summary = keepApplied
-                ? ReactivationSummary(profile.DisplayName, AppliedVariant)
+                ? ReactivationSummary(profile.DisplayName, AppliedVariant, interrupted != null)
                 : ActivationSummary(profile.DisplayName, previousName, previousVariant, defineRemoved);
-            var warning = stray != null ? $"[Build Forge] {stray}" : null;
+            var warnings = new[] { stray, interrupted }.Where(w => w != null).Select(w => $"[Build Forge] {w}").ToList();
+            var warning = warnings.Count > 0 ? string.Join("\n", warnings) : null;
             if (BuildProfile.GetActiveBuildProfile() != profile.BuildProfile)
             {
                 Debug.Log($"[Build Forge] Activating Unity Build Profile '{profile.BuildProfile.name}'.");
@@ -604,12 +678,15 @@ namespace BuildForge.Editor.Core
 
         /// <summary>
         /// What Activate logs for the profile that is still applied: nothing was
-        /// reverted. Pure so it can be tested.
+        /// reverted. <paramref name="interrupted"/>: its Apply or a build did not finish
+        /// for some settings (the warning beside it says which). Pure so it can be tested.
         /// </summary>
-        internal static string ReactivationSummary(string activatedName, string appliedVariant)
+        internal static string ReactivationSummary(string activatedName, string appliedVariant, bool interrupted = false)
             => $"[Build Forge] Activated '{activatedName}', which is still applied"
                + (string.IsNullOrEmpty(appliedVariant) ? "" : $" (variant {appliedVariant})")
-               + ": its plugin settings were kept, not reverted.";
+               + (interrupted
+                   ? ": nothing was reverted, but its Apply or a build did not finish for some of its settings."
+                   : ": its plugin settings were kept, not reverted.");
 
         /// <summary>
         /// Stops reporting the current (drifted) state: expected := current capture,
@@ -687,16 +764,17 @@ namespace BuildForge.Editor.Core
 
             Debug.Log($"[Build Forge] Suspending applied profile '{(applied != null ? applied.ProfileName : "(missing)")}' " +
                 $"for the build of '{(building != null ? building.DisplayName : "?")}'.");
-            // Suspending can replace baselines, keeping changes made after the Apply, and
-            // one that fails re-applies what it restored, which recaptures the expected state.
-            var before = settings.EditorState.Select(e => (e.baselineJson, e.expectedJson)).ToList();
+            // Suspending can replace baselines, keeping changes made after the Apply, marks
+            // the restored entries Suspended, which must be on disk before the build writes,
+            // and one that fails re-applies what it restored, which recaptures the expected state.
+            var before = settings.EditorState.Select(e => (e.baselineJson, e.expectedJson, e.phase)).ToList();
             try
             {
                 EditorStateApplier.SuspendForBuild(settings.EditorState, ResolvePlugin, applied, AppliedVariant);
             }
             finally
             {
-                if (!before.SequenceEqual(settings.EditorState.Select(e => (e.baselineJson, e.expectedJson))))
+                if (!before.SequenceEqual(settings.EditorState.Select(e => (e.baselineJson, e.expectedJson, e.phase))))
                     settings.SaveState();
                 InvalidateDriftCache();
             }
@@ -704,15 +782,21 @@ namespace BuildForge.Editor.Core
             return new BuildSuspension { AppliedName = applied != null ? applied.DisplayName : null };
         }
 
-        /// <summary>Re-applies the suspended profile after the build.</summary>
-        public static void ResumeAfterBuild(BuildSuspension suspension)
+        /// <summary>
+        /// Re-applies the suspended profile after the build. <paramref name="notRestored"/>
+        /// holds the ledger keys (plugin type and built group) whose settings could not be
+        /// put back after the build: their entries are not re-applied and stay unfinished,
+        /// holding what that restore left, for Revert to Baseline or Re-apply (see
+        /// <see cref="EditorStateApplier.ResumeAfterBuild"/>).
+        /// </summary>
+        public static void ResumeAfterBuild(BuildSuspension suspension, ICollection<string> notRestored = null)
         {
             if (suspension == null)
                 return;
 
             var settings = ForgeEditorStateStore.instance;
             var applied = AppliedProfile; // fresh lookup through the ledger's GUID
-            var result = EditorStateApplier.ResumeAfterBuild(settings.EditorState, applied, ResolvePlugin, AppliedVariant);
+            var result = EditorStateApplier.ResumeAfterBuild(settings.EditorState, applied, ResolvePlugin, AppliedVariant, notRestored);
             if (result.Cleared)
             {
                 // The profile really is gone: leave the baseline in place and drop
@@ -731,7 +815,9 @@ namespace BuildForge.Editor.Core
 
             if (result.Failures.Count > 0)
                 throw new AggregateException(
-                    "Could not re-apply the editor profile after the build.", result.Failures);
+                    "Could not re-apply the editor profile after the build. The settings it did not re-apply may hold " +
+                    "what the build or a failed step left in them, so builds stop until Revert to Baseline or Re-apply " +
+                    "in the Build Forge window restores their state from before the Apply.", result.Failures);
             if (result.Cleared)
                 return;
 

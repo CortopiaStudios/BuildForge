@@ -21,7 +21,15 @@ namespace BuildForge.Editor.Core
     /// - Throw from <see cref="CaptureEditorState"/> or <c>ApplyToEditor</c> for a
     ///   problem that must stop Apply, as from <c>OnPreBuild</c> for one that must
     ///   stop a build: Build Forge then restores what the Apply wrote, and nothing
-    ///   stays applied.
+    ///   stays applied. A capture right after <c>ApplyToEditor</c> must return the
+    ///   state it wrote: null or a throw there also stops the Apply.
+    /// - Throw from <see cref="RestoreEditorState"/> when the snapshot can't be
+    ///   written, preferably before writing anything: Build Forge keeps the entry
+    ///   for a retry or Stop Tracking, and a build that couldn't restore it doesn't
+    ///   run. Returning normally means the snapshot was written.
+    /// - When an Apply or a build stopped before its result was recorded, as when
+    ///   the editor quit, Build Forge undoes it by restoring the baseline whole,
+    ///   without <see cref="MergeEditorState"/>.
     /// </summary>
     public interface IForgeEditorApplicable
     {
@@ -44,7 +52,8 @@ namespace BuildForge.Editor.Core
 
         /// <summary>
         /// Writes a snapshot previously returned by <see cref="CaptureEditorState"/>
-        /// back into the global project settings and saves them.
+        /// back into the global project settings and saves them. Throws when it
+        /// can't, preferably before writing anything.
         /// </summary>
         void RestoreEditorState(BuildTargetGroup group, string json);
 

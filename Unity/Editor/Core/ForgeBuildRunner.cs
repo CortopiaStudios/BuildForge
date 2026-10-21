@@ -117,6 +117,11 @@ namespace BuildForge.Editor.Core
             var pluginError = ForgePluginRegistry.LoadError() ?? ForgePluginRegistry.MissingSettingsError(forgeProfile);
             if (pluginError != null)
                 throw new InvalidOperationException(pluginError);
+            // An Apply or a build that did not finish left recorded editor settings in an
+            // unknown state, which this build would build on, and keep, without saying so.
+            var interrupted = ForgeEditorState.InterruptedError();
+            if (interrupted != null)
+                throw new InvalidOperationException(interrupted);
             if (activeProfile != forgeProfile.BuildProfile)
             {
                 var activeName = activeProfile != null
@@ -307,20 +312,7 @@ namespace BuildForge.Editor.Core
                     }
                 }
 
-                for (int i = appliedPlugins.Count - 1; i >= 0; i--)
-                {
-                    try
-                    {
-                        Debug.Log($"[Build Forge] Running post-build: {appliedPlugins[i].DisplayName}");
-                        appliedPlugins[i].OnPostBuild(context);
-                    }
-                    catch (Exception e)
-                    {
-                        var msg = $"Post-build restore failed in {appliedPlugins[i].DisplayName}: {e.Message}";
-                        context.PostBuildFailures.Add(msg);
-                        Debug.LogError($"[Build Forge] {msg}\n{e.StackTrace}");
-                    }
-                }
+                var notRestored = RunPostBuild(appliedPlugins, context);
 
                 // Undo in reverse order of apply: the plugins above ran with the
                 // variant applied, so one that snapshotted a setting in OnPreBuild
@@ -370,7 +362,7 @@ namespace BuildForge.Editor.Core
                 {
                     try
                     {
-                        ForgeEditorState.ResumeAfterBuild(suspension);
+                        ForgeEditorState.ResumeAfterBuild(suspension, notRestored);
                     }
                     catch (Exception e)
                     {
@@ -421,8 +413,10 @@ namespace BuildForge.Editor.Core
                 {
                     Debug.LogError(
                         $"[Build Forge] {context.PostBuildFailures.Count} post-build restore/cleanup step(s) failed. " +
-                        "The build artifact is complete, but the project may be left in a modified state — " +
-                        "review the errors above and revert affected files before committing.");
+                        (report != null && report.summary.result == BuildResult.Succeeded
+                            ? "The build artifact is complete, but the project"
+                            : "No complete player was built, and the project") +
+                        " may be left in a modified state — review the errors above and revert affected files before committing.");
                 }
 
                 Debug.Log("[Build Forge] Build process complete.");
@@ -824,6 +818,34 @@ namespace BuildForge.Editor.Core
             {
                 Debug.LogWarning($"[Build Forge] Could not reveal the build in the file browser: {e.Message}");
             }
+        }
+
+        /// <summary>
+        /// Runs the plugins' OnPostBuild in reverse order of OnPreBuild, recording each
+        /// failure in the context. Returns the ledger keys (plugin type and built group)
+        /// of the editor-applicable plugins whose restore failed: the applied profile
+        /// isn't re-applied on top of what they left (see ForgeEditorState.ResumeAfterBuild).
+        /// </summary>
+        internal static HashSet<string> RunPostBuild(IReadOnlyList<IForgePlugin> plugins, ForgeBuildContext context)
+        {
+            var notRestored = new HashSet<string>();
+            for (int i = plugins.Count - 1; i >= 0; i--)
+            {
+                try
+                {
+                    Debug.Log($"[Build Forge] Running post-build: {plugins[i].DisplayName}");
+                    plugins[i].OnPostBuild(context);
+                }
+                catch (Exception e)
+                {
+                    if (plugins[i] is IForgeEditorApplicable)
+                        notRestored.Add(EditorStateLedger.MakeKey(plugins[i].GetType().FullName, context.BuildTargetGroup));
+                    var msg = $"Post-build restore failed in {plugins[i].DisplayName}: {e.Message}";
+                    context.PostBuildFailures.Add(msg);
+                    Debug.LogError($"[Build Forge] {msg}\n{e.StackTrace}");
+                }
+            }
+            return notRestored;
         }
 
         static void LogBuildSummary(string profileName, BuildReport report)

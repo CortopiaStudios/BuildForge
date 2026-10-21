@@ -130,6 +130,49 @@ namespace BuildForge.Tests.XRManagement
             Assert.IsFalse(standalone.InitManagerOnStart);
         }
 
+        // The Suspended phase reaches disk before the build writes, though nothing else
+        // changed, and a group the build did not put back keeps its entry after it. The
+        // applied profile can't be resolved here, so nothing is applied again.
+        [Test]
+        public void SuspendForBuild_SavesTheSuspendedPhase_AndResumeKeepsWhatTheBuildDidNotPutBack()
+        {
+            var store = ForgeEditorStateStore.instance;
+            var previous = EditorJsonUtility.ToJson(store);
+            var mirror = new PlayModeXRLoaders();
+            var pair = new EditorStatePair { PluginTypeName = typeof(PlayModeXRLoaders).FullName, Group = BuildTargetGroup.Standalone, Plugin = mirror };
+            try
+            {
+                store.EditorState.Clear();
+                EditorStateApplier.Apply(store.EditorState, new[] { pair }, profile, name => name == pair.PluginTypeName ? mirror : null, null);
+                store.AppliedBuildProfileGuid = "0123456789abcdef0123456789abcdef"; // no such asset
+                store.AppliedVariant = "";
+                store.SaveState();
+                var baseline = store.EditorState.Single().baselineJson;
+                var expected = store.EditorState.Single().expectedJson;
+
+                var suspension = ForgeEditorState.SuspendForBuild(profile);
+
+                Assert.AreEqual(baseline, store.EditorState.Single().baselineJson);
+                Assert.AreEqual(expected, store.EditorState.Single().expectedJson, "Only the phase changed.");
+                StringAssert.Contains("phase: 2", System.IO.File.ReadAllText("UserSettings/ForgeEditorState.asset"));
+                CollectionAssert.AreEqual(new XRLoader[] { pcLoader }, standalone.Manager.activeLoaders);
+
+                var notPutBack = new[] { EditorStateLedger.MakeKey(typeof(PlayModeXRLoaders).FullName, BuildTargetGroup.Standalone) };
+                var failure = Assert.Throws<AggregateException>(() => ForgeEditorState.ResumeAfterBuild(suspension, notPutBack));
+
+                StringAssert.Contains("stays recorded for Revert to Baseline", failure.InnerExceptions.Single().Message);
+                Assert.AreEqual(EditorStatePhase.Suspended, store.EditorState.Single().phase);
+                Assert.IsTrue(ForgeEditorState.HasAppliedGuid);
+                StringAssert.Contains("phase: 2", System.IO.File.ReadAllText("UserSettings/ForgeEditorState.asset"));
+            }
+            finally
+            {
+                EditorJsonUtility.FromJsonOverwrite(previous, store);
+                store.SaveState();
+                ForgeEditorState.InvalidateDriftCache();
+            }
+        }
+
         [Test]
         public void ParticipatingPairs_AddTheMirrorsAfterThePlugins_OnlyWithTheSettingOn()
         {

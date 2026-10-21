@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- While an Apply or a build that wrote the applied profile's settings did not finish, builds stop before they start, and so do Apply and Activate of another profile, with a message that names the settings. That happens when the editor quits during an Apply, or during a build while a profile is applied, or when Build Forge couldn't undo a stopped Apply or apply the profile again after a build. **Revert to Baseline** and **Re-apply** of the applied profile restore those settings to their state from before, whole, which also undoes anything changed in them since, and log which settings they restore. The build window explains the state, the toolbar's drift tooltip lists those settings with `(Apply did not finish)` or `(build did not finish)`, and Dismiss Drift leaves them reported. The per-user editor-state file, `UserSettings/ForgeEditorState.asset`, records how far each setting's Apply or build got; files written by earlier versions read as finished, so an Apply or a build interrupted under an earlier version isn't recognized as such: if one was, check those settings in version control after updating
+- A plugin's capture right after it applied its settings to the editor (`IForgeEditorApplicable.CaptureEditorState`) that throws or returns null stops the Apply, as a failing capture before it does. The Apply used to succeed and record the settings from before it as the applied ones
+
 ### Fixed
+- Since 0.9.3, a plugin that failed part-way through an Apply, or an editor that quit in the middle of one, left that Apply's own writes in place: undoing the Apply treated them as changes made after it and kept them, and the build window then said nothing was applied. The OpenXR settings and the XR Loaders list of a profile could stay in the project's version-controlled settings that way. Build Forge now restores the settings from before such an Apply, whole. The same applies after the editor quit during a build while a profile was applied: undoing it kept the crashed build's settings, and the next build of the applied profile kept them too
 - When Build Forge cannot undo the applied profile's settings before a build and applies the undone ones again, it applies them in the order of the Apply, so Play Mode Follows Applied Profile's copy follows its platform's settings again. They were applied in reverse, so the copy took the platform's settings from before the Apply
+- After a build, when a plugin couldn't put back its settings, Build Forge no longer applies the applied profile on top of what that left, which then counted as the profile's settings and hid the problem from drift; such settings, and Play Mode Follows Applied Profile's copy of them, stay unfinished until Revert to Baseline or Re-apply. When the applied profile no longer resolves, they stay recorded for Revert to Baseline instead of being forgotten with a message that they were left at baseline
+- The error after failed post-build steps no longer says the build artifact is complete when no player was built
 
 ## [0.9.4] - 2026-10-20
 

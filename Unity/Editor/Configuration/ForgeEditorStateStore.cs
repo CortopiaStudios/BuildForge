@@ -62,6 +62,30 @@ namespace BuildForge.Editor.Configuration
         public string key;
         public string baselineJson;
         public string expectedJson;
+        public EditorStatePhase phase;
+    }
+
+    /// <summary>
+    /// How far the operation that last wrote an entry got. Only an
+    /// <see cref="Applied"/> entry holds the state its profile left, so only there
+    /// can a three-way merge tell later changes from the Apply's; the others are
+    /// undone by restoring their baseline whole. Applied is 0, so ledgers written
+    /// before the phase existed read as Applied.
+    /// </summary>
+    internal enum EditorStatePhase
+    {
+        /// <summary>The Apply finished and its result was captured as the expected state.</summary>
+        Applied = 0,
+        /// <summary>
+        /// Recorded with the baseline before the plugin writes. Stays so when the
+        /// Apply was stopped or the editor quit before the result was captured.
+        /// </summary>
+        Applying = 1,
+        /// <summary>
+        /// Restored to its baseline for a build. Stays so when the editor quit
+        /// during the build, or the profile could not be applied again after it.
+        /// </summary>
+        Suspended = 2,
     }
 
     /// <summary>
@@ -96,16 +120,18 @@ namespace BuildForge.Editor.Configuration
         public static EditorStateEntry Find(List<EditorStateEntry> entries, string key)
             => entries.Find(e => e.key == key);
 
-        public static void Set(List<EditorStateEntry> entries, string key, string baselineJson, string expectedJson)
+        public static void Set(List<EditorStateEntry> entries, string key, string baselineJson, string expectedJson,
+            EditorStatePhase phase = EditorStatePhase.Applied)
         {
             var entry = Find(entries, key);
             if (entry == null)
             {
-                entries.Add(new EditorStateEntry { key = key, baselineJson = baselineJson, expectedJson = expectedJson });
+                entries.Add(new EditorStateEntry { key = key, baselineJson = baselineJson, expectedJson = expectedJson, phase = phase });
                 return;
             }
             entry.baselineJson = baselineJson;
             entry.expectedJson = expectedJson;
+            entry.phase = phase;
         }
 
         public static bool Remove(List<EditorStateEntry> entries, string key)

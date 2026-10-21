@@ -206,8 +206,12 @@ namespace BuildForge.Editor.UI
                           "Pick another variant, re-apply this one after editing the profile, or Revert to Baseline.")
                     : "Plugin settings applied. Re-apply after editing the profile, or Revert to Baseline.";
             else if (state.AnythingApplied)
+            {
                 // Another profile's settings are applied: the window's warning for that.
-                tooltip = ForgeEditorState.GetActiveMismatch(out _) ?? ForgeEditorState.UnresolvedAppliedWarning;
+                var unfinished = ForgeEditorState.InterruptedError();
+                tooltip = (ForgeEditorState.GetActiveMismatch(out _) ?? ForgeEditorState.UnresolvedAppliedWarning)
+                          + (unfinished != null ? " " + unfinished : "");
+            }
             else
                 tooltip = variantsConfigured
                     ? "Pick a variant to apply the profile with it: its defines and the profile's plugin settings, so Play Mode matches."
