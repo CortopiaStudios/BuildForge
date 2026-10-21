@@ -110,9 +110,11 @@ namespace BuildForge.Editor.Core
             => Validate(forgeProfile);
 
         /// <summary>
-        /// Draw plugin configuration UI in the Build Forge section of the Build Profile editor.
-        /// Called for each applicable plugin when the section is drawn.
-        /// Default implementation does nothing.
+        /// Draw plugin configuration UI in the Build Forge section of the Build Profile editor
+        /// and in the Build Forge settings Inspector. Called for every plugin that is on in
+        /// Project Settings while its foldout is open, greyed out while the plugin is switched
+        /// off for the profile or doesn't apply to it, so it must cope with a profile whose
+        /// platform lacks what the plugin works on. Default implementation does nothing.
         /// </summary>
         void OnDrawProfileGUI(Configuration.ForgeProfile forgeProfile) { }
 
