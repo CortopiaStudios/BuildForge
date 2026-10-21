@@ -68,5 +68,51 @@ namespace BuildForge.Tests.Editor
                 UnityEngine.Object.DestroyImmediate(profile);
             }
         }
+
+        /// <summary>A plugin with a switch, applicable or not, as the test gives it.</summary>
+        sealed class SwitchedPlugin : IForgePlugin
+        {
+            readonly bool? enabled;
+            readonly bool applicable;
+
+            public SwitchedPlugin(string name, bool? enabled, bool applicable) { DisplayName = name; this.enabled = enabled; this.applicable = applicable; }
+
+            public string DisplayName { get; }
+            public bool IsApplicable(BuildProfile profile) => applicable;
+            public string NotApplicableReason(BuildProfile profile) => "it builds for Android only.";
+            public bool? IsEnabled(ForgeProfile profile) => enabled;
+            public void OnPreBuild(ForgeBuildContext context) { }
+            public void OnPostBuild(ForgeBuildContext context) { }
+        }
+
+        // A plugin the profile switched on that doesn't apply is skipped with a word; one without
+        // a switch that doesn't apply is simply not for this platform.
+        [Test]
+        public void APluginSwitchedOnThatDoesNotApply_IsSkippedWithItsReason()
+        {
+            var profile = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                var running = new SwitchedPlugin("Running", true, true);
+                var noSwitch = new SwitchedPlugin("Plain", null, true);
+                UnityEngine.TestTools.LogAssert.Expect(LogType.Warning,
+                    new System.Text.RegularExpressions.Regex(@"Keystore is on for .* doesn't run: it builds for Android only\."));
+
+                var plugins = ForgeBuildRunner.PluginsFor(new IForgePlugin[]
+                {
+                    running,
+                    new SwitchedPlugin("Keystore", true, false),
+                    new SwitchedPlugin("Manifest", null, false),
+                    new SwitchedPlugin("Off", false, true),
+                    noSwitch,
+                }, profile, null);
+
+                CollectionAssert.AreEqual(new IForgePlugin[] { running, noSwitch }, plugins);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(profile);
+            }
+        }
     }
 }

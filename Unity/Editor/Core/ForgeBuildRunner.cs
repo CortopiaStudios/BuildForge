@@ -195,15 +195,7 @@ namespace BuildForge.Editor.Core
             context = new ForgeBuildContext(buildProfile, forgeProfile, buildTarget, outputPath,
                 BuildEnvironment.IsCI, resolvedVariant);
 
-            // Discover applicable plugins (excluding globally disabled ones and
-            // ones switched off for this profile — plugins don't guard their
-            // own hooks against being disabled)
-            var plugins = ForgePluginRegistry.GetPlugins()
-                .Where(p => !ForgeSettings.instance.IsPluginDisabledWithDefault(
-                    p.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(p)))
-                .Where(p => p.IsApplicable(buildProfile))
-                .Where(p => p.IsEnabled(forgeProfile) != false)
-                .ToList();
+            var plugins = PluginsFor(ForgePluginRegistry.GetPlugins(), forgeProfile, buildProfile);
 
             // What the build window warns about, for a log that is all a CI build has to
             // show it. Before any setting changes; warnings never stop a build.
@@ -909,6 +901,36 @@ namespace BuildForge.Editor.Core
             {
                 Debug.LogWarning($"[Build Forge] Could not reveal the build in the file browser: {e.Message}");
             }
+        }
+
+        /// <summary>
+        /// The plugins a build of the profile runs, in plugin order: on in Project Settings,
+        /// not switched off for the profile, and applicable to its Build Profile (plugins don't
+        /// guard their own hooks against being disabled). One switched on for the profile that
+        /// doesn't apply to it is logged with the reason, since the profile asks for it.
+        /// </summary>
+        internal static List<IForgePlugin> PluginsFor(IEnumerable<IForgePlugin> all, ForgeProfile forgeProfile, BuildProfile buildProfile)
+        {
+            var plugins = new List<IForgePlugin>();
+            foreach (var plugin in all)
+            {
+                if (ForgeSettings.instance.IsPluginDisabledWithDefault(
+                        plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin)))
+                    continue;
+                var enabled = plugin.IsEnabled(forgeProfile);
+                if (enabled == false)
+                    continue;
+                if (!plugin.IsApplicable(buildProfile))
+                {
+                    if (enabled == true)
+                        Debug.LogWarning($"[Build Forge] {plugin.DisplayName} is on for '{forgeProfile.DisplayName}' but " +
+                                         "doesn't apply to its Build Profile, so it doesn't run: " +
+                                         (plugin.NotApplicableReason(buildProfile) ?? "it doesn't support this platform."));
+                    continue;
+                }
+                plugins.Add(plugin);
+            }
+            return plugins;
         }
 
         /// <summary>
