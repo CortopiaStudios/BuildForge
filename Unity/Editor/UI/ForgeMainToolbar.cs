@@ -196,7 +196,8 @@ namespace BuildForge.Editor.UI
             string tooltip;
             if (!state.CanMutate)
                 tooltip = state.MutateReason;
-            else if (state.ActiveForgeProfile != null && ForgePluginRegistry.BlockingError(state.ActiveForgeProfile) is string blocking)
+            else if (state.ActiveForgeProfile != null
+                     && (ForgePluginRegistry.BlockingError(state.ActiveForgeProfile) ?? InterruptedBuildMarker.Error()) is string blocking)
                 // Apply stops for it, as builds do; the menu lists the entries unavailable.
                 tooltip = blocking;
             else if (drift.Count > 0)
@@ -367,8 +368,9 @@ namespace BuildForge.Editor.UI
             var profile = state.ActiveForgeProfile;
             var variants = ForgeSettings.instance.BuildVariants;
             var canApply = profile != null && (state.Applied || variants.Count > 0 || ForgeEditorState.HasEditorApplicableSettings(profile));
-            // A plugin or plugin settings that can't load stop Apply as they stop a build.
-            var blocking = profile != null ? ForgePluginRegistry.BlockingError(profile) : null;
+            // A plugin or plugin settings that can't load, and a build that did not finish,
+            // stop Apply as they stop a build.
+            var blocking = profile != null ? ForgePluginRegistry.BlockingError(profile) ?? InterruptedBuildMarker.Error() : null;
             return ApplyEntries(canApply, variants, v => BuildVariants.ProfileError(profile, v) ?? blocking,
                 state.Applied, ForgeEditorState.AppliedVariant, state.AnythingApplied, state.CanMutate);
         }

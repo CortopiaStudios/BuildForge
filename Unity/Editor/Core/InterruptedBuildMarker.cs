@@ -9,7 +9,8 @@ namespace BuildForge.Editor.Core
     /// everything back. Left behind, it means a build did not finish: the editor quit or
     /// was stopped during it, or a step that puts settings back failed, so project files
     /// may still hold what that build changed. Builds stop until it is cleared, so the next
-    /// one doesn't start from, and keep, what the last one left. Per user, in UserSettings,
+    /// one doesn't start from, and keep, what the last one left, and so does Apply, which
+    /// would record it as the baseline. Per user, in UserSettings,
     /// like the editor-state ledger; deleting Library doesn't clear it.
     /// </summary>
     internal static class InterruptedBuildMarker
@@ -45,7 +46,7 @@ namespace BuildForge.Editor.Core
             }
         }
 
-        /// <summary>Why builds stop, or null.</summary>
+        /// <summary>Why builds and Apply stop, or null.</summary>
         internal static string Error()
         {
             if (ownedHere)
@@ -64,7 +65,7 @@ namespace BuildForge.Editor.Core
                    "settings under Assets/XR/, Build Profiles and the Addressables settings, may still hold what it " +
                    "changed, and a build now would start from them and keep them. Check git status and git diff, restore " +
                    "the files that build changed and keep your own edits, then clear this with Clear in the Build Forge " +
-                   $"window, or by deleting {FilePath}. Builds stop until then.";
+                   $"window, or by deleting {FilePath}. Builds and Apply stop until then.";
         }
 
         /// <returns>Whether this call began it, for <see cref="Finish"/>.</returns>
@@ -110,7 +111,7 @@ namespace BuildForge.Editor.Core
             catch (Exception e)
             {
                 Debug.LogError($"[Build Forge] The build put everything back, but {FilePath} could not be deleted: {e.Message} " +
-                               "Builds stop until it is gone: delete it, or clear it with Clear in the Build Forge window.");
+                               "Builds and Apply stop until it is gone: delete it, or clear it with Clear in the Build Forge window.");
             }
         }
 

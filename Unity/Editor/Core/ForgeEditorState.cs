@@ -370,6 +370,12 @@ namespace BuildForge.Editor.Core
             if (interrupted != null && !IsApplied(profile))
                 throw new InvalidOperationException(interrupted);
 
+            // A build that did not finish may have left settings that this Apply would record
+            // as the baseline, for Revert to Baseline and later builds to put back. Re-apply
+            // stops too: that build may have written settings the ledger doesn't track.
+            if (InterruptedBuildMarker.Error() is string unfinishedBuild)
+                throw new InvalidOperationException($"'{profile.DisplayName}' was not applied: {unfinishedBuild}");
+
             // What stops a build of the profile stops its Apply: a plugin that would not
             // run, or settings that would read as defaults, would leave part of it out of
             // the editor while it counts as applied. Re-apply would first undo what is there.

@@ -167,6 +167,54 @@ namespace BuildForge.Tests.Editor
             }
         }
 
+        // A build that did not finish may have left settings that an Apply would record as the
+        // baseline, for Revert to Baseline and later builds to put back: Apply, and Re-apply,
+        // stop until it is cleared. Revert to Baseline records nothing and stays available.
+        [Test]
+        public void Apply_StopsBeforeItChangesAnything_WhileABuildDidNotFinish()
+        {
+            var previousSettings = EditorJsonUtility.ToJson(ForgeSettings.instance);
+            var previousState = EditorJsonUtility.ToJson(ForgeEditorStateStore.instance);
+            var native = VariantRulesTests.CreateNativeProfile();
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                var settings = new SerializedObject(ForgeSettings.instance);
+                settings.FindProperty("buildVariants").arraySize = 0;
+                settings.FindProperty("variantRules").arraySize = 0;
+                settings.ApplyModifiedPropertiesWithoutUndo();
+                var store = ForgeEditorStateStore.instance;
+                store.EditorState.Clear();
+                store.AppliedBuildProfileGuid = "";
+                store.AppliedVariant = "";
+                var fp = new SerializedObject(forge);
+                fp.FindProperty("buildProfile").objectReferenceValue = native;
+                fp.ApplyModifiedPropertiesWithoutUndo();
+                InterruptedBuildMarker.Begin("Quest", null);
+                InterruptedBuildMarker.Finish(true, false);
+                var ledger = EditorJsonUtility.ToJson(store);
+
+                var message = Assert.Throws<InvalidOperationException>(() => ForgeEditorState.Apply(forge)).Message;
+
+                StringAssert.StartsWith($"'{forge.DisplayName}' was not applied: A Build Forge build of 'Quest'", message);
+                StringAssert.Contains("did not finish", message);
+                Assert.AreEqual(ledger, EditorJsonUtility.ToJson(store));
+                Assert.IsFalse(ForgeEditorState.HasAppliedGuid);
+
+                Assert.DoesNotThrow(ForgeEditorState.RevertToBaseline);
+                Assert.IsTrue(File.Exists(InterruptedBuildMarker.FilePath), "Only Clear removes it.");
+            }
+            finally
+            {
+                EditorJsonUtility.FromJsonOverwrite(previousState, ForgeEditorStateStore.instance);
+                ForgeEditorStateStore.instance.SaveState();
+                EditorJsonUtility.FromJsonOverwrite(previousSettings, ForgeSettings.instance);
+                ForgeEditorState.InvalidateDriftCache();
+                UnityEngine.Object.DestroyImmediate(forge);
+                UnityEngine.Object.DestroyImmediate(native);
+            }
+        }
+
         // A marker that can't be deleted, held open by another program, is logged and stays,
         // instead of throwing out of the build's last step past the rest of its cleanup.
         [Test]
@@ -177,7 +225,7 @@ namespace BuildForge.Tests.Editor
             using (new FileStream(InterruptedBuildMarker.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
                 UnityEngine.TestTools.LogAssert.Expect(LogType.Error,
-                    new System.Text.RegularExpressions.Regex("could not be deleted.*Builds stop until it is gone"));
+                    new System.Text.RegularExpressions.Regex("could not be deleted.*Builds and Apply stop until it is gone"));
                 InterruptedBuildMarker.Finish(began, true);
             }
             StringAssert.Contains("A Build Forge build of 'Quest'", InterruptedBuildMarker.Error());

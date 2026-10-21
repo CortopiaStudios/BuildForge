@@ -670,7 +670,7 @@ namespace BuildForge.Editor.UI
                 return;
             var canMutate = ForgeEditorState.CanMutate(out var reason);
             DrawWarningBoxWithButtons(unfinished, (new GUIContent("Clear",
-                    canMutate ? "Builds can start again. Clear only once the files that build changed are restored." : reason),
+                    canMutate ? "Builds and Apply can start again. Clear only once the files that build changed are restored." : reason),
                 canMutate, () => EditorApplication.delayCall += () =>
                 {
                     if (!EditorUtility.DisplayDialog("Clear the unfinished build?",
@@ -1024,6 +1024,7 @@ namespace BuildForge.Editor.UI
                     else if (AwaitsVariant(variant)) { reason = PickVariantReason; enabled = false; }
                     else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
                     else if (blockingError != null) { reason = blockingError; enabled = false; }
+                    else if (InterruptedBuildMarker.Error() is string unfinished) { reason = unfinished; enabled = false; }
                     else if (!canMutate) { reason = mutateReason; enabled = false; }
                     else
                     {

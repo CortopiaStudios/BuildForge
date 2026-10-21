@@ -52,7 +52,7 @@ The action bar shows the actions the selected profile has. For a profile that is
 | Button | Action |
 |---|---|
 | Activate | For a profile that is not active: makes it the active Unity Build Profile, after reverting another profile's applied settings. |
-| Apply / Re-apply | Writes the active profile's plugin settings and the variant's defines to the editor. Disabled when the profile has nothing to apply, and, like Build, while a plugin failed to load or can't say whether it runs for the profile, or Unity cannot load plugin settings. Its **▾** menu holds **Revert to Baseline**, which restores every setting the applied profile changed. |
+| Apply / Re-apply | Writes the active profile's plugin settings and the variant's defines to the editor. Disabled when the profile has nothing to apply, and, like Build, while a plugin failed to load or can't say whether it runs for the profile, Unity cannot load plugin settings, or a build did not finish. Its **▾** menu holds **Revert to Baseline**, which restores every setting the applied profile changed. |
 | Build | Builds the active profile with the selected variant. |
 | Build and Run | Builds like **Build**, then runs the build, like Unity's own Build And Run, and doesn't show it in the file browser. |
 
