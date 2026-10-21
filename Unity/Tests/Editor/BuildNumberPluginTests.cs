@@ -284,5 +284,28 @@ namespace BuildForge.Tests.Editor
             });
             return profile;
         }
+
+        // One plugin instance draws every profile's preview, and each profile can name its own
+        // variable: the preview reads it fresh instead of showing the last profile's number.
+        [Test]
+        public void ThePreview_ReadsEachProfilesEnvironmentVariableFresh()
+        {
+            const string first = "BUILDFORGE_TEST_PREVIEW_FIRST";
+            const string second = "BUILDFORGE_TEST_PREVIEW_SECOND";
+            Environment.SetEnvironmentVariable(first, "1234");
+            Environment.SetEnvironmentVariable(second, null);
+            try
+            {
+                var plugin = new BuildNumberPlugin();
+                Assert.AreEqual(1234, plugin.PreviewBase(BuildNumberSource.EnvironmentVariable, first, out var firstShallow));
+                Assert.Less(plugin.PreviewBase(BuildNumberSource.EnvironmentVariable, second, out var secondShallow), 0,
+                    "The second profile's variable is unset; the first profile's number is not reused.");
+                Assert.IsFalse(firstShallow || secondShallow, "The shallow-clone flag belongs to the git commit count.");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(first, null);
+            }
+        }
     }
 }

@@ -29,9 +29,13 @@ namespace BuildForge.Editor.Plugins
         int appliedBuildNumber;
         bool applied;
 
-        int cachedPreviewBase = -2;
-        bool cachedPreviewShallow;
-        double cachedPreviewTime;
+        // The preview shares the git commit count and the shallow flag between profiles for a
+        // few seconds: they belong to the repository, and git is slow to ask. An environment
+        // variable is read on every draw, since each profile can name another.
+        int cachedGitCount;
+        bool cachedGitShallow;
+        bool hasGitCache;
+        double cachedGitTime;
 
         public string DisplayName => "Build Number";
         public string Description => "Set Android.bundleVersionCode and iOS.buildNumber automatically.";
@@ -199,16 +203,9 @@ namespace BuildForge.Editor.Plugins
             {
                 var isCI = BuildEnvironment.IsCI;
                 var source = EffectiveSource(config.Source, isCI);
-                if (cachedPreviewBase == -2 || EditorApplication.timeSinceStartup - cachedPreviewTime > 5)
-                {
-                    cachedPreviewBase = GetBaseNumber(source, config.EnvVarName);
-                    cachedPreviewShallow = source == BuildNumberSource.GitCommitCount
-                        && IsShallowRepository();
-                    cachedPreviewTime = EditorApplication.timeSinceStartup;
-                }
-                var baseNumber = cachedPreviewBase;
+                var baseNumber = PreviewBase(source, config.EnvVarName, out var shallow);
                 string current;
-                if (cachedPreviewShallow)
+                if (shallow)
                     current = "<shallow clone — commit count unreliable, build will fail>";
                 else if (baseNumber >= 0)
                 {
@@ -232,9 +229,32 @@ namespace BuildForge.Editor.Plugins
 
             if (changed)
             {
-                cachedPreviewBase = -2;
+                hasGitCache = false;
                 SaveConfig(forgeProfile, config);
             }
+        }
+
+        /// <summary>
+        /// The base number the preview shows for <paramref name="source"/>: an environment
+        /// variable's read now, the git commit count shared for a few seconds (see the fields).
+        /// <paramref name="shallow"/> is the shallow-clone flag, only for the git count.
+        /// </summary>
+        internal int PreviewBase(BuildNumberSource source, string envVarName, out bool shallow)
+        {
+            if (source != BuildNumberSource.GitCommitCount)
+            {
+                shallow = false;
+                return GetBaseNumber(source, envVarName);
+            }
+            if (!hasGitCache || EditorApplication.timeSinceStartup - cachedGitTime > 5)
+            {
+                cachedGitCount = GetBaseNumber(source, envVarName);
+                cachedGitShallow = IsShallowRepository();
+                cachedGitTime = EditorApplication.timeSinceStartup;
+                hasGitCache = true;
+            }
+            shallow = cachedGitShallow;
+            return cachedGitCount;
         }
 
         internal static bool TryCalculateBuildNumber(int baseNumber, int offset, out int number)
