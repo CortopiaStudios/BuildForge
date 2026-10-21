@@ -88,7 +88,8 @@ namespace BuildForge.Editor.Core
         /// The end of a build, or of the span that <paramref name="began"/> it. When every step
         /// put things back (<paramref name="restored"/>), and no build inside the span failed to,
         /// the file goes; otherwise it stays and stops the next build. A build that didn't begin
-        /// it, inside the command line's span, only reports to it.
+        /// it, inside the command line's span, only reports to it. Doesn't throw: a file that
+        /// can't be deleted is logged and stays, so it stops the next build too.
         /// </summary>
         internal static void Finish(bool began, bool restored)
         {
@@ -98,9 +99,19 @@ namespace BuildForge.Editor.Core
                 return;
             }
             ownedHere = false;
-            if (restored && !keptByBuild && File.Exists(FilePath))
-                File.Delete(FilePath);
+            var remove = restored && !keptByBuild;
             keptByBuild = false;
+            if (!remove || !File.Exists(FilePath))
+                return;
+            try
+            {
+                File.Delete(FilePath);
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[Build Forge] The build put everything back, but {FilePath} could not be deleted: {e.Message} " +
+                               "Builds stop until it is gone: delete it, or clear it with Clear in the Build Forge window.");
+            }
         }
 
         /// <summary>The user's, after restoring what the build changed.</summary>

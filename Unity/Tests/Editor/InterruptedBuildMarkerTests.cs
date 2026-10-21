@@ -112,5 +112,21 @@ namespace BuildForge.Tests.Editor
                 UnityEngine.Object.DestroyImmediate(native);
             }
         }
+
+        // A marker that can't be deleted, held open by another program, is logged and stays,
+        // instead of throwing out of the build's last step past the rest of its cleanup.
+        [Test]
+        public void AMarkerThatCannotBeDeleted_IsLogged_AndStays()
+        {
+            Assume.That(Application.platform == RuntimePlatform.WindowsEditor, "Only Windows keeps an open file from being deleted.");
+            var began = InterruptedBuildMarker.Begin("Quest", null);
+            using (new FileStream(InterruptedBuildMarker.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                UnityEngine.TestTools.LogAssert.Expect(LogType.Error,
+                    new System.Text.RegularExpressions.Regex("could not be deleted.*Builds stop until it is gone"));
+                InterruptedBuildMarker.Finish(began, true);
+            }
+            StringAssert.Contains("A Build Forge build of 'Quest'", InterruptedBuildMarker.Error());
+        }
     }
 }
