@@ -52,3 +52,10 @@ window, per-profile Unity-version pinning warning, clean-build toggle,
 are folded into README's Out-of-Process Build Orchestrator entry. From the
 engine research (Godot/Unreal/O3DE): a validation framework was the one
 strong 1.x candidate.
+
+Variant renames (decided 2026-10-21): a variant's name stays its identity,
+with no stable IDs; Documentation~/variants.md lists what a rename touches.
+A Rename Variant action in Project Settings > Build Forge could preview the
+change, then update the Variant Rules, every profile's Allowed Variants and
+the Addressables Stripper's exclusions; third-party plugin configs could
+join later through an optional interface.

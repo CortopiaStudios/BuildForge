@@ -115,3 +115,22 @@ Build Forge records exactly what Apply changed, per user, in `UserSettings/Forge
 A `BUILD_VARIANT_` define on a Build Profile that is not applied on this machine was saved while a variant was applied somewhere else, usually committed by accident. The build window, the Build Forge section and the build log report it; builds recompute the defines anyway; Activate removes it together with the rules' defines. Commit Build Profiles while nothing is applied.
 
 Editor code that has to behave differently per variant during a build, such as a plugin, must read the variant from the build context or its `variant` parameter, not from `#if BUILD_VARIANT_…`: the editor's compiled defines reflect what is applied, not what is being built. Player code uses the defines.
+
+## Renaming a variant
+
+A variant is known by its name. Every setting that refers to a variant stores the name, and renaming the variant in **Build Variants** changes none of them, so update each place that holds the old name.
+
+Build Forge stops on these until they are updated, and names the unknown variant:
+
+- The variant's **Variant Rule**. Apply and builds stop for every profile and variant, because the rules are validated as a whole.
+- **Allowed Variants** in every profile with **Restrict Variants** on. Apply and builds of that profile stop.
+- The Addressables Stripper's **Additional Exclusions by Variant**, in every profile that has them. Builds of that profile stop until you **Move to…** the new name or **Remove** them; see [Renamed or removed variants](plugins/addressables-stripper.md#renamed-or-removed-variants).
+- Variant selections in plugins, such as the **Variants** of the Example Integration sample's Application ID Suffix. The sample stops builds of the profiles that have it on. Another plugin stops only if it checks its names, as [Writing plugins](custom-plugins.md#variants-in-plugins) recommends.
+
+Build Forge cannot see these:
+
+- `#if BUILD_VARIANT_<NAME>` in your code. The new name gives a new define, so code under the old one is left out of every build without an error. Search the project for the old define.
+- `-forgeVariant` in CI scripts and jobs. A build with the old name fails and lists the configured variants, but only when the job runs.
+- Paths and names that carry the variant: `{Variant}` in the output path, the file name made from the marked product name, as in `My_Game_Internal.apk`, and the manifest's `BuildVariant`. New builds get the new name, so scripts that collect, upload or install builds by path or file name need it too. Output of builds under the old name stays: Remove Previous Build Output keeps its records per variant name, so builds under the new name don't count it as theirs.
+
+On a machine where the profile is applied with the renamed variant, apply it again with the new name: until then, the editor compiles with the old define.

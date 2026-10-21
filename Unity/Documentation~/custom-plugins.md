@@ -252,6 +252,8 @@ For the profile being built, a build uses `OnPreBuild` and `OnPostBuild`; around
 
 Read the variant from `ForgeBuildContext.Variant` or the `variant` parameter of the overloads. Do not use `#if BUILD_VARIANT_…` in editor code: the editor's compiled defines reflect what is applied, not the build in progress. Player code uses the defines.
 
+A plugin that stores variant names should throw from `OnPreBuild` when one of them is no longer a configured variant, since `Validate` never stops a build; see [Warnings and build descriptions](#warnings-and-build-descriptions). [Renaming a variant](variants.md#renaming-a-variant) lists what else a rename touches.
+
 ## Reading Build Forge settings from other editor code
 
 Build Forge settings live inside the Build Profile asset, as a component:
