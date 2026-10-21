@@ -442,6 +442,20 @@ namespace BuildForge.Editor.OpenXR
         /// doesn't depend on OpenXR's own refusal, which looks at whichever platform the
         /// XR Plug-in Management page showed last and refuses nothing in batch mode.
         /// </summary>
+        /// <summary>
+        /// The check for a build or an Apply, which reads the ticked groups only when the profile
+        /// turns a feature off: no other profile can conflict with them, so no other profile
+        /// stops when OpenXR's groups can't be read.
+        /// </summary>
+        static string RequiredFeatureConflictError(OpenXRProfileConfig config, OpenXRSettings settings, BuildTargetGroup group,
+            bool includeInteractionProfiles)
+        {
+            var features = settings.GetFeatures<OpenXRFeature>();
+            return features.Any(f => f != null && OpenXRSettingsState.ManagedOverride(config, f, includeInteractionProfiles) == false)
+                ? RequiredFeatureConflictError(config, features, TickedFeatureGroups(group), group, includeInteractionProfiles)
+                : null;
+        }
+
         internal static string RequiredFeatureConflictError(OpenXRProfileConfig config, IEnumerable<OpenXRFeature> features,
             IReadOnlyList<OpenXRFeatureSetManager.FeatureSet> tickedGroups, BuildTargetGroup group, bool includeInteractionProfiles)
         {
@@ -467,16 +481,23 @@ namespace BuildForge.Editor.OpenXR
         /// </summary>
         internal static string MatchConflictError(BuildTargetGroup source, BuildTargetGroup target,
             IReadOnlyList<OpenXRFeatureSetManager.FeatureSet> tickedGroups)
+            => MatchConflictError(source, target, () => tickedGroups);
+
+        /// <summary>The same check, reading the ticked groups only when the copy turns a feature off, the only case they forbid.</summary>
+        internal static string MatchConflictError(BuildTargetGroup source, BuildTargetGroup target,
+            Func<IReadOnlyList<OpenXRFeatureSetManager.FeatureSet>> readTickedGroups)
         {
             var from = OpenXRSettings.GetSettingsForBuildTargetGroup(source);
             var to = OpenXRSettings.GetSettingsForBuildTargetGroup(target);
-            if (from == null || to == null || tickedGroups.Count == 0)
+            if (from == null || to == null)
                 return null;
             var offInSource = new HashSet<string>(OpenXRSettingsState.GetManagedFeatures(from, true)
                 .Where(f => !f.enabled).Select(f => f.GetType().FullName));
+            IReadOnlyList<OpenXRFeatureSetManager.FeatureSet> tickedGroups = null;
             foreach (var feature in OpenXRSettingsState.GetManagedFeatures(to, true))
             {
                 if (!offInSource.Contains(feature.GetType().FullName)) continue;
+                tickedGroups ??= readTickedGroups();
                 var groups = RequiringGroups(GetFeatureId(feature), tickedGroups);
                 if (groups.Count > 0)
                     return $"Play Mode Follows Applied Profile would turn off OpenXR feature '{FormatFeatureName(GetFeatureUiName(feature))}' " +
@@ -791,8 +812,7 @@ namespace BuildForge.Editor.OpenXR
                 context.BuildTargetGroup);
             if (staleError != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + staleError);
-            var conflict = RequiredFeatureConflictError(config, settings.GetFeatures<OpenXRFeature>(),
-                TickedFeatureGroups(context.BuildTargetGroup), context.BuildTargetGroup, includeInteractionProfiles);
+            var conflict = RequiredFeatureConflictError(config, settings, context.BuildTargetGroup, includeInteractionProfiles);
             if (conflict != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + conflict);
             var setupError = MetaQuestSetupError(config, context.BuildTargetGroup, MetaQuestProfileActive);
@@ -862,8 +882,7 @@ namespace BuildForge.Editor.OpenXR
             if (staleError != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + staleError);
             var conflict = settings != null
-                ? RequiredFeatureConflictError(config, settings.GetFeatures<OpenXRFeature>(), TickedFeatureGroups(group), group,
-                    includeInteractionProfiles)
+                ? RequiredFeatureConflictError(config, settings, group, includeInteractionProfiles)
                 : null;
             if (conflict != null)
                 throw new InvalidOperationException("[Build Forge/OpenXR] " + conflict);

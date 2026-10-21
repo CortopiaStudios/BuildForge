@@ -36,7 +36,7 @@ namespace BuildForge.Editor.OpenXR
             var source = BuildPipeline.GetBuildTargetGroup(Core.BuildProfileUtility.GetBuildTarget(profile.BuildProfile));
             var match = OpenXRPlugin.GetGlobalConfig().MatchPlatformFeaturesInPlayMode;
             // Only Match turns features off, which a ticked group can forbid; before anything is written.
-            var conflict = match ? OpenXRPlugin.MatchConflictError(source, group, OpenXRPlugin.TickedFeatureGroups(group)) : null;
+            var conflict = match ? OpenXRPlugin.MatchConflictError(source, group, () => OpenXRPlugin.TickedFeatureGroups(group)) : null;
             if (conflict != null)
                 throw new System.InvalidOperationException("[Build Forge/OpenXR] " + conflict);
             var written = OpenXRSettingsState.CopyFeatureStates(source, group, match);
