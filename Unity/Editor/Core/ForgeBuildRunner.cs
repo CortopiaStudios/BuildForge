@@ -1017,9 +1017,6 @@ namespace BuildForge.Editor.Core
         internal static List<string> ProfileWarnings(ForgeProfile profile, IReadOnlyList<ForgeProfile> all)
         {
             var warnings = new List<string>();
-            var outputPathError = ForgeProfile.OutputPathError(profile.OutputPath);
-            if (outputPathError != null)
-                warnings.Add(outputPathError);
             if (ForgeSettings.instance.BuildVariants.Count > 0 && !profile.OutputPath.Contains("{Variant}"))
                 warnings.Add("The output path has no {Variant} placeholder, so the variants' builds overwrite each other.");
             if (ForgeSettings.instance.MaintainBuildProfileDefines)

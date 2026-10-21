@@ -168,6 +168,13 @@ namespace BuildForge.Editor.UI
             }
         }
 
+        /// <summary>
+        /// Why Build and Build and Run stop for the profile while Apply doesn't, or null: an
+        /// output path the build refuses (<see cref="ForgeProfile.OutputPathError"/>). Shown in
+        /// red, live, and the main toolbar's Build buttons follow it too.
+        /// </summary>
+        internal static string BuildOnlyError(ForgeProfile profile) => ForgeProfile.OutputPathError(profile.OutputPath);
+
         /// <summary>The tab's title, with the anvil for the current editor theme.</summary>
         void SetTitle()
         {
@@ -329,7 +336,7 @@ namespace BuildForge.Editor.UI
             if (isApplied) DrawTag("Applied", outlined: false);
 
             GUIContent issue = null;
-            var blockingError = hasBuildProfile ? ForgePluginRegistry.BlockingError(profile) : null;
+            var blockingError = hasBuildProfile ? ForgePluginRegistry.BlockingError(profile) ?? BuildOnlyError(profile) : null;
             if (sharedError != null)
                 issue = EditorGUIUtility.TrIconContent("console.erroricon.sml", sharedError);
             else if (blockingError != null)
@@ -580,6 +587,10 @@ namespace BuildForge.Editor.UI
             var blockingError = ForgePluginRegistry.BlockingError(profile);
             if (blockingError != null)
                 EditorGUILayout.HelpBox(blockingError, MessageType.Error);
+            // Live too: Build stops for it, and its buttons follow it.
+            var buildOnlyError = BuildOnlyError(profile);
+            if (buildOnlyError != null)
+                EditorGUILayout.HelpBox(buildOnlyError, MessageType.Error);
             if (validationWarnings.TryGetValue(profile, out var warnings))
             {
                 foreach (var warning in warnings)
@@ -1051,6 +1062,7 @@ namespace BuildForge.Editor.UI
                     else if (BuildVariants.ProfileError(selection, variant) is string variantError) { reason = variantError; enabled = false; }
                     else if (blockingError != null) { reason = blockingError; enabled = false; }
                     else if (InterruptedBuildMarker.Error() is string unfinished) { reason = unfinished; enabled = false; }
+                    else if (BuildOnlyError(selection) is string buildOnlyError) { reason = buildOnlyError; enabled = false; }
                     else if (!canMutate) { reason = mutateReason; enabled = false; }
                     else { reason = null; enabled = true; }
 

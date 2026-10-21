@@ -107,10 +107,12 @@ namespace BuildForge.Editor.UI
                 // The Build buttons' tooltip names the window's variant.
                 ForgeBuildWindow.SessionVariant ?? "",
                 // Whether the Build buttons are enabled: the variant rules, the active profile's
-                // Allowed Variants and the plugin switches in Project Settings are edited without
-                // a projectChanged, and the unfinished-build marker is outside the AssetDatabase.
+                // Allowed Variants and output path and the plugin switches in Project Settings are
+                // edited without a projectChanged, and the unfinished-build marker is outside the
+                // AssetDatabase.
                 active != null ? BuildVariants.ProfileError(forgeProfile, ForgeBuildWindow.SessionVariant) ?? "" : "",
                 forgeProfile != null ? ForgePluginRegistry.BlockingError(forgeProfile) ?? "" : "",
+                forgeProfile != null ? ForgeBuildWindow.BuildOnlyError(forgeProfile) ?? "" : "",
                 InterruptedBuildMarker.Error() ?? "",
                 // The Build buttons' icons come in a version per editor theme.
                 EditorGUIUtility.isProSkin ? "dark" : "light",
@@ -396,8 +398,9 @@ namespace BuildForge.Editor.UI
         /// <paramref name="noProfileReason"/>) with the build window's variant, and is
         /// enabled when the window's Build would be: a variant is picked once the project
         /// has variants, nothing stops the profile's build (<paramref name="profileError"/>
-        /// says why otherwise: a variant it doesn't allow, or a plugin or plugin settings
-        /// that can't load) and mutating is not refused. The tooltip names what it builds.
+        /// says why otherwise: a variant it doesn't allow, a plugin or plugin settings
+        /// that can't load, a build that did not finish or an output path the build refuses)
+        /// and mutating is not refused. The tooltip names what it builds.
         /// </summary>
         internal static BuildButton BuildButtonFor(bool run, string profileName, string noProfileReason, string variant,
             bool variantsConfigured, string profileError, bool canMutate, string mutateReason)
@@ -432,6 +435,7 @@ namespace BuildForge.Editor.UI
             return BuildButtonFor(run, profile?.DisplayName, noProfileReason, variant, ForgeSettings.instance.BuildVariants.Count > 0,
                 profile != null
                     ? BuildVariants.ProfileError(profile, variant) ?? ForgePluginRegistry.BlockingError(profile) ?? InterruptedBuildMarker.Error()
+                      ?? ForgeBuildWindow.BuildOnlyError(profile)
                     : null,
                 state.CanMutate, state.MutateReason);
         }

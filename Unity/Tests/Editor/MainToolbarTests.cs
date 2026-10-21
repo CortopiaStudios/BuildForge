@@ -201,6 +201,27 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual(ForgeMainToolbar.PickVariantReason, unpicked.Tooltip);
         }
 
+        // An output path the build refuses stops it before anything changes, so the window's
+        // Build buttons and the toolbar's are disabled with the reason, shown in red rather than
+        // among the profile's warnings.
+        [Test]
+        public void AnOutputPathTheBuildRefuses_DisablesTheBuildButtons()
+        {
+            var forge = NewForgeProfile("Quest", NewBuildProfile("Quest"));
+            Assert.IsNull(ForgeBuildWindow.BuildOnlyError(forge));
+            var so = new SerializedObject(forge);
+            so.FindProperty("outputPath").stringValue = @"\\?\C:\Builds\Game";
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            var error = ForgeBuildWindow.BuildOnlyError(forge);
+            StringAssert.Contains("extended-length or device path", error);
+            var build = ForgeMainToolbar.BuildButtonFor(false, "Quest", null, null, false, error, true, null);
+            Assert.That(!build.Enabled);
+            Assert.AreEqual(error, build.Tooltip);
+            Assert.IsFalse(BuildForge.Editor.Core.ForgeBuildRunner.ProfileWarnings(forge, new List<ForgeProfile>())
+                .Any(w => w.Contains("extended-length")), "Shown once, as the error.");
+        }
+
         [Test]
         public void Labels_ShowTheActiveBuildProfileAndWhatIsApplied()
         {

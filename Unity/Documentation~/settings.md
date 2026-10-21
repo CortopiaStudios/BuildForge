@@ -58,7 +58,7 @@ Edits are written to the Build Profile asset immediately, so the file always mat
 
 ## Output path
 
-The output path is a template, relative to the Unity project folder unless it is absolute, with a drive letter or as a network path such as `\\buildserver\releases\{Variant}`. An extended-length (`\\?\`) or device (`\\.\`) path stops the build, with slashes or backslashes in any mix, and so does a template that a placeholder's value turns into one, such as a product name that isn't sanitized. A placeholder that is empty, such as `{Variant}` in a project without variants, drops out with its separator, and a relative template stays relative:
+The output path is a template, relative to the Unity project folder unless it is absolute, with a drive letter or as a network path such as `\\buildserver\releases\{Variant}`. An extended-length (`\\?\`) or device (`\\.\`) path stops the build, with slashes or backslashes in any mix, and so does a template that a placeholder's value turns into one, such as a product name that isn't sanitized; the build window and the main toolbar disable Build for a template that is one. A placeholder that is empty, such as `{Variant}` in a project without variants, drops out with its separator, and a relative template stays relative:
 
 | Placeholder | Becomes |
 |---|---|

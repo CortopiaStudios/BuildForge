@@ -92,7 +92,7 @@ The dropdown is shown only while its menu has something to offer.
 
 **Build** and **Build and Run** build the active profile like the build window's buttons of the same names, and show the same icons: **Build and Run** also runs the build afterwards, like Unity's own Build And Run, and doesn't show it in the file browser.
 
-Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, the variant isn't allowed for it, a plugin or plugin settings can't load, or a plugin can't say whether it runs for the profile.
+Both build the variant the build window has selected, which picking a variant in the apply dropdown also sets; the tooltip names the profile and the variant. They are disabled, with the reason as their tooltip, when the window's Build would be: the active Unity Build Profile has no Build Forge settings, the variant isn't allowed for it, a plugin or plugin settings can't load, a plugin can't say whether it runs for the profile, or the output path is an extended-length or device path.
 
 ### Behavior
 
