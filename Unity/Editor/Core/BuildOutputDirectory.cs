@@ -889,10 +889,13 @@ namespace BuildForge.Editor.Core
         }
 
         // Unity is not long-path aware: without the \\?\ prefix Win32 calls fail
-        // at 260 characters. The prefix also stops wildcard interpretation.
+        // at 260 characters. The prefix also stops wildcard interpretation. A drive
+        // root keeps its backslash: \\?\C: names the volume, not its root folder.
         internal static string ExtendedPath(string path)
         {
             path = path.Replace('/', '\\').TrimEnd('\\');
+            if (path.EndsWith(":", StringComparison.Ordinal))
+                path += '\\';
             if (path.StartsWith(@"\\?\", StringComparison.Ordinal))
                 return path;
             return path.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + path.Substring(2) : @"\\?\" + path;

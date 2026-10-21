@@ -578,6 +578,9 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual(@"\\?\C:\Builds\Game", BuildOutputDirectory.ExtendedPath("C:/Builds/Game/"));
             Assert.AreEqual(@"\\?\UNC\nas\builds\Game", BuildOutputDirectory.ExtendedPath(@"\\nas\builds\Game"));
             Assert.AreEqual(@"\\?\C:\Builds", BuildOutputDirectory.ExtendedPath(@"\\?\C:\Builds"));
+            Assert.AreEqual(@"\\?\D:\", BuildOutputDirectory.ExtendedPath(@"D:\"), "A drive root, not the volume.");
+            Assert.AreEqual(@"\\?\D:\", BuildOutputDirectory.ExtendedPath("D:"));
+            Assert.AreEqual(@"\\?\D:\", BuildOutputDirectory.ExtendedPath(@"\\?\D:\"));
         }
 
         // ------------------------------------------------------------ destinations
@@ -1178,6 +1181,20 @@ namespace BuildForge.Tests.Editor
                 BuildOutputDirectory.PhysicalPath(Path.Combine(Path.GetFullPath(link), "Not", "Yet")));
             var plain = Path.GetFullPath(Path.Combine(root, "Plain"));
             Assert.AreEqual(plain, BuildOutputDirectory.PhysicalPath(plain), "A folder without links leads where it says.");
+        }
+
+        // A destination on a fresh drive, such as D:\Builds\Game before D:\Builds exists: the
+        // nearest existing folder is the drive root, which Windows resolves like any other.
+        [Test]
+        public void ADestinationWhoseNearestExistingFolderIsADriveRoot_IsAccepted()
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var drive = Path.GetPathRoot(Path.GetFullPath(root));
+            var destination = Path.Combine(drive, "BuildForgeTest-" + System.Guid.NewGuid().ToString("N"), "Game");
+            Assume.That(!Directory.Exists(Path.GetDirectoryName(destination)));
+
+            Assert.AreEqual(destination, BuildOutputDirectory.PhysicalPath(destination));
+            Assert.AreEqual(destination, BuildOutputDirectory.ValidateDestination(destination, roots));
         }
     }
 }
