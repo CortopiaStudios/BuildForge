@@ -112,7 +112,7 @@ public static class VariantFailureProof
             PlayerSettings.SetPreloadedAssets(original);
             // As a build saves: SaveAssets alone leaves the embedded copy of a profile's own Player
             // Settings (-ProfilePlayerSettings) as it was, up to 6000.6.
-            Persistence.GetMethod("SaveRestoredSettings", Flags).Invoke(null, null);
+            Persistence.GetMethod("SaveRestoredSettings", Flags, null, Type.EmptyTypes, null).Invoke(null, null);
             AssetDatabase.DeleteAsset(folder);
         }
     }

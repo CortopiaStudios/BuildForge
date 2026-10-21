@@ -553,7 +553,7 @@ Tests/
     XRVendorFilterTests.cs                 # Vendor rules, manifest stripping, leftover scan
     AndroidManifestPluginTests.cs          # Manifest swap and restore
     ForgeGradleCallbackTests.cs            # Gradle step dispatch to plugins
-    PlayerSettingsProfileTests.cs          # Real Build Profile diffs (skip in a clean host)
+    PlayerSettingsProfileTests.cs          # A Build Profile's own Player Settings, read and saved (with a test profile of their own)
     PluginConfigStorageTests.cs            # Config storage contract + YAML round trips
     PluginDisplayTests.cs                  # A plugin that throws for a window gets a fallback and one logged error
     PluginLoadFailureTests.cs              # Builds and Apply stop for plugins or plugin settings that can't load, or plugins that can't say whether they run

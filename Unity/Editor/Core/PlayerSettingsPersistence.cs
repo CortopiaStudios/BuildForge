@@ -22,10 +22,12 @@ namespace BuildForge.Editor.Core
         /// <summary>Whether this editor keeps a profile's own Player Settings where Build Forge can save them.</summary>
         internal static bool CanSaveProfilePlayerSettings => SerializePlayerSettings != null || PlayerSettingsSubasset != null;
 
-        internal static void SaveRestoredSettings()
+        // Re-resolve after BuildPlayer: loaded assets can be unloaded during a build.
+        internal static void SaveRestoredSettings() => SaveRestoredSettings(BuildProfile.GetActiveBuildProfile());
+
+        /// <summary>Saves the project's settings and, where the profile has them, its own Player Settings.</summary>
+        internal static void SaveRestoredSettings(BuildProfile profile)
         {
-            // Re-resolve after BuildPlayer: loaded assets can be unloaded during a build.
-            var profile = BuildProfile.GetActiveBuildProfile();
             NotSupportedException unsupported = null;
             if (profile != null)
             {

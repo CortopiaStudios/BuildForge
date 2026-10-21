@@ -9,6 +9,37 @@ namespace BuildForge.Tests.Editor
 {
     public class PlayerSettingsProfileTests
     {
+        const string ProfilePath = "Assets/BuildForgeTestProfile.asset";
+        BuildProfile profile;
+
+        /// <summary>
+        /// A Build Profile of the editor's own platform, with Player Settings of its own, saved
+        /// as an asset: the test hosts have none. It isn't made active: activating any profile
+        /// makes Unity 6000.3 compile scripts and reload, which the tests after this one would
+        /// run into.
+        /// </summary>
+        void CreateProfileWithItsOwnPlayerSettings()
+        {
+            AssetDatabase.DeleteAsset(ProfilePath);
+            profile = VariantRulesTests.CreateNativeProfile(EditorUserBuildSettings.activeBuildTarget);
+            AssetDatabase.CreateAsset(profile, ProfilePath);
+            var createPlayerSettings = typeof(BuildProfile).Assembly.GetType("UnityEditor.Build.Profile.BuildProfileModuleUtil")
+                ?.GetMethod("CreatePlayerSettingsFromGlobal", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            Assert.IsNotNull(createPlayerSettings, "Unity's factory for a Build Profile's own Player Settings changed.");
+            createPlayerSettings.Invoke(null, new object[] { profile });
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssets();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (profile == null)
+                return;
+            AssetDatabase.DeleteAsset(ProfilePath);
+            profile = null;
+        }
+
         // Every build saves the restored Player Settings, including a profile's own; a Unity
         // version that keeps them somewhere Build Forge doesn't know fails here first.
         [Test]
@@ -19,70 +50,44 @@ namespace BuildForge.Tests.Editor
                 "(6000.7 and later) exists in this editor.");
         }
 
+        // After a build puts a profile's own Player Settings back, Build Forge saves them into the
+        // profile's file. Unity 6000.7 moved them, and every build then failed its restore; this
+        // fails in such an editor instead of a build.
         [Test]
-        public void StaticPlayerSettingsAPI_TargetsActiveProfileSettings()
+        public void ARestoredValue_ReachesTheProfilesOwnPlayerSettingsFile()
         {
-            var profile = BuildProfile.GetActiveBuildProfile();
-            if (profile == null)
-            {
-                Assert.Ignore("No active build profile");
-                return;
-            }
+            CreateProfileWithItsOwnPlayerSettings();
+            // The profile keeps its own in an embedded YAML copy up to 6000.6, in a sub-asset from
+            // 6000.7; either way in its own file.
+            var embedded = new SerializedObject(profile).FindProperty("m_PlayerSettingsYaml.m_Settings");
+            var subasset = typeof(BuildProfile).GetField("buildProfilePlayerSettings",
+                BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(profile) as UnityEngine.Object;
+            Assert.IsTrue(embedded != null && embedded.arraySize > 0 || subasset != null,
+                "The test profile has no Player Settings of its own where Build Forge expects them.");
 
-            var profilePS = profile.GetComponent<PlayerSettings>();
-            if (profilePS == null)
-            {
-                Assert.Ignore("Active profile has no PlayerSettings component");
-                return;
-            }
+            var own = new SerializedObject(profile.GetComponent<PlayerSettings>());
+            var versionCode = own.FindProperty("AndroidBundleVersionCode");
+            Assert.IsNotNull(versionCode, "AndroidBundleVersionCode property should exist");
+            var restored = versionCode.intValue == 99999 ? 99998 : 99999;
+            versionCode.intValue = restored;
+            own.ApplyModifiedPropertiesWithoutUndo();
 
-            var before = PlayerSettings.Android.bundleVersionCode;
+            PlayerSettingsPersistence.SaveRestoredSettings(profile);
 
-            try
-            {
-                PlayerSettings.Android.bundleVersionCode = 99999;
-                var so = new SerializedObject(profilePS);
-                so.Update();
-                var prop = so.FindProperty("AndroidBundleVersionCode");
-                Assert.IsNotNull(prop, "AndroidBundleVersionCode property should exist");
-                Assert.AreEqual(99999, prop.intValue,
-                    "Static API write should be visible via profile's SerializedObject");
-
-                // GetComponent falls back to global settings when the profile has no overrides. The
-                // profile keeps its own in an embedded YAML copy up to 6000.6, in a sub-asset from 6000.7.
-                var embedded = new SerializedObject(profile).FindProperty("m_PlayerSettingsYaml.m_Settings");
-                var subasset = typeof(BuildProfile).GetField("buildProfilePlayerSettings",
-                    BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(profile) as UnityEngine.Object;
-                var path = embedded != null && embedded.arraySize > 0 || subasset != null
-                    ? AssetDatabase.GetAssetPath(profile) : "ProjectSettings/ProjectSettings.asset";
-                PlayerSettingsPersistence.SaveRestoredSettings();
-                StringAssert.Contains("AndroidBundleVersionCode: 99999", File.ReadAllText(path));
-
-                PlayerSettings.Android.bundleVersionCode = before;
-                PlayerSettingsPersistence.SaveRestoredSettings();
-                StringAssert.Contains($"AndroidBundleVersionCode: {before}", File.ReadAllText(path),
-                    "Restoring the live object must also refresh the profile's embedded settings on disk.");
-            }
-            finally
-            {
-                PlayerSettings.Android.bundleVersionCode = before;
-                PlayerSettingsPersistence.SaveRestoredSettings();
-            }
+            StringAssert.Contains($"AndroidBundleVersionCode: {restored}", File.ReadAllText(ProfilePath),
+                "The restored value must reach the profile's own Player Settings on disk.");
         }
 
+        // Build Forge reads and writes a profile's own Player Settings through the component.
         [Test]
-        public void GetComponent_ReturnsNonNull_ForActiveProfile()
+        public void GetComponent_ReturnsTheProfilesOwnPlayerSettings()
         {
-            var profile = BuildProfile.GetActiveBuildProfile();
-            if (profile == null)
-            {
-                Assert.Ignore("No active build profile");
-                return;
-            }
+            CreateProfileWithItsOwnPlayerSettings();
 
             var ps = profile.GetComponent<PlayerSettings>();
-            Assert.IsNotNull(ps, "GetComponent<PlayerSettings>() should never return null " +
-                "(falls back to global PlayerSettings)");
+            Assert.IsNotNull(ps, "GetComponent<PlayerSettings>() returned null for a profile with Player Settings of its own.");
+            Assert.AreNotSame(Unsupported.GetSerializedAssetInterfaceSingleton("PlayerSettings"), ps,
+                "GetComponent<PlayerSettings>() returned the project's Player Settings, not the profile's own.");
         }
     }
 }
