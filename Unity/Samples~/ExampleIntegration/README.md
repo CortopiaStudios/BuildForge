@@ -27,7 +27,7 @@ The plugin compiles into its own editor assembly, and Build Forge finds it witho
 
 ## 2. Prepare a Build Profile and a variant
 
-The sample does not create Build Profiles: Unity has no public API for creating Build Profile assets, so do this by hand.
+The sample does not create Build Profiles: Unity 6000.3 has no public API for creating Build Profile assets (Unity 6000.5 added `BuildProfile.CreateBuildProfile`, which Build Forge does not use yet), so do this by hand.
 
 1. In Unity's Build Profiles window, add an **Android** Build Profile and name it, for example, **Quest**.
 2. In its **Build Forge** section, click **Add Build Forge Settings**.

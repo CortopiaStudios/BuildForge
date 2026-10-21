@@ -353,6 +353,8 @@ Add the package to your Unity project in the Package Manager from the git URL `h
 
 Requires Unity 6000.3 or later. The package depends on two of Unity's built-in modules, JSON Serialize (the build manifest) and UnityWebRequest (reading the manifest on Android and WebGL), and the Package Manager enables them in a project that had them disabled.
 
+Tested with Unity 6000.3.0f1, 6000.3.23f1, 6000.6.0f1, 6000.6.4f1, 6000.6.6f1 and 6000.7.0b4 (pre-release, checked), on Windows; the manual's [Installation](Documentation~/installation.md#tested-with) page lists the package versions. Newer versions are expected to work; where Build Forge cannot read a Unity internal it needs, a build stops rather than building something else.
+
 ## Setup
 
 1. **Add Build Forge settings to a Unity Build Profile**: select the Build Profile asset and use Assets > Build Forge > Add Build Forge Settings (also in the Project window's context menu, and as **Add Build Forge Settings** in the Build Profile's "Build Forge" section). The settings are stored inside the Build Profile's `.asset`, so they share its name and file, and renaming, duplicating or deleting the Build Profile carries them. Each Build Profile has at most one; variants that differ only in plugin settings need their own Unity Build Profile

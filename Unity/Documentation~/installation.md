@@ -8,6 +8,19 @@ Build Forge is a UPM package. Its source is the `Unity` folder of the repository
 - Git on the PATH of every machine that opens the project, build agents included. Unity fetches git packages with the machine's own Git.
 - The package depends on two built-in modules, JSON Serialize (the build manifest) and UnityWebRequest (reading the manifest on Android and WebGL). The Package Manager enables them in a project that had them disabled.
 
+### Tested with
+
+Build Forge's tests have run with these versions, on Windows:
+
+| Editor or package | Versions |
+|---|---|
+| Unity | 6000.3.0f1, 6000.3.23f1, 6000.6.0f1, 6000.6.4f1, 6000.6.6f1, 6000.7.0b4 (pre-release, checked) |
+| OpenXR (`com.unity.xr.openxr`) | 1.16.0, 1.16.1, 1.18.0 |
+| Addressables (`com.unity.addressables`) | 2.7.4, 2.9.1, 4.1.0 |
+| XR Plug-in Management (`com.unity.xr.management`) | 4.5.3, 4.6.1, 4.7.0, 6.0.0 (with 6000.7.0b4) |
+
+macOS and Linux have not been verified. Newer versions are expected to work. Some of what Build Forge needs has no public API, so it reads Unity's internals; where it cannot read one it needs, as after a Unity version renamed it, a build stops and says what Build Forge cannot read, rather than building something else.
+
 ## Install from the git URL
 
 In the Package Manager, open the **+** menu, choose **Install package from git URL**, and enter:

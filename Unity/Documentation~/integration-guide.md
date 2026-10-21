@@ -32,7 +32,7 @@ Things Build Forge does not do: it does not override Player Settings, does not b
 
 ## 3. Create the Unity Build Profiles
 
-Create one Unity Build Profile per target configuration in Unity's Build Profiles window. Unity has no public API for creating Build Profile assets, so this step is done by hand.
+Create one Unity Build Profile per target configuration in Unity's Build Profiles window. Unity 6000.3 has no public API for creating Build Profile assets (Unity 6000.5 added `BuildProfile.CreateBuildProfile`, which Build Forge does not use yet), so this step is done by hand.
 
 - **Name them as they should appear.** The name becomes a folder in the output path, the build window's row, the manifest's `BuildProfile` and, with Maintain Build Profile Defines on, the `BUILD_PROFILE_` define. Renaming later is possible and Build Forge follows, but code that uses the old define does not.
 - **Profiles may share a platform.** Headsets that are all Android get one Android Build Profile each.
