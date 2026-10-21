@@ -519,6 +519,7 @@ Tests/
     BuildOutputDirectoryTests.cs           # Remove Previous Build Output deletes only the last build's files
     BuildVariantsTests.cs                  # Variant resolution, name validation and define arithmetic
     BuildWarningsTests.cs                  # A build logs the build window's warnings, with their plugins' prefixes
+    BundledPluginNamesTests.cs             # Bundled plugins keep the type names their switches are stored under
     CloudDiagnosticsConfigTests.cs         # Crash reporting mode resolution
     CloudDiagnosticsPluginTests.cs         # Crash reporting and Diagnostics Data set and restored per build
     EditorStateApplierTests.cs             # Apply/revert/drift invariant with fake plugins

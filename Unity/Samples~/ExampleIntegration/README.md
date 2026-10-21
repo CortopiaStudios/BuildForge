@@ -102,7 +102,7 @@ If the editor crashes during a build, the suffixed identifier can stay in Player
 
 ## 6. Adapting it
 
-- **Move it into your own code.** Copy the two `.cs` files into one of your editor assemblies and change the namespace. The settings stored in Build Profiles name the class, its namespace and its assembly; after a rename, Unity keeps them as an unknown type until the old type returns, and builds of those profiles stop until then. Use Unity's `[MovedFrom]` attribute on the class when you rename it, or configure the plugin again.
+- **Move it into your own code.** Copy the two `.cs` files into one of your editor assemblies and change the namespace. The settings stored in Build Profiles name the class, its namespace and its assembly; after a rename, Unity keeps them as an unknown type until the old type returns, and builds of those profiles stop until then. Use Unity's `[MovedFrom]` attribute on the class when you rename it, or configure the plugin again. The plugin's switch in **Project Settings > Build Forge > Installed Plugins** is stored under its full type name, so set it again after the rename.
 - **iOS.** The same change applies to the bundle identifier through `NamedBuildTarget.iOS`, but a build with another bundle identifier needs a provisioning profile that covers it.
 - **Other per-variant changes** follow the same pattern: record the original in `OnPreBuild`, change it, restore it in `OnPostBuild`. See the manual's [Writing plugins](../../Documentation~/custom-plugins.md).
 

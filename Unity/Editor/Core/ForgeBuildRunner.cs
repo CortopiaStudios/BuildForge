@@ -775,6 +775,9 @@ namespace BuildForge.Editor.Core
             return error;
         }
 
+        /// <summary>The Build Number plugin's type name: its assembly is a plugin's own, which the core can't reference.</summary>
+        internal const string BuildNumberPluginName = "BuildForge.Editor.Plugins.BuildNumberPlugin";
+
         /// <summary>
         /// Whether a build of the profile has a build number: Android's version code and
         /// iOS's build number always, other platforms only from the Build Number plugin.
@@ -783,7 +786,7 @@ namespace BuildForge.Editor.Core
         {
             if (target == BuildTarget.Android || target == BuildTarget.iOS)
                 return true;
-            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == "BuildForge.Editor.Plugins.BuildNumberPlugin");
+            var plugin = ForgePluginRegistry.GetPlugins().FirstOrDefault(p => p.GetType().FullName == BuildNumberPluginName);
             return plugin != null
                    && !ForgeSettings.instance.IsPluginDisabledWithDefault(plugin.GetType().FullName, ForgePluginRegistry.IsEnabledByDefault(plugin))
                    && plugin.IsApplicable(profile.BuildProfile)
