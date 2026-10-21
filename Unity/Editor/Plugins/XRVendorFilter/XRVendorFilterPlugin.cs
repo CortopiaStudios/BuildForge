@@ -69,8 +69,11 @@ namespace BuildForge.Editor.Plugins
         /// <summary>
         /// Unity's include-in-build delegate for the excluded libraries: out
         /// while the build that excludes them runs, Unity's own decision
-        /// otherwise. Vendors set their own delegates in every build's
-        /// pre-build step, so leaving this one in place affects nothing else.
+        /// otherwise. It stays in place after the build, since Unity can't hand
+        /// back the delegate it replaced: a package that sets its own in every
+        /// build's pre-build step, as Meta's and PICO's do, is unaffected, while
+        /// one set once per editor session stays replaced until the next script
+        /// reload (see ARCHITECTURE.md, XR Vendor Filter).
         /// </summary>
         internal static bool IncludeInBuild(string path) => Active == null || !Active.LibraryPaths.Contains(path);
 
@@ -317,7 +320,8 @@ namespace BuildForge.Editor.Plugins
     /// <summary>
     /// Sets Unity's include-in-build delegate on the excluded libraries, after
     /// the vendors' own pre-build steps, which set theirs on some of the same
-    /// libraries (Meta's on OVRPlugin, at order 3).
+    /// libraries (Meta's on OVRPlugin, at order 3 with PRIORITIZE_OCULUS_XR_SETTINGS
+    /// and 99999 without).
     /// </summary>
     internal sealed class XRVendorFilterPreprocess : IPreprocessBuildWithReport
     {
