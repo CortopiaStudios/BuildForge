@@ -583,11 +583,9 @@ namespace BuildForge.Editor.OpenXR
                 ? MetaQuestSetupFeatures(context.BuildTargetGroup, MetaQuestProfileActive,
                     MetaQuestUtilityInitialized(), MetaQuestUtilityFeatureIds(), settings.GetFeatures<OpenXRFeature>())
                 : new List<OpenXRFeature>();
-            // The build window shows this too; CI builds only have the log.
-            var setupWarning = MetaQuestSetupWarning(MetaQuestProfileActive, config, MetaQuestUtilityInitialized(),
-                MetaQuestUtilityFeatureIds(), settings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles);
-            if (setupWarning != null)
-                Debug.LogWarning("[Build Forge/OpenXR] " + setupWarning);
+            // The build logged Validate's warnings before it started; after the writes
+            // below, only the features Meta Quest Setup turns on can add to these.
+            var controlledBefore = FeatureControlledSettingWarnings(config, settings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles);
 
             // Full snapshot, not just the overridden values: Unity's Meta Quest
             // build hook rewrites top-level settings during the build, and the
@@ -603,12 +601,9 @@ namespace BuildForge.Editor.OpenXR
                 Debug.Log("[Build Forge/OpenXR] " + MetaQuestSetupMessage(metaQuestSetup.Select(f => FormatFeatureName(GetFeatureUiName(f)))));
             }
             OpenXRSettingsState.Apply(config, context.BuildTargetGroup, includeInteractionProfiles);
-            // The build window shows these too; CI builds only have the log.
-            foreach (var warning in FeatureControlledSettingWarnings(config, settings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles))
+            foreach (var warning in FeatureControlledSettingWarnings(config, settings.GetFeatures<OpenXRFeature>(), includeInteractionProfiles)
+                         .Except(controlledBefore))
                 Debug.LogWarning("[Build Forge/OpenXR] " + warning);
-            var pendingDisable = MetaQuestUtilityWarning(context.BuildTargetGroup, MetaQuestProfileActive, MetaQuestUtilityInitialized());
-            if (pendingDisable != null)
-                Debug.LogWarning("[Build Forge/OpenXR] " + pendingDisable);
             foreach (var feature in OpenXRSettingsState.GetManagedFeatures(settings, includeInteractionProfiles))
             {
                 var typeName = feature.GetType().FullName;
