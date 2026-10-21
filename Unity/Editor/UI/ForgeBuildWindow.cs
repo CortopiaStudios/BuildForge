@@ -18,6 +18,9 @@ namespace BuildForge.Editor.UI
         List<ForgeProfile> allProfiles = new();
         ForgeProfile selectedProfile;
         Dictionary<ForgeProfile, List<string>> validationWarnings = new();
+        // A plugin's throw when asked whether it runs, per profile, for the list's icons: asked
+        // at a refresh, as the warnings are, not for every row on every repaint.
+        Dictionary<ForgeProfile, string> listCallErrors = new();
         static GUIStyle cachedWordWrapStyle;
         static GUIStyle cachedTitleStyle;
         static GUIStyle cachedTitleSeparatorStyle;
@@ -146,10 +149,13 @@ namespace BuildForge.Editor.UI
             }
 
             validationWarnings.Clear();
+            listCallErrors.Clear();
             var plugins = ForgePluginRegistry.GetPlugins();
             foreach (var profile in allProfiles)
             {
                 if (profile.BuildProfile == null) continue;
+                if (ForgePluginRegistry.CallError(profile) is string callError)
+                    listCallErrors[profile] = callError;
                 BuildProfileDefines.EnsureDeferred(profile.BuildProfile);
                 var warnings = ForgeBuildRunner.ProfileWarnings(profile, allProfiles);
                 var stray = BuildVariants.StrayWarning(profile, ForgeEditorState.IsApplied(profile));
@@ -336,7 +342,10 @@ namespace BuildForge.Editor.UI
             if (isApplied) DrawTag("Applied", outlined: false);
 
             GUIContent issue = null;
-            var blockingError = hasBuildProfile ? ForgePluginRegistry.BlockingError(profile) ?? BuildOnlyError(profile) : null;
+            listCallErrors.TryGetValue(profile, out var callError);
+            var blockingError = hasBuildProfile
+                ? ForgePluginRegistry.LoadError() ?? ForgePluginRegistry.MissingSettingsError(profile) ?? callError ?? BuildOnlyError(profile)
+                : null;
             if (sharedError != null)
                 issue = EditorGUIUtility.TrIconContent("console.erroricon.sml", sharedError);
             else if (blockingError != null)

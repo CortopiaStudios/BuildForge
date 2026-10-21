@@ -130,16 +130,24 @@ namespace BuildForge.Editor.Core
         /// Why builds and Apply of the profile stop before they change anything: a plugin
         /// that failed to load (<see cref="LoadError()"/>), plugin settings Unity cannot
         /// load (<see cref="MissingSettingsError"/>), or a plugin that throws when asked
-        /// whether it runs for the profile (<see cref="CallError"/>). Null otherwise. Cheap
-        /// enough to call on every repaint: the settings check is a native one unless
-        /// something is missing, and the windows ask the plugins the same on every repaint.
+        /// whether it runs for the profile (<see cref="CallError(ForgeProfile)"/>). Null otherwise.
+        /// For one profile at a time on a repaint, as the selected profile's details do: the
+        /// settings check is a native one unless something is missing, but every plugin that
+        /// is on is asked, and some of them read the Build Profile to answer.
         /// </summary>
         internal static string BlockingError(ForgeProfile profile)
             => BlockingError(profile, GetPlugins());
 
         internal static string BlockingError(ForgeProfile profile, IEnumerable<IForgePlugin> plugins)
-            => LoadError() ?? MissingSettingsError(profile) ?? CallError(profile, plugins,
-                type => ForgeSettings.instance.IsPluginDisabledWithDefault(type.FullName, IsEnabledByDefault(type)));
+            => LoadError() ?? MissingSettingsError(profile) ?? CallError(profile, plugins, IsOff);
+
+        /// <summary>
+        /// <see cref="CallError(ForgeProfile, IEnumerable{IForgePlugin}, Func{Type, bool})"/> for the
+        /// discovered plugins that are on in Project Settings.
+        /// </summary>
+        internal static string CallError(ForgeProfile profile) => CallError(profile, GetPlugins(), IsOff);
+
+        static bool IsOff(Type type) => ForgeSettings.instance.IsPluginDisabledWithDefault(type.FullName, IsEnabledByDefault(type));
 
         /// <summary>
         /// Why builds and Apply of the profile stop because a plugin that is on in Project
