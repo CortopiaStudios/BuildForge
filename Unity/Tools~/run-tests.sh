@@ -25,7 +25,8 @@
 #   Run again with UNITY_EDITOR_VERSION set to the newest installed stable editor.
 #   (pass --allow-install to have the CLI install it).
 #
-# Exit code comes from `unity test`: 0 = all passed, 6 = tests ran and failed.
+# Exit code comes from `unity test`: 0 = all passed, 8 = tests ran and at least one failed
+#   (Unity CLI 1.0.0-beta.13); the results XML says which.
 set -euo pipefail
 
 FALLBACK_EDITOR_VERSION="6000.3.0f1"
