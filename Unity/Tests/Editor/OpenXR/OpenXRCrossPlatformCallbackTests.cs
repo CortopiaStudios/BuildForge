@@ -398,5 +398,120 @@ namespace BuildForge.Tests.OpenXR
             }
             finally { Object.DestroyImmediate(feature); }
         }
+
+        /// <summary>While it records: at each save, whether Standalone's and Android's prerequisite are off, as put back.</summary>
+        sealed class SaveObserver : AssetModificationProcessor
+        {
+            internal static bool Recording;
+            internal static readonly List<bool> PutBackAtSave = new List<bool>();
+
+            static string[] OnWillSaveAssets(string[] paths)
+            {
+                if (Recording)
+                    PutBackAtSave.Add(new[] { BuildTargetGroup.Standalone, BuildTargetGroup.Android }.All(group =>
+                        !OpenXRSettings.GetSettingsForBuildTargetGroup(group).GetFeature<TestPrerequisiteFeature>().enabled));
+                return paths;
+            }
+        }
+
+        /// <summary>
+        /// Runs a batch, written for Unknown, that turns on the prerequisite for Standalone and Android
+        /// (<see cref="Platforms"/>, which the caller gets first, so that its checks skip the test even
+        /// inside Assert.Throws): Unknown can have no OpenXR settings, so both count as other
+        /// platforms, and nothing creates settings for it. Returns the saves <see cref="SaveObserver"/> saw.
+        /// </summary>
+        static List<bool> RunBatchChangingBothPlatforms((OpenXRSettings standalone, OpenXRSettings android) platforms,
+            System.Exception thrown, System.Action<BuildTargetGroup, OpenXREditorStateSnapshot> putBack)
+        {
+            var (standalone, android) = platforms;
+            AssetDatabase.SaveAssets();
+            SaveObserver.PutBackAtSave.Clear();
+            SaveObserver.Recording = true;
+            try
+            {
+                void Batch()
+                {
+                    standalone.GetFeature<TestPrerequisiteFeature>().enabled = true;
+                    android.GetFeature<TestPrerequisiteFeature>().enabled = true;
+                    if (thrown != null)
+                        throw thrown;
+                }
+                if (putBack == null)
+                    OpenXRSettingsState.KeepOtherPlatforms(BuildTargetGroup.Unknown, Batch);
+                else
+                    OpenXRSettingsState.KeepOtherPlatforms(BuildTargetGroup.Unknown, Batch, putBack);
+            }
+            finally { SaveObserver.Recording = false; }
+            return SaveObserver.PutBackAtSave;
+        }
+
+        static bool PrerequisiteOn(BuildTargetGroup group)
+            => OpenXRSettings.GetSettingsForBuildTargetGroup(group).GetFeature<TestPrerequisiteFeature>().enabled;
+
+        // OpenXR keeps every platform's settings in one asset, so a save between two put-backs would
+        // write the second platform's change: both are put back before Build Forge saves.
+        [Test]
+        public void ABatchThatChangesTwoOtherPlatforms_PutsBothBackBeforeItSaves()
+        {
+            var saves = RunBatchChangingBothPlatforms(Platforms(), null, null);
+
+            Assert.IsFalse(PrerequisiteOn(BuildTargetGroup.Standalone));
+            Assert.IsFalse(PrerequisiteOn(BuildTargetGroup.Android));
+            CollectionAssert.IsNotEmpty(saves, "Build Forge saved the put-back platforms.");
+            Assert.That(saves, Is.All.True, "Every save came after both platforms were put back.");
+        }
+
+        // A platform that can't be put back doesn't keep the others from being put back. Nothing is
+        // saved then, the batch's own exception is the one thrown, and the error names the platform.
+        [Test]
+        public void APlatformThatCantBePutBack_LeavesTheOtherPutBack_SavesNothing_AndKeepsTheBatchsException()
+        {
+            var platforms = Platforms();
+            var thrown = new System.InvalidOperationException("the batch failed");
+            BuildTargetGroup? failed = null;
+            LogAssert.Expect(LogType.Error, new Regex(@"could not check or put back (Standalone|Android)'s OpenXR settings .*: put-back failed$"));
+
+            var caught = Assert.Throws<System.InvalidOperationException>(() => RunBatchChangingBothPlatforms(platforms, thrown, (platform, snapshot) =>
+            {
+                if (failed == null)
+                {
+                    failed = platform;
+                    throw new System.InvalidOperationException("put-back failed");
+                }
+                OpenXRSettingsState.Restore(platform, snapshot, save: false);
+            }));
+
+            Assert.AreSame(thrown, caught);
+            var other = failed == BuildTargetGroup.Standalone ? BuildTargetGroup.Android : BuildTargetGroup.Standalone;
+            Assert.IsTrue(PrerequisiteOn(failed.Value), $"{failed} wasn't put back.");
+            Assert.IsFalse(PrerequisiteOn(other), $"{other} was put back all the same.");
+            CollectionAssert.IsEmpty(SaveObserver.PutBackAtSave, "Nothing was saved.");
+        }
+
+        // After a batch that threw nothing, a platform that can't be put back fails the batch with
+        // an exception that names it and holds the put-back's own.
+        [Test]
+        public void APlatformThatCantBePutBack_AfterABatchThatThrewNothing_FailsTheBatch_NamingIt()
+        {
+            var platforms = Platforms();
+            var failure = new System.InvalidOperationException("put-back failed");
+            BuildTargetGroup? failed = null;
+            LogAssert.Expect(LogType.Error, new Regex(@"could not check or put back (Standalone|Android)'s OpenXR settings .*: put-back failed$"));
+
+            var caught = Assert.Throws<System.InvalidOperationException>(() => RunBatchChangingBothPlatforms(platforms, null, (platform, snapshot) =>
+            {
+                if (failed == null)
+                {
+                    failed = platform;
+                    throw failure;
+                }
+                OpenXRSettingsState.Restore(platform, snapshot, save: false);
+            }));
+
+            Assert.AreSame(failure, caught.InnerException);
+            StringAssert.Contains($"the OpenXR settings of {failed} after turning features on and off for Unknown, so they may keep a change", caught.Message);
+            StringAssert.EndsWith(": put-back failed", caught.Message);
+            CollectionAssert.IsEmpty(SaveObserver.PutBackAtSave, "Nothing was saved.");
+        }
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using BuildForge.Editor.Core;
 using UnityEditor;
@@ -249,34 +250,88 @@ namespace BuildForge.Editor.OpenXR
         /// Nothing tracks or reverts those, so writes stay in the platform being written, and a feature
         /// a vendor turned on elsewhere has to be enabled in the profile; the warning says so for each
         /// one the platform being written shows and still has off. The other platforms are put
-        /// back as data, as a restore writes them (see <see cref="Restore"/>), before the caller saves,
-        /// so the vendor's write never reaches disk.
+        /// back as data, as a restore writes them (see <see cref="Restore"/>), each one even when
+        /// another can't be, and saved once, after the last of them, so no save of Build Forge's
+        /// writes a vendor's change it put back; a vendor's callback, or Unity, can still save while
+        /// <paramref name="write"/> runs. A platform that can't be put back is logged as an error and
+        /// keeps what the callback changed: nothing is saved here, but the restore of the Apply or
+        /// build that then stops saves it with the rest. What <paramref name="write"/> threw is
+        /// rethrown, or, when it threw nothing, an exception that names the platforms.
         /// </summary>
         internal static void KeepOtherPlatforms(BuildTargetGroup group, Action write)
+            => KeepOtherPlatforms(group, write, (platform, snapshot) => Restore(platform, snapshot, save: false));
+
+        /// <summary><see cref="KeepOtherPlatforms(BuildTargetGroup, Action)"/> with what puts a platform back given, for tests.</summary>
+        internal static void KeepOtherPlatforms(BuildTargetGroup group, Action write,
+            Action<BuildTargetGroup, OpenXREditorStateSnapshot> putBack)
         {
             var before = new Dictionary<BuildTargetGroup, OpenXREditorStateSnapshot>();
             foreach (var other in PlatformsWithSettings())
                 if (other != group)
                     before[other] = Capture(other, includeInteractionProfiles: true);
+            ExceptionDispatchInfo writeFailure = null;
             try
             {
                 write();
             }
-            finally
+            catch (Exception e)
             {
-                foreach (var pair in before)
+                writeFailure = ExceptionDispatchInfo.Capture(e);
+            }
+
+            var putBackCount = 0;
+            var notPutBack = new List<(BuildTargetGroup platform, Exception error)>();
+            foreach (var pair in before)
+            {
+                string changes;
+                List<string> turnedOnTypes;
+                try
                 {
-                    var changes = Changes(pair.Value, Capture(pair.Key, includeInteractionProfiles: true), pair.Key, out var turnedOnTypes);
+                    changes = Changes(pair.Value, Capture(pair.Key, includeInteractionProfiles: true), pair.Key, out turnedOnTypes);
                     if (changes == null)
                         continue;
-                    Restore(pair.Key, pair.Value);
-                    var needed = OffIn(group, turnedOnTypes);
-                    Debug.LogWarning($"{LogPrefix} Turning OpenXR features on and off for {group} also {changes} for {pair.Key}, " +
-                                     $"through a feature's on/off callback; Build Forge put {pair.Key} back." +
-                                     (needed.Count > 0
-                                         ? $" If {group} needs {Quoted(needed)}, enable {(needed.Count == 1 ? "it" : "them")} in the profile."
-                                         : ""));
+                    putBack(pair.Key, pair.Value);
                 }
+                catch (Exception e)
+                {
+                    notPutBack.Add((pair.Key, e));
+                    Debug.LogError($"{LogPrefix} Build Forge could not check or put back {pair.Key}'s OpenXR settings after turning " +
+                                   $"features on and off for {group}, so they may keep a change a feature's on/off callback made, " +
+                                   $"which is saved with them: {MessageOrType(e)}");
+                    continue;
+                }
+                putBackCount++;
+                var needed = OffIn(group, turnedOnTypes);
+                Debug.LogWarning($"{LogPrefix} Turning OpenXR features on and off for {group} also {changes} for {pair.Key}, " +
+                                 $"through a feature's on/off callback; Build Forge put {pair.Key} back." +
+                                 (needed.Count > 0
+                                     ? $" If {group} needs {Quoted(needed)}, enable {(needed.Count == 1 ? "it" : "them")} in the profile."
+                                     : ""));
+            }
+
+            if (notPutBack.Count == 0 && putBackCount > 0)
+                AssetDatabase.SaveAssets();
+            writeFailure?.Throw();
+            if (notPutBack.Count > 0)
+                throw new InvalidOperationException(
+                    $"{LogPrefix} Build Forge could not check or put back the OpenXR settings of " +
+                    $"{string.Join(", ", notPutBack.Select(n => n.platform))} after turning features on and off for {group}, " +
+                    $"so they may keep a change a feature's on/off callback made, which is saved with them: " +
+                    $"{MessageOrType(notPutBack[0].error)}", notPutBack[0].error);
+        }
+
+        // An exception's message, or its type when reading the message throws too, so that a vendor's
+        // exception can't end the put-backs. The plugin assemblies use none of Build Forge's internals
+        // beyond the Play Mode mirror, so this is ForgeEditorState.MessageOrType's own copy.
+        static string MessageOrType(Exception e)
+        {
+            try
+            {
+                return e.Message;
+            }
+            catch (Exception)
+            {
+                return e.GetType().FullName;
             }
         }
 
@@ -385,8 +440,10 @@ namespace BuildForge.Editor.OpenXR
         // ---------------------------------------------------------------- restore
 
         /// <summary>
-        /// Writes a captured snapshot back for the group and saves. It checks before
-        /// writing anything and throws, leaving the settings as they are, when the
+        /// Writes a captured snapshot back for the group and saves, unless
+        /// <paramref name="save"/> is false, as when several platforms are put back
+        /// before one save (see <see cref="KeepOtherPlatforms(BuildTargetGroup, Action)"/>).
+        /// It checks before writing anything and throws, leaving the settings as they are, when the
         /// snapshot or a feature's recorded JSON can't be read, the group has no OpenXR
         /// settings, or a recorded value can't be written; so a restore that fails
         /// writes nothing, and a stopped build leaves the editor as it was. A setting
@@ -398,7 +455,7 @@ namespace BuildForge.Editor.OpenXR
         /// which can write other features and other platforms' settings, and can be
         /// refused by a feature group, so restores keep to their own snapshot.
         /// </summary>
-        public static void Restore(BuildTargetGroup group, OpenXREditorStateSnapshot snapshot)
+        public static void Restore(BuildTargetGroup group, OpenXREditorStateSnapshot snapshot, bool save = true)
         {
             if (snapshot == null)
                 throw new InvalidOperationException($"The recorded OpenXR settings for {group} can't be read.");
@@ -458,7 +515,10 @@ namespace BuildForge.Editor.OpenXR
                 featureObject.ApplyModifiedPropertiesWithoutUndo();
             }
 
-            Flush(settings);
+            if (save)
+                Flush(settings);
+            else
+                MarkDirty(settings);
 
             if (gone.Count > 0)
                 Debug.LogWarning($"{LogPrefix} Restored the OpenXR settings for {group} except what this OpenXR no longer " +
@@ -597,10 +657,15 @@ namespace BuildForge.Editor.OpenXR
 
         static void Flush(OpenXRSettings settings)
         {
+            MarkDirty(settings);
+            AssetDatabase.SaveAssets();
+        }
+
+        static void MarkDirty(OpenXRSettings settings)
+        {
             foreach (var feature in settings.GetFeatures<OpenXRFeature>())
                 if (feature != null) EditorUtility.SetDirty(feature);
             EditorUtility.SetDirty(settings);
-            AssetDatabase.SaveAssets();
         }
 
         static bool IsSimpleProperty(SerializedPropertyType type)
