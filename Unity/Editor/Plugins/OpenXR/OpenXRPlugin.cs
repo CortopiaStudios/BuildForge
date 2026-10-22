@@ -835,8 +835,11 @@ namespace BuildForge.Editor.OpenXR
             context.SetProperty(SnapshotKey, snapshot.ToJson());
             if (metaQuestSetup.Count > 0)
             {
-                foreach (var feature in metaQuestSetup)
-                    feature.enabled = true;
+                OpenXRSettingsState.KeepOtherPlatforms(context.BuildTargetGroup, () =>
+                {
+                    foreach (var feature in metaQuestSetup)
+                        feature.enabled = true;
+                });
                 Debug.Log("[Build Forge/OpenXR] " + MetaQuestSetupMessage(metaQuestSetup.Select(f => FormatFeatureName(GetFeatureUiName(f)))));
             }
             OpenXRSettingsState.Apply(config, context.BuildTargetGroup, includeInteractionProfiles);

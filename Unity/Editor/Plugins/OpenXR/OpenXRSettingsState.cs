@@ -165,36 +165,39 @@ namespace BuildForge.Editor.OpenXR
                 return;
             }
 
-            using (new RefusalPlatform(group))
+            KeepOtherPlatforms(group, () =>
+            {
+                using (new RefusalPlatform(group))
+                    foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))
+                    {
+                        var state = Override(config, feature);
+                        if (state != null)
+                            SetEnabled(feature, state.Value);
+                    }
+
+                var so = new SerializedObject(settings);
+                foreach (var ovr in config.GetAllSettingsOverrides())
+                {
+                    var prop = so.FindProperty(ovr.propertyName);
+                    if (prop == null) continue;
+                    SetPropertyFromString(prop, ovr.value);
+                    Debug.Log($"{LogPrefix} Applied override: {ovr.propertyName} = {ovr.value}");
+                }
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                // Feature property pins only for explicitly enabled features.
                 foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))
                 {
-                    var state = Override(config, feature);
-                    if (state != null)
-                        SetEnabled(feature, state.Value);
+                    var typeName = feature.GetType().FullName;
+                    if (Override(config, feature) != true) continue;
+                    var overrides = config.GetFeatureOverrides(typeName);
+                    if (overrides == null) continue;
+
+                    SerializedPropertySnapshot.Apply(new SerializedObject(feature), overrides);
+                    SetEnabled(feature, true);
+                    Debug.Log($"{LogPrefix} Applied {overrides.Count} pinned setting(s): {feature.name}");
                 }
-
-            var so = new SerializedObject(settings);
-            foreach (var ovr in config.GetAllSettingsOverrides())
-            {
-                var prop = so.FindProperty(ovr.propertyName);
-                if (prop == null) continue;
-                SetPropertyFromString(prop, ovr.value);
-                Debug.Log($"{LogPrefix} Applied override: {ovr.propertyName} = {ovr.value}");
-            }
-            so.ApplyModifiedPropertiesWithoutUndo();
-
-            // Feature property pins only for explicitly enabled features.
-            foreach (var feature in GetManagedFeatures(settings, includeInteractionProfiles))
-            {
-                var typeName = feature.GetType().FullName;
-                if (Override(config, feature) != true) continue;
-                var overrides = config.GetFeatureOverrides(typeName);
-                if (overrides == null) continue;
-
-                SerializedPropertySnapshot.Apply(new SerializedObject(feature), overrides);
-                SetEnabled(feature, true);
-                Debug.Log($"{LogPrefix} Applied {overrides.Count} pinned setting(s): {feature.name}");
-            }
+            });
 
             Flush(settings);
         }
@@ -224,16 +227,145 @@ namespace BuildForge.Editor.OpenXR
                 if (!sourceStates.ContainsKey(typeName))
                     sourceStates.Add(typeName, feature.enabled);
             }
-            using (new RefusalPlatform(target))
-                foreach (var feature in GetManagedFeatures(to, true))
-                    if (sourceStates.TryGetValue(feature.GetType().FullName, out var enabled) && (enabled || match))
-                    {
-                        SetEnabled(feature, enabled);
-                        written[feature] = enabled;
-                    }
+            KeepOtherPlatforms(target, () =>
+            {
+                using (new RefusalPlatform(target))
+                    foreach (var feature in GetManagedFeatures(to, true))
+                        if (sourceStates.TryGetValue(feature.GetType().FullName, out var enabled) && (enabled || match))
+                        {
+                            SetEnabled(feature, enabled);
+                            written[feature] = enabled;
+                        }
+            });
             Flush(to);
             return written;
         }
+
+        /// <summary>
+        /// Runs <paramref name="write"/>, a batch of feature setter calls for <paramref name="group"/>,
+        /// then puts back each other platform whose OpenXR settings it changed, with a warning.
+        /// OpenXRFeature.enabled runs the feature's callback, and vendors' callbacks switch other
+        /// features, in another platform's settings too, such as the editor's active platform's.
+        /// Nothing tracks or reverts those, so writes stay in the platform being written, and a feature
+        /// a vendor turned on elsewhere has to be enabled in the profile; the warning says so for each
+        /// one the platform being written shows and still has off. The other platforms are put
+        /// back as data, as a restore writes them (see <see cref="Restore"/>), before the caller saves,
+        /// so the vendor's write never reaches disk.
+        /// </summary>
+        internal static void KeepOtherPlatforms(BuildTargetGroup group, Action write)
+        {
+            var before = new Dictionary<BuildTargetGroup, OpenXREditorStateSnapshot>();
+            foreach (var other in PlatformsWithSettings())
+                if (other != group)
+                    before[other] = Capture(other, includeInteractionProfiles: true);
+            try
+            {
+                write();
+            }
+            finally
+            {
+                foreach (var pair in before)
+                {
+                    var changes = Changes(pair.Value, Capture(pair.Key, includeInteractionProfiles: true), pair.Key, out var turnedOnTypes);
+                    if (changes == null)
+                        continue;
+                    Restore(pair.Key, pair.Value);
+                    var needed = OffIn(group, turnedOnTypes);
+                    Debug.LogWarning($"{LogPrefix} Turning OpenXR features on and off for {group} also {changes} for {pair.Key}, " +
+                                     $"through a feature's on/off callback; Build Forge put {pair.Key} back." +
+                                     (needed.Count > 0
+                                         ? $" If {group} needs {Quoted(needed)}, enable {(needed.Count == 1 ? "it" : "them")} in the profile."
+                                         : ""));
+                }
+            }
+        }
+
+        /// <summary>
+        /// The platforms that have OpenXR settings, as OpenXR's package settings list them: not by
+        /// asking OpenXRSettings.GetSettingsForBuildTargetGroup for each, which creates and saves
+        /// settings for an installed platform that has none. That lookup finds the package settings
+        /// the same way, so they are there whenever a platform's settings are; throws otherwise.
+        /// </summary>
+        static List<BuildTargetGroup> PlatformsWithSettings()
+        {
+            EditorBuildSettings.TryGetConfigObject(UnityEngine.XR.OpenXR.Constants.k_SettingsKey, out UnityEngine.Object found);
+            if (!(found is IPackageSettings packageSettings))
+                throw new InvalidOperationException(
+                    "Build Forge can't list the platforms that have OpenXR settings, which it keeps as they are while it " +
+                    "writes one platform's features. Update Build Forge for this OpenXR version.");
+            return packageSettings.GetFeatures<OpenXRFeature>().Select(f => f.buildTargetGroup).Distinct().ToList();
+        }
+
+        /// <summary>
+        /// What changed in a platform's settings from <paramref name="before"/> to <paramref name="after"/>,
+        /// worded for the warning, with the types of the features turned on in <paramref name="turnedOnTypes"/>;
+        /// null when nothing did. Only what both snapshots hold counts, as only that is restored.
+        /// </summary>
+        static string Changes(OpenXREditorStateSnapshot before, OpenXREditorStateSnapshot after, BuildTargetGroup group,
+            out List<string> turnedOnTypes)
+        {
+            turnedOnTypes = new List<string>();
+            var turnedOn = new List<string>();
+            var turnedOff = new List<string>();
+            var changed = new List<string>();
+            var names = new Dictionary<string, string>();
+            foreach (var feature in OpenXRSettings.GetSettingsForBuildTargetGroup(group).GetFeatures<OpenXRFeature>())
+                if (feature != null)
+                    names[feature.GetType().FullName] = FeatureName(feature);
+
+            var afterFeatures = ByKey(after.features, f => f.featureTypeName);
+            foreach (var feature in before.features)
+            {
+                if (!afterFeatures.TryGetValue(feature.featureTypeName, out var now))
+                    continue;
+                var name = names.TryGetValue(feature.featureTypeName, out var uiName) ? uiName : feature.featureTypeName;
+                if (now.enabled && !feature.enabled)
+                {
+                    turnedOn.Add(name);
+                    turnedOnTypes.Add(feature.featureTypeName);
+                }
+                else if (!now.enabled && feature.enabled)
+                    turnedOff.Add(name);
+                else if (WithoutEnabled(now.json) != WithoutEnabled(feature.json))
+                    changed.Add(name);
+            }
+            var afterSettings = ByKey(after.settings, s => s.propertyName);
+            foreach (var setting in before.settings)
+                if (afterSettings.TryGetValue(setting.propertyName, out var now) && now.value != setting.value)
+                    changed.Add(setting.propertyName);
+
+            var parts = new List<string>();
+            if (turnedOn.Count > 0) parts.Add("turned on " + Quoted(turnedOn));
+            if (turnedOff.Count > 0) parts.Add("turned off " + Quoted(turnedOff));
+            if (changed.Count > 0) parts.Add("changed " + Quoted(changed));
+            return parts.Count > 0 ? string.Join(", ", parts) : null;
+        }
+
+        /// <summary>
+        /// The names of the features of <paramref name="typeNames"/> that <paramref name="group"/> has,
+        /// shows and has off: those the profile can still turn on for it. The warning gives no advice
+        /// for one the platform has on already, doesn't have, or hides.
+        /// </summary>
+        static List<string> OffIn(BuildTargetGroup group, List<string> typeNames)
+        {
+            var names = new List<string>();
+            var settings = OpenXRSettings.GetSettingsForBuildTargetGroup(group);
+            if (settings == null)
+                return names;
+            foreach (var feature in settings.GetFeatures<OpenXRFeature>())
+                if (feature != null && typeNames.Contains(feature.GetType().FullName) && !IsHidden(feature) && !feature.enabled)
+                    names.Add(FeatureName(feature));
+            return names;
+        }
+
+        /// <summary>The feature's name as its attribute gives it, which XR Plug-in Management shows; its type's name without one.</summary>
+        static string FeatureName(OpenXRFeature feature)
+        {
+            var uiName = feature.GetType().GetCustomAttribute<OpenXRFeatureAttribute>()?.UiName;
+            return string.IsNullOrEmpty(uiName) ? feature.GetType().FullName : uiName;
+        }
+
+        static string Quoted(IEnumerable<string> names) => string.Join(", ", names.Select(n => $"'{n}'"));
 
         /// <summary>
         /// OpenXRFeature.enabled refuses to turn off a feature that a ticked group requires,
