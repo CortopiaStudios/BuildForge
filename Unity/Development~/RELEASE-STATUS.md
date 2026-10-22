@@ -29,7 +29,9 @@ repository root (working guidelines).
 
 1. Final verification: full test run (the plain run and both optional-package
    sets, `BUILDFORGE_PACKAGES=oldest` and `newest`, on 6000.3.0f1 and the newest
-   editor; see AGENTS.md) + a real Android build via the window and via CLI.
+   stable editor, 6000.6.6f1 as of 2026-10-22; see AGENTS.md) + a real Android
+   build via the window and via CLI. Runs on a pre-release editor, such as
+   6000.7.0b4, are reported separately, as extra coverage.
 2. **Asset metadata** is retained with existing GUIDs. Check for missing,
    duplicate or orphaned metadata before release; no wholesale GUID regeneration.
    `Development~` and `Tools~` are excluded from Unity import and need no metadata.
@@ -81,7 +83,7 @@ Documentation~/variants.md shows the pattern written by hand, for variants.
 CI (moved here from the pre-1.0 list on 2026-10-21; the release gate stays a
 full test run on a developer machine): a GitHub Actions workflow on a Windows
 runner that calls `Tools~/run-tests.ps1` for the plain run and both
-`BUILDFORGE_PACKAGES` sets, on the floor and the newest editor. The license is
+`BUILDFORGE_PACKAGES` sets, on the floor and the newest stable editor. The license is
 handled ONCE as a repo secret, either a `.ulf` (manual activation) or a Unity
 Cloud service-account key (`unity auth login --client-id/--client-secret`).
 Per-session sandbox activation was evaluated and rejected: ephemeral machines

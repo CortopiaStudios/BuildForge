@@ -22,7 +22,7 @@
 # Editor version: UNITY_EDITOR_VERSION if set, else the OLDEST installed
 #   6000.3.x editor — the support floor, so an API that only exists in a
 #   later patch is caught (via `unity editors -i`), else FALLBACK_EDITOR_VERSION.
-#   Run again with UNITY_EDITOR_VERSION set to the newest installed editor.
+#   Run again with UNITY_EDITOR_VERSION set to the newest installed stable editor.
 #   (pass --allow-install to have the CLI install it).
 #
 # Exit code comes from `unity test`: 0 = all passed, 6 = tests ran and failed.
