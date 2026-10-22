@@ -71,9 +71,9 @@ namespace BuildForge.Editor.Plugins
         /// while the build that excludes them runs, Unity's own decision
         /// otherwise. It stays in place after the build, since Unity can't hand
         /// back the delegate it replaced: a package that sets its own in every
-        /// build's pre-build step, as Meta's and PICO's do, is unaffected, while
-        /// one set once per editor session stays replaced until the next script
-        /// reload (see ARCHITECTURE.md, XR Vendor Filter).
+        /// build's pre-build step is unaffected, while one set once per editor
+        /// session stays replaced until the next script reload (see
+        /// ARCHITECTURE.md, XR Vendor Filter).
         /// </summary>
         internal static bool IncludeInBuild(string path) => Active == null || !Active.LibraryPaths.Contains(path);
 
