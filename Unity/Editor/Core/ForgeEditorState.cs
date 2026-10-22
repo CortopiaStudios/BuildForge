@@ -120,6 +120,33 @@ namespace BuildForge.Editor.Core
             }
         }
 
+        // The same for a plugin's exception, whose Message and StackTrace are plugin code too:
+        // wherever a failure is reported, one whose message throws is named by its type, and a
+        // stack trace that throws is left out, instead of ending the failure handling.
+        internal static string MessageOrType(Exception e)
+        {
+            try
+            {
+                return e.Message;
+            }
+            catch (Exception)
+            {
+                return e.GetType().FullName;
+            }
+        }
+
+        internal static string StackTraceOrNull(Exception e)
+        {
+            try
+            {
+                return e.StackTrace;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         public static bool IsApplied(ForgeProfile profile)
         {
             if (profile == null || profile.BuildProfile == null || !HasAppliedGuid)
@@ -692,7 +719,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    error = e.Message;
+                    error = MessageOrType(e);
                 }
             }
             if (error != null)

@@ -30,9 +30,16 @@ namespace BuildForge.Editor.UI
             }
             catch (Exception e)
             {
-                error = $"{plugin.GetType().Name}.{what} threw: {e.Message}";
+                error = $"{plugin.GetType().Name}.{what} threw: {ForgeEditorState.MessageOrType(e)}";
                 if (Reported.Add($"{plugin.GetType().FullName}.{what}"))
-                    Debug.LogError($"[Build Forge] {error}\n{e}");
+                {
+                    // The whole exception, with its type and inner exceptions; only its stack trace
+                    // when its text can't be made, as when its message throws.
+                    string details;
+                    try { details = e.ToString(); }
+                    catch (Exception) { details = ForgeEditorState.StackTraceOrNull(e); }
+                    Debug.LogError($"[Build Forge] {error}\n{details}");
+                }
                 return fallback;
             }
         }

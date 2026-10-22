@@ -39,7 +39,7 @@ namespace BuildForge.Editor.Core
             : base($"{key}: {reason}", inner)
         {
             Key = key;
-            Reason = inner == null ? reason : $"{reason} {inner.Message}";
+            Reason = inner == null ? reason : $"{reason} {ForgeEditorState.MessageOrType(inner)}";
         }
     }
 
@@ -51,11 +51,13 @@ namespace BuildForge.Editor.Core
         /// <summary>The plugin's own message.</summary>
         public string Reason { get; }
 
+        // Read guarded: a plugin's message that throws here would end the Apply's catch before
+        // it restores what the Apply wrote.
         public EditorStateApplyException(string key, string what, Exception inner)
-            : base($"{key}: {what}. {inner.Message}", inner)
+            : base($"{key}: {what}. {ForgeEditorState.MessageOrType(inner)}", inner)
         {
             Key = key;
-            Reason = inner.Message;
+            Reason = ForgeEditorState.MessageOrType(inner);
         }
     }
 
@@ -267,7 +269,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"{LogPrefix} {entry.key}: merge failed; the baseline is unchanged. {e.Message}");
+                    Debug.LogError($"{LogPrefix} {entry.key}: merge failed; the baseline is unchanged. {ForgeEditorState.MessageOrType(e)}");
                 }
                 entry.expectedJson = current;
                 changed = true;
@@ -423,7 +425,7 @@ namespace BuildForge.Editor.Core
                 catch (Exception e)
                 {
                     platformIncomplete |= !mirror;
-                    Debug.LogError($"{LogPrefix} {entry.key}: re-apply after build failed. {e.Message}");
+                    Debug.LogError($"{LogPrefix} {entry.key}: re-apply after build failed. {ForgeEditorState.MessageOrType(e)}");
                     result.Failures.Add(new InvalidOperationException(
                         $"{entry.key}: re-apply after build failed.", e));
                 }
@@ -475,7 +477,7 @@ namespace BuildForge.Editor.Core
             }
             catch (Exception e)
             {
-                Debug.LogError($"{LogPrefix} {entry.key}: restore failed. {e.Message}");
+                Debug.LogError($"{LogPrefix} {entry.key}: restore failed. {ForgeEditorState.MessageOrType(e)}");
                 return new EditorStateRestoreException(entry.key, "restore failed.", e);
             }
 
@@ -521,7 +523,7 @@ namespace BuildForge.Editor.Core
             }
             catch (Exception e)
             {
-                Debug.LogError($"{LogPrefix} {key}: capture failed. {e.Message}");
+                Debug.LogError($"{LogPrefix} {key}: capture failed. {ForgeEditorState.MessageOrType(e)}");
                 return null;
             }
         }

@@ -237,7 +237,8 @@ namespace BuildForge.Editor.Core
             catch (Exception e)
             {
                 context.Succeeded = false;
-                Debug.LogError($"[Build Forge] Build exception: {e.Message}\n{e.StackTrace}");
+                // Often a plugin's exception: read guarded, so the rethrow keeps it.
+                Debug.LogError($"[Build Forge] Build exception: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 throw;
             }
             finally
@@ -337,9 +338,9 @@ namespace BuildForge.Editor.Core
                     }
                     catch (Exception e)
                     {
-                        var msg = $"Re-applying the editor profile after the build failed: {e.Message}";
+                        var msg = $"Re-applying the editor profile after the build failed: {ForgeEditorState.MessageOrType(e)}";
                         context.PostBuildFailures.Add(msg);
-                        Debug.LogError($"[Build Forge] {msg}\n{e.StackTrace}");
+                        Debug.LogError($"[Build Forge] {msg}\n{ForgeEditorState.StackTraceOrNull(e)}");
                     }
                 }
 
@@ -674,7 +675,7 @@ namespace BuildForge.Editor.Core
             }
             catch (Exception e)
             {
-                Debug.LogError($"[Build Forge] Build failed with exception: {e.Message}\n{e.StackTrace}");
+                Debug.LogError($"[Build Forge] Build failed with exception: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 exitCode = 1;
             }
             finally
@@ -1022,7 +1023,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    lines.Add($"[Build Forge/{ForgeEditorState.NameOrType(plugin)}] Checking the profile's settings failed: {e.Message}");
+                    lines.Add($"[Build Forge/{ForgeEditorState.NameOrType(plugin)}] Checking the profile's settings failed: {ForgeEditorState.MessageOrType(e)}");
                     continue;
                 }
                 if (warnings != null)
@@ -1071,9 +1072,9 @@ namespace BuildForge.Editor.Core
                 {
                     if (plugins[i] is IForgeEditorApplicable)
                         notRestored.Add(EditorStateLedger.MakeKey(plugins[i].GetType().FullName, context.BuildTargetGroup));
-                    var msg = $"Post-build restore failed in {ForgeEditorState.NameOrType(plugins[i])}: {e.Message}";
+                    var msg = $"Post-build restore failed in {ForgeEditorState.NameOrType(plugins[i])}: {ForgeEditorState.MessageOrType(e)}";
                     context.PostBuildFailures.Add(msg);
-                    Debug.LogError($"[Build Forge] {msg}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] {msg}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 }
             }
             return notRestored;

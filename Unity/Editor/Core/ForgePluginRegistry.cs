@@ -66,7 +66,8 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    var error = (e as System.Reflection.TargetInvocationException)?.InnerException?.Message ?? e.Message;
+                    var inner = (e as System.Reflection.TargetInvocationException)?.InnerException;
+                    var error = (inner != null ? ForgeEditorState.MessageOrType(inner) : null) ?? ForgeEditorState.MessageOrType(e);
                     if (plugin != null)
                         error = $"Order threw: {error}";
                     failures.Add((type, error));
@@ -202,7 +203,7 @@ namespace BuildForge.Editor.Core
             }
             catch (Exception e)
             {
-                error = $"{plugin.GetType().Name}.{member} threw: {e.Message}";
+                error = $"{plugin.GetType().Name}.{member} threw: {ForgeEditorState.MessageOrType(e)}";
                 return default;
             }
         }

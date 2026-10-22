@@ -499,7 +499,7 @@ namespace BuildForge.Editor.UI
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[Build Forge] Activating '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Activating '{profile.DisplayName}' failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 }
                 s_StateKey = null;
             };
@@ -517,7 +517,7 @@ namespace BuildForge.Editor.UI
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[Build Forge] Applying '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Applying '{profile.DisplayName}' failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                     // Same recovery as the window's Apply.
                     ForgeBuildWindow.OfferToStopTracking(e);
                 }
@@ -535,7 +535,7 @@ namespace BuildForge.Editor.UI
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError($"[Build Forge] Revert to Baseline failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Revert to Baseline failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                     // Same recovery as the window: settings that can never be restored can stop being tracked.
                     ForgeBuildWindow.OfferToStopTracking(e);
                 }
@@ -568,7 +568,7 @@ namespace BuildForge.Editor.UI
                 {
                     // Logged rather than thrown, like Activate and Apply: a throw out of
                     // a delayCall also drops the other callbacks queued with it.
-                    Debug.LogError($"[Build Forge] Building '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Building '{profile.DisplayName}' failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 }
                 finally
                 {

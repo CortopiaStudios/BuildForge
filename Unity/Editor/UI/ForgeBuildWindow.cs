@@ -1355,7 +1355,7 @@ namespace BuildForge.Editor.UI
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[Build Forge] Building '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Building '{profile.DisplayName}' failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 }
             };
         }
@@ -1373,7 +1373,7 @@ namespace BuildForge.Editor.UI
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[Build Forge] Activating '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Activating '{profile.DisplayName}' failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 }
                 if (this != null)
                 {
@@ -1393,7 +1393,7 @@ namespace BuildForge.Editor.UI
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[Build Forge] Applying '{profile.DisplayName}' failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Applying '{profile.DisplayName}' failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                     // The reverts that are part of Apply can fail like Revert to Baseline.
                     OfferToStopTracking(e);
                 }
@@ -1446,7 +1446,7 @@ namespace BuildForge.Editor.UI
                 }
                 catch (System.Exception e)
                 {
-                    Debug.LogError($"[Build Forge] Revert to Baseline failed: {e.Message}\n{e.StackTrace}");
+                    Debug.LogError($"[Build Forge] Revert to Baseline failed: {ForgeEditorState.MessageOrType(e)}\n{ForgeEditorState.StackTraceOrNull(e)}");
                     OfferToStopTracking(e);
                 }
                 if (this != null)

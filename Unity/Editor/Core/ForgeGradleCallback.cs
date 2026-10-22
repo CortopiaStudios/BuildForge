@@ -40,7 +40,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    throw new BuildFailedException($"[Build Forge] The Gradle step of {ForgeEditorState.NameOrType(plugin)} failed: {e.Message}");
+                    throw new BuildFailedException($"[Build Forge] The Gradle step of {ForgeEditorState.NameOrType(plugin)} failed: {ForgeEditorState.MessageOrType(e)}");
                 }
             }
         }
