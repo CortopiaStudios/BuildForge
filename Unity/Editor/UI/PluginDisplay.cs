@@ -11,7 +11,10 @@ namespace BuildForge.Editor.UI
     /// A plugin's values as the windows show them. A plugin that throws while a window asks
     /// for one gets a fallback and one logged error, instead of ending the window's drawing,
     /// which would take the action bar with it and repeat the error on every repaint. Only
-    /// for display: builds call plugins unguarded, and stop on what they throw.
+    /// for display: builds have no fallbacks. They stop on what a plugin throws, except from
+    /// Validate, which becomes a warning, and OnPostBuild, which is reported once the other
+    /// steps have put the project back. Builds read a plugin's name and exceptions guarded
+    /// (ForgeEditorState's NameOrType and MessageOrType).
     /// </summary>
     internal static class PluginDisplay
     {
