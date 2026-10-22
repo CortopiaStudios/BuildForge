@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.8] - 2026-10-22
+
 ### Changed
 - Remove Previous Build Output: when one of the project's protected folders is a link that Windows can't follow, such as a `Library` junction whose target was deleted, the error says to repair or remove that link. It used to say to choose another build directory, which stops the same way
 - The messages for an Apply or a build that did not finish and for a failed re-apply after a build, and the build window's drift warning, offer Re-apply only when it would run. While the applied profile's Apply would stop, as when its variant settings are wrong or Unity can no longer load its plugin settings, or while the record of a build that did not finish is there, they offer Revert to Baseline and say what Re-apply waits for. They used to offer Re-apply, which then stopped
