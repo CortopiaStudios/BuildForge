@@ -1,6 +1,6 @@
 # Addressables Rebuild
 
-Order 800. Needs Addressables (`com.unity.addressables`) 2.7.4 or later, with Addressables settings created in the project. Turned on for a profile while the settings are missing, it stops the profile's builds, because no content would be built and content built before would ship; the build window and the foldout say so first.
+Order 800. Needs Addressables (`com.unity.addressables`) 2.7.4 or later, with Addressables settings created in the project. Newer editors can name newer minimums, which you should use there too; see [Minimum versions per editor](../installation.md#minimum-versions-per-editor). Turned on for a profile while the settings are missing, it stops the profile's builds, because no content would be built and content built before would ship; the build window and the foldout say so first.
 
 Builds the Addressables player content right before the player build, so a build never ships content that someone forgot to rebuild. It runs after [Addressables Stripper](addressables-stripper.md), so the content is built with the stripping in place.
 

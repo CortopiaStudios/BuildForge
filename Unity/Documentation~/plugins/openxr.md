@@ -1,6 +1,6 @@
 # OpenXR
 
-Order 200. Needs the OpenXR package (`com.unity.xr.openxr`) 1.16.0 or later, and XR Plug-in Management (`com.unity.xr.management`) 4.5.3 or later, which OpenXR brings; the plugin's assembly compiles only when both are installed.
+Order 200. Needs the OpenXR package (`com.unity.xr.openxr`) 1.16.0 or later, and XR Plug-in Management (`com.unity.xr.management`) 4.5.3 or later, which OpenXR brings; the plugin's assembly compiles only when both are installed. Newer editors can name newer minimums, which you should use there too; see [Minimum versions per editor](../installation.md#minimum-versions-per-editor).
 
 Unity keeps OpenXR settings and features per platform, so every Android profile shares the Android OpenXR settings. This plugin gives each Build Profile its own overrides of those settings and features. A build applies them and restores the previous state afterwards; **Apply** writes them to the editor for Play Mode.
 

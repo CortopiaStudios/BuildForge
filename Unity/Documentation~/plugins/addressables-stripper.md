@@ -1,6 +1,6 @@
 # Addressables Stripper
 
-Order 700. Needs Addressables (`com.unity.addressables`) 2.7.4 or later, with Addressables settings created in the project (**Window > Asset Management > Addressables > Groups**).
+Order 700. Needs Addressables (`com.unity.addressables`) 2.7.4 or later, with Addressables settings created in the project (**Window > Asset Management > Addressables > Groups**). Newer editors can name newer minimums, which you should use there too; see [Minimum versions per editor](../installation.md#minimum-versions-per-editor).
 
 Leaves Addressables groups and labelled entries out of a build, for example spoiler content in a public demo. It has no per-profile switch; a profile without exclusions is not affected.
 

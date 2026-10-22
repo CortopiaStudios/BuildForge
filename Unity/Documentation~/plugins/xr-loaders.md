@@ -1,6 +1,6 @@
 # XR Loaders
 
-Order 100. Needs XR Plug-in Management (`com.unity.xr.management`) 4.5.3 or later; the plugin's assembly compiles only when it is installed.
+Order 100. Needs XR Plug-in Management (`com.unity.xr.management`) 4.5.3 or later; the plugin's assembly compiles only when it is installed. Newer editors can name newer minimums, which you should use there too; see [Minimum versions per editor](../installation.md#minimum-versions-per-editor).
 
 XR Plug-in Management keeps one ordered list of XR providers (loaders) per platform, shared by every Build Profile of that platform. XR Loaders gives each Build Profile its own list.
 
