@@ -713,6 +713,10 @@ namespace BuildForge.Editor.Core
         /// <summary>
         /// Returns the CI command line string to build the given profile. In a
         /// project with variants, pass the variant: a command without one fails there.
+        /// The project and Build Profile paths are in double quotes. A path that holds a
+        /// character a shell still reads there, such as $, a backtick, %, ! or ", may not
+        /// reach Unity as written. The build window warns about such a path; this method
+        /// doesn't, so check the paths and quote such a path for your shell by hand.
         /// </summary>
         public static string GetCICommand(ForgeProfile forgeProfile, string variant = null)
         {
