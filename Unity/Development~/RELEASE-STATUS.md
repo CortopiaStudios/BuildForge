@@ -88,3 +88,11 @@ Per-session sandbox activation was evaluated and rejected: ephemeral machines
 make it a recurring manual dance. Downloading package versions an editor
 hasn't cached needs a signed-in Unity account on 6000.6, so the runner needs
 the account too, or a package cache.
+
+Diff view and profile setup (suggested 2026-10-22): the Platform Player
+Overrides View could show OpenXR's settings, and possibly those of every Build
+Forge plugin, next to Player Settings; README's OpenXR Features Diff View entry
+sketches the OpenXR part. It could also help move a setting that several
+profiles override with the same value up to Project Settings, so that profiles
+hold fewer overrides. And a wizard could create new profiles for known OpenXR
+targets.
