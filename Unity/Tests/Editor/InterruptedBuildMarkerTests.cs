@@ -190,6 +190,7 @@ namespace BuildForge.Tests.Editor
                 var fp = new SerializedObject(forge);
                 fp.FindProperty("buildProfile").objectReferenceValue = native;
                 fp.ApplyModifiedPropertiesWithoutUndo();
+                Assert.IsNull(ForgeEditorState.ReapplyBlocker(forge), "Nothing stops the profile's Apply yet.");
                 InterruptedBuildMarker.Begin("Quest", null);
                 InterruptedBuildMarker.Finish(true, false);
                 var ledger = EditorJsonUtility.ToJson(store);
@@ -198,6 +199,8 @@ namespace BuildForge.Tests.Editor
 
                 StringAssert.StartsWith($"'{forge.DisplayName}' was not applied: A Build Forge build of 'Quest'", message);
                 StringAssert.Contains("did not finish", message);
+                StringAssert.Contains("the record of the build that did not finish has to be cleared first", ForgeEditorState.ReapplyBlocker(forge),
+                    "Re-apply stops on it too, so the messages don't offer it.");
                 Assert.AreEqual(ledger, EditorJsonUtility.ToJson(store));
                 Assert.IsFalse(ForgeEditorState.HasAppliedGuid);
 

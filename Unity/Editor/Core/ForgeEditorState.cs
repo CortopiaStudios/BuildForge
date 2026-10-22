@@ -168,16 +168,33 @@ namespace BuildForge.Editor.Core
             if (applying.Count == 0 && suspended.Count == 0)
                 return null;
             var applied = AppliedProfile;
-            return InterruptedMessage(applied != null ? applied.DisplayName : null, applying, suspended);
+            return InterruptedMessage(applied != null ? applied.DisplayName : null, applying, suspended,
+                applied != null ? ReapplyBlocker(applied) : null);
         }
+
+        /// <summary>
+        /// Why a Re-apply of the applied profile with its variant would stop now, or null, checked
+        /// as the build window checks its Re-apply: the variant settings
+        /// (<see cref="BuildVariants.ProfileError"/>), a plugin that stops the profile's Apply
+        /// (<see cref="ForgePluginRegistry.BlockingError(ForgeProfile)"/>), such as one whose
+        /// settings Unity can no longer load, or the record of a build that did not finish.
+        /// Revert to Baseline stops on none of them.
+        /// </summary>
+        internal static string ReapplyBlocker(ForgeProfile applied)
+            => BuildVariants.ProfileError(applied, AppliedVariant)
+               ?? ForgePluginRegistry.BlockingError(applied)
+               ?? (InterruptedBuildMarker.Error() != null ? "the record of the build that did not finish has to be cleared first." : null);
 
         /// <summary>
         /// The message for <see cref="InterruptedError"/>: the setting groups whose
         /// Apply (<paramref name="applying"/>) or build (<paramref name="suspended"/>)
         /// did not finish, and the way out. <paramref name="appliedName"/> is null when
-        /// no Build Forge profile can apply the profile again. Pure so it can be tested.
+        /// no Build Forge profile can apply the profile again; Re-apply is offered only
+        /// without a <paramref name="reapplyBlocker"/>, and otherwise named with it.
+        /// Pure so it can be tested.
         /// </summary>
-        internal static string InterruptedMessage(string appliedName, IReadOnlyList<string> applying, IReadOnlyList<string> suspended)
+        internal static string InterruptedMessage(string appliedName, IReadOnlyList<string> applying, IReadOnlyList<string> suspended,
+            string reapplyBlocker = null)
         {
             var profile = appliedName != null ? $"'{appliedName}'" : "the applied profile";
             var what = new List<string>();
@@ -185,11 +202,12 @@ namespace BuildForge.Editor.Core
                 what.Add($"the Apply of {profile} did not finish for {string.Join(", ", applying)}");
             if (suspended.Count > 0)
                 what.Add($"a build did not put back {profile}'s settings for {string.Join(", ", suspended)}");
-            var fix = appliedName != null ? $"Revert to Baseline, or Re-apply {profile}," : "Revert to Baseline";
+            var fix = appliedName != null && reapplyBlocker == null ? $"Revert to Baseline, or Re-apply {profile}," : "Revert to Baseline";
             return $"Build Forge can't tell what these editor settings hold: {string.Join(", and ", what)}, because a plugin " +
                    $"failed or the editor quit. {fix} in the Build Forge window restores them to their state from before, " +
                    "which also undoes anything changed in them since. Until then builds stop, and so do Apply and Activate " +
-                   "of another profile; in batch mode, open the project in the editor first.";
+                   "of another profile; in batch mode, open the project in the editor first." +
+                   (appliedName != null && reapplyBlocker != null ? $" Re-apply {profile} can't restore them yet: {reapplyBlocker}" : "");
         }
 
         /// <summary>
@@ -903,11 +921,16 @@ namespace BuildForge.Editor.Core
                                        "apply it again once that is fixed."
                                      : "The editor settings the build put back were left at baseline."));
 
+            // The build keeps its record of not finishing for this failure, and builds and Re-apply
+            // stop on that, and Re-apply also on whatever stopped the re-apply, so Revert to Baseline
+            // is the way out now.
             if (result.Failures.Count > 0)
                 throw new AggregateException(
                     "Could not re-apply the editor profile after the build. The settings it did not re-apply may hold " +
-                    "what the build or a failed step left in them, so builds stop until Revert to Baseline or Re-apply " +
-                    "in the Build Forge window restores their state from before the Apply.", result.Failures);
+                    "what the build or a failed step left in them, so builds stop until they are restored and the record " +
+                    "of this build is cleared. Revert to Baseline in the Build Forge window restores their state from " +
+                    "before the Apply, and so does Re-apply once the record is cleared" +
+                    (notReady != null ? $" and this is fixed: {notReady}" : "."), result.Failures);
             if (result.Cleared)
                 return;
 

@@ -169,5 +169,17 @@ namespace BuildForge.Tests.Editor
             StringAssert.Contains("the Apply of the applied profile did not finish", gone);
             StringAssert.DoesNotContain("Re-apply", gone, "No Build Forge profile can apply it again.");
         }
+
+        // Re-apply goes through what stops an Apply: while something stops it, the message offers
+        // Revert to Baseline, and says what Re-apply waits for.
+        [Test]
+        public void InterruptedMessage_OffersReapplyOnlyWhenItWouldRun()
+        {
+            var text = ForgeEditorState.InterruptedMessage("Quest", new[] { "OpenXR (Android)" }, System.Array.Empty<string>(),
+                "the record of the build that did not finish has to be cleared first.");
+            StringAssert.Contains("failed or the editor quit. Revert to Baseline in the Build Forge window restores them", text);
+            StringAssert.DoesNotContain("or Re-apply", text);
+            StringAssert.EndsWith("Re-apply 'Quest' can't restore them yet: the record of the build that did not finish has to be cleared first.", text);
+        }
     }
 }

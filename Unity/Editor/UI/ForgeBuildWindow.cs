@@ -827,12 +827,16 @@ namespace BuildForge.Editor.UI
             var drift = ForgeEditorState.GetDrift();
             if (drift.Count > 0)
             {
+                // Re-apply is pointed to only while it would run; the interrupted message says what it waits for.
+                var reapplyBlocker = ForgeEditorState.ReapplyBlocker(appliedProfile);
                 // The action bar has Re-apply only for the active profile.
-                var where = appliedProfile.BuildProfile != BuildProfile.GetActiveBuildProfile()
-                    ? $" Activate '{appliedProfile.DisplayName}' again, then re-apply it."
-                    : selectedProfile == appliedProfile
-                        ? ""
-                        : $" Select '{appliedProfile.DisplayName}' to re-apply it.";
+                var where = reapplyBlocker != null
+                    ? ""
+                    : appliedProfile.BuildProfile != BuildProfile.GetActiveBuildProfile()
+                        ? $" Activate '{appliedProfile.DisplayName}' again, then re-apply it."
+                        : selectedProfile == appliedProfile
+                            ? ""
+                            : $" Select '{appliedProfile.DisplayName}' to re-apply it.";
                 // An Apply or build that did not finish has its own message; the rest is ordinary drift.
                 var interrupted = ForgeEditorState.InterruptedError();
                 var drifted = drift.Where(key => !IsUnfinishedDriftKey(key)).ToList();
@@ -842,7 +846,11 @@ namespace BuildForge.Editor.UI
                 if (drifted.Count > 0)
                     parts.Add($"Editor settings differ from '{appliedProfile.DisplayName}' as applied: " +
                               string.Join(", ", drifted.Select(DescribeDriftKey)) + ". " +
-                              "Re-apply restores the profile's state; Revert to Baseline undoes it.");
+                              (reapplyBlocker == null
+                                  ? "Re-apply restores the profile's state; Revert to Baseline undoes it."
+                                  : interrupted != null
+                                      ? "Revert to Baseline undoes it."
+                                      : $"Revert to Baseline undoes it. Re-apply can't restore it yet: {reapplyBlocker}"));
                 if (where.Length > 0)
                     parts.Add(where.Trim());
                 var text = string.Join(" ", parts);

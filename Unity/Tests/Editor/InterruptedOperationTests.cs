@@ -59,6 +59,37 @@ namespace BuildForge.Tests.Editor
             Assert.IsNull(ForgeEditorState.InterruptedError(), "A finished Apply is not interrupted.");
         }
 
+        // Re-apply stops on the variant settings as any Apply does, so the messages don't offer it
+        // while those are wrong either, such as after a variant was renamed but not its rule.
+        [Test]
+        public void ReapplyBlocker_IncludesTheVariantSettingsThatStopAnApply()
+        {
+            var native = VariantRulesTests.CreateNativeProfile();
+            var forge = ScriptableObject.CreateInstance<ForgeProfile>();
+            try
+            {
+                var fp = new SerializedObject(forge);
+                fp.FindProperty("buildProfile").objectReferenceValue = native;
+                fp.ApplyModifiedPropertiesWithoutUndo();
+                Assert.IsNull(ForgeEditorState.ReapplyBlocker(forge), "Nothing stops the profile's Apply yet.");
+
+                var settings = new SerializedObject(ForgeSettings.instance);
+                var rules = settings.FindProperty("variantRules");
+                rules.arraySize = 1;
+                rules.GetArrayElementAtIndex(0).FindPropertyRelative("variant").stringValue = "Renamed";
+                settings.ApplyModifiedPropertiesWithoutUndo();
+
+                var blocker = ForgeEditorState.ReapplyBlocker(forge);
+                Assert.IsNotNull(blocker);
+                Assert.AreEqual(BuildVariants.ConfigurationError(forge), blocker);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(forge);
+                UnityEngine.Object.DestroyImmediate(native);
+            }
+        }
+
         [Test]
         public void ABuild_AndApplyAndActivateOfAnotherProfile_StopBeforeTheyChangeAnything()
         {

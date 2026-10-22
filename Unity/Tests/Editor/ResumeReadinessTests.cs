@@ -159,6 +159,15 @@ namespace BuildForge.Tests.Editor
                 Assert.IsTrue(ForgeEditorState.HasAppliedGuid, "A's traces stay while an entry does. Observed: " + observed);
                 Assert.IsNotNull(outcome.Error, "The build records a post-build failure for the group it could not put back.");
                 StringAssert.Contains("stays recorded for Revert to Baseline", Flatten(outcome.Error));
+                // Re-apply of A stops on its unreadable settings, so neither message offers it as it is.
+                StringAssert.DoesNotContain("Revert to Baseline or Re-apply", outcome.Error.Message);
+                StringAssert.Contains("builds stop until they are restored and the record of this build is cleared", outcome.Error.Message);
+                StringAssert.Contains("Re-apply once the record is cleared and this is fixed: ", outcome.Error.Message);
+                StringAssert.Contains(MissingClassName, outcome.Error.Message);
+                var interrupted = ForgeEditorState.InterruptedError();
+                StringAssert.DoesNotContain($"or Re-apply '{ProfileAName}'", interrupted, "Observed: " + observed);
+                StringAssert.Contains($"Re-apply '{ProfileAName}' can't restore them yet: ", interrupted);
+                StringAssert.Contains(MissingClassName, interrupted);
                 AssertWarned(outcome, observed);
                 Assert.AreEqual(Base, editorSetting, "The editor holds the state from before A's Apply. Observed: " + observed);
                 AssertStoredSettingsKept(s);
