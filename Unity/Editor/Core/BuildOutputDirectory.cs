@@ -396,7 +396,9 @@ namespace BuildForge.Editor.Core
             }
             catch (IOException e)
             {
-                Reject(directory, $"Build Forge can't tell where a protected folder leads. {e.Message}");
+                // Every destination stops on it, so another directory doesn't help.
+                Reject(directory, $"Build Forge can't tell where a protected folder leads. {e.Message}",
+                    "Repair or remove that link, or turn off Remove Previous Build Output for this profile.");
                 throw;
             }
             CheckDestination(physical, physicalRoots, string.Equals(physical, directory, PathComparison) ? null : directory, roots);
@@ -1029,10 +1031,10 @@ namespace BuildForge.Editor.Core
             => string.Equals(path, parent, PathComparison) || path.StartsWith(
                 parent.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar, PathComparison);
 
-        static void Reject(string directory, string reason)
+        static void Reject(string directory, string reason,
+            string advice = "Choose a dedicated build directory or turn off Remove Previous Build Output for this profile.")
             => throw new InvalidOperationException(
-                $"Build Forge refuses to remove previous build output in '{directory}': {reason}. " +
-                "Choose a dedicated build directory or turn off Remove Previous Build Output for this profile.");
+                $"Build Forge refuses to remove previous build output in '{directory}': {reason}. {advice}");
 
         // ------------------------------------------------------------ liveness
 

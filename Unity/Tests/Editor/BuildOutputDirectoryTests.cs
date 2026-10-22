@@ -1348,8 +1348,10 @@ namespace BuildForge.Tests.Editor
             CreateLink(Path.Combine(project, "Library"), gone);
             Directory.Delete(gone);
 
-            StringAssert.Contains("can't tell where a protected folder leads",
-                Assert.Throws<InvalidOperationException>(() => BuildOutputDirectory.ValidateDestination(destination, roots)).Message);
+            var message = Assert.Throws<InvalidOperationException>(() => BuildOutputDirectory.ValidateDestination(destination, roots)).Message;
+            StringAssert.Contains("can't tell where a protected folder leads", message);
+            StringAssert.Contains("Repair or remove that link", message, "Every destination stops on it, so another one doesn't help.");
+            StringAssert.DoesNotContain("Choose a dedicated build directory", message);
         }
     }
 }

@@ -120,6 +120,8 @@ The build stops before it starts when the destination:
 - holds a file that cannot be deleted, usually because the player is still running;
 - holds a folder where the artifact file goes, typically an old Android export folder.
 
+These checks compare paths, after following links and subst drives on Windows, so a folder reached another way isn't recognized: the folder a linked `Assets` leads to, written as a network path such as `\\localhost\C$\...`, can still be the destination. Git metadata is recognized by its folder name, so the folder a `.git` link leads to is protected only when it is named `.git` too. A protected folder that is a link Windows can't follow, such as a `Library` junction whose target was deleted, stops every build that removes previous build output, whatever its destination, until you repair or remove the link.
+
 While the recorded destination is missing or offline, such as a disconnected share or an ejected drive, nothing is removed and the record is kept.
 
 Use a dedicated destination per profile and variant: a file that lands in a shared folder while a build runs counts as that build's output and is removed by the next one if nobody changed it. On CI, see [Command line and CI](ci.md#build-output-and-artifacts).
