@@ -259,7 +259,31 @@ namespace BuildForge.Editor.Core
                     }
                 }
 
-                var notRestored = RunPostBuild(appliedPlugins, context);
+                HashSet<string> notRestored;
+                try
+                {
+                    notRestored = RunPostBuild(appliedPlugins, context);
+                }
+                catch (Exception e)
+                {
+                    // Which hooks ran is unknown, so no editor plugin's settings are
+                    // re-applied on top of what they hold; the steps below still run.
+                    notRestored = new HashSet<string>();
+                    foreach (var plugin in appliedPlugins)
+                        if (plugin is IForgeEditorApplicable)
+                            notRestored.Add(EditorStateLedger.MakeKey(plugin.GetType().FullName, context.BuildTargetGroup));
+                    // What escapes is a plugin's exception, whose Message and StackTrace are
+                    // plugin code too and mustn't leave this block: one whose Message throws
+                    // is named by its type.
+                    string detail, trace;
+                    try { detail = e.Message; }
+                    catch (Exception) { detail = e.GetType().FullName; }
+                    try { trace = e.StackTrace; }
+                    catch (Exception) { trace = null; }
+                    var msg = $"Post-build hooks failed: {detail}";
+                    context.PostBuildFailures.Add(msg);
+                    Debug.LogError($"[Build Forge] {msg}\n{trace}");
+                }
 
                 // Undo in reverse order of apply: the plugins above ran with the
                 // variant applied, so one that snapshotted a setting in OnPreBuild
