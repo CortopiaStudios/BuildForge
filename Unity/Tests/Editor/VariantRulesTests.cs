@@ -225,6 +225,47 @@ namespace BuildForge.Tests.Editor
             CollectionAssert.AreEquivalent(new[] { "DEVELOPMENT", "EXTERNAL", "BUILD_VARIANT_INTERNAL" }, actual);
         }
 
+        // The variant's defines in any order: one added after them, which an Apply puts last, is no
+        // drift. A missing alias, another rule's alias, another variant's define or, where the editor
+        // keeps a repeated define, the variant's own twice still is.
+        [Test]
+        public void HasExpectedDefine_TakesTheDefinesInAnyOrder_ButNotAMissingStaleOrRepeatedOne()
+        {
+            var settings = new SerializedObject(ForgeSettings.instance);
+            var rules = settings.FindProperty("variantRules");
+            rules.arraySize = 2;
+            foreach (var (index, variant, alias) in new[] { (0, "Development", "DEVELOPMENT"), (1, "China", "REGION_CHINA") })
+            {
+                var rule = rules.GetArrayElementAtIndex(index);
+                rule.FindPropertyRelative("variant").stringValue = variant;
+                var defines = rule.FindPropertyRelative("scriptingDefines");
+                defines.arraySize = 1;
+                defines.GetArrayElementAtIndex(0).stringValue = alias;
+            }
+            settings.ApplyModifiedPropertiesWithoutUndo();
+            var profile = CreateNativeProfile();
+            try
+            {
+                var own = BuildVariants.DefineFor("Development");
+                bool Expected(params string[] defines)
+                {
+                    profile.scriptingDefines = defines;
+                    return BuildVariants.HasExpectedDefine(profile, "Development");
+                }
+                Assert.IsTrue(Expected("MY_SYMBOL", own, "DEVELOPMENT"), "As an Apply writes them.");
+                Assert.IsTrue(Expected("MY_SYMBOL", own, "DEVELOPMENT", "LATER_SYMBOL"), "A define added after the variant's.");
+                Assert.IsTrue(Expected("DEVELOPMENT", "MY_SYMBOL", own), "Another order.");
+                Assert.IsFalse(Expected("MY_SYMBOL", own), "The rule's alias is missing.");
+                Assert.IsFalse(Expected("MY_SYMBOL", own, "DEVELOPMENT", "REGION_CHINA"), "Another rule's alias.");
+                Assert.IsFalse(Expected("MY_SYMBOL", BuildVariants.DefineFor("China"), "DEVELOPMENT"), "Another variant's define.");
+                // 6000.3.23 and later editors drop a repeated define as it is set; 6000.3.0 keeps it.
+                var repeated = Expected("MY_SYMBOL", own, "DEVELOPMENT", own);
+                if (profile.scriptingDefines.Length == 4)
+                    Assert.IsFalse(repeated, "The variant's own define twice.");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(profile); }
+        }
+
         [Test]
         public void ProfileRestrictions_AllowTheListedVariants_AndRejectOthers()
         {

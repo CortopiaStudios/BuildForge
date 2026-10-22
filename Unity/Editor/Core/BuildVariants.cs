@@ -418,14 +418,19 @@ namespace BuildForge.Editor.Core
             return result.ToArray();
         }
 
-        /// <summary>True when the profile carries exactly the define a build with <paramref name="variant"/> expects.</summary>
+        /// <summary>
+        /// True when the profile carries exactly the defines a build with <paramref name="variant"/>
+        /// expects, in any order: an Apply puts the variant's own last, and a define added after
+        /// them changes nothing for a build.
+        /// </summary>
         public static bool HasExpectedDefine(BuildProfile buildProfile, string variant)
         {
             if (buildProfile == null)
                 return false;
             var defines = buildProfile.scriptingDefines ?? Array.Empty<string>();
             var expected = WithRuleDefines(defines, variant, ForgeSettings.instance.VariantRules);
-            return defines.SequenceEqual(expected);
+            return defines.OrderBy(d => d, StringComparer.Ordinal)
+                .SequenceEqual(expected.OrderBy(d => d, StringComparer.Ordinal));
         }
 
         /// <summary>
