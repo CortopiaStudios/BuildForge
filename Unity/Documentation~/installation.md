@@ -10,14 +10,20 @@ Build Forge is a UPM package. Its source is the `Unity` folder of the repository
 
 ### Tested with
 
-Build Forge's tests have run with these versions, on Windows:
+Build Forge's tests have run on these editors with these package versions, on Windows:
 
-| Editor or package | Versions |
-|---|---|
-| Unity | 6000.3.0f1, 6000.3.23f1, 6000.6.0f1, 6000.6.4f1, 6000.6.6f1, 6000.7.0b4 (pre-release, checked) |
-| OpenXR (`com.unity.xr.openxr`) | 1.16.0, 1.16.1, 1.18.0, 1.18.0-pre.2 (with 6000.7.0b4) |
-| Addressables (`com.unity.addressables`) | 2.7.4, 2.9.1, 2.11.2, 4.1.0 |
-| XR Plug-in Management (`com.unity.xr.management`) | 4.5.3, 4.6.1, 4.7.0, 6.0.0 (with 6000.7.0b4) |
+| Unity | OpenXR | XR Plug-in Management | Addressables |
+|---|---|---|---|
+| 6000.3.0f1 | 1.16.0, 1.16.1, 1.18.0 | 4.5.3, 4.7.0 | 2.7.4, 2.9.1, 4.1.0 |
+| 6000.3.23f1 | – | – | – |
+| 6000.6.0f1 | 1.16.1 | 4.7.0 | 2.9.1 |
+| 6000.6.4f1 | 1.18.0 | 4.7.0 | 4.1.0 |
+| 6000.6.6f1 | 1.18.0 | 4.7.0 | 2.11.2, 4.1.0 |
+| 6000.7.0b4 (pre-release, checked) | 1.18.0-pre.2, 1.18.0 | 6.0.0 | 4.1.0 |
+
+On 6000.3.23f1 the tests ran without these packages. Windows players were also built with Build Forge in a project that had OpenXR 1.18.0 and Addressables 2.9.1 installed, but no settings for their plugins, on 6000.3.23f1 (with XR Plug-in Management 4.6.1), 6000.6.6f1 and 6000.7.0b4.
+
+OpenXR 1.16.1 and Addressables 2.9.1 on 6000.6.0f1, and Addressables 2.9.1 in the players on 6000.6.6f1 and 6000.7.0b4, are older than those editors' [minimum versions](#minimum-versions-per-editor). They worked there, but use at least the minimums: older versions may not compile.
 
 macOS and Linux have not been verified. Newer versions are expected to work. Some of what Build Forge needs has no public API, so it reads Unity's internals; where it cannot read one it needs, as after a Unity version renamed it, a build stops and says what Build Forge cannot read, rather than building something else.
 
@@ -72,7 +78,22 @@ Four bundled plugins live in assemblies that compile only when their Unity packa
 | OpenXR | `com.unity.xr.openxr` 1.16.0 or later, with `com.unity.xr.management` 4.5.3 or later, which OpenXR brings |
 | Addressables Stripper, Addressables Rebuild | `com.unity.addressables` 2.7.4 or later, with Addressables settings created in the project |
 
-No scripting defines are needed. While a package is missing, **Project Settings > Build Forge** lists its plugins under **Available Plugins** with an **Install** button, which adds the package through the Package Manager. With an older version of the package, the plugins are left out, and Project Settings lists them under neither heading, only a switch someone set for one among the switches of plugins that aren't installed: update the package in the Package Manager. Until then, builds and Apply stop for a profile that stores settings for them, and for every profile while Project Settings > Build Forge does; see [Troubleshooting](troubleshooting.md#build-forge-cannot-load-the-plugin-settings-). On a machine where such a profile is applied, Build Forge can't restore what the plugin applied either, so Revert to Baseline before updating Build Forge, or update the package first.
+These are the plugins' own minimums. Newer editors can name newer ones, which you should use there too: see [Minimum versions per editor](#minimum-versions-per-editor).
+
+No scripting defines are needed. While a package is missing, **Project Settings > Build Forge** lists its plugins under **Available Plugins** with an **Install** button, which adds the package through the Package Manager. With a version older than the plugin's minimum, the plugins are left out, and Project Settings lists them under neither heading, only a switch someone set for one among the switches of plugins that aren't installed: update the package in the Package Manager. Until then, builds and Apply stop for a profile that stores settings for them, and for every profile while Project Settings > Build Forge does; see [Troubleshooting](troubleshooting.md#build-forge-cannot-load-the-plugin-settings-). On a machine where such a profile is applied, Build Forge can't restore what the plugin applied either, so Revert to Baseline before updating Build Forge, or update the package first.
+
+### Minimum versions per editor
+
+On each Unity version, use at least the plugin's minimum and at least the version of each package that the editor's Package Manager names as its minimum. Unity doesn't enforce the editor's minimums: it installs an older version that the project's manifest names. But an older version may not compile on a newer editor: Addressables 2.7.4 and OpenXR 1.16.0 fail with compiler errors in their own code on 6000.6.6f1. The minimums of the tested editors:
+
+| Unity | OpenXR | XR Plug-in Management | Addressables |
+|---|---|---|---|
+| 6000.3.0f1 | 1.16.0 | 4.5.3 | 2.7.4 |
+| 6000.3.23f1 | 1.16.1 | 4.6.1 | 2.9.1 |
+| 6000.6.0f1, 6000.6.4f1, 6000.6.6f1 | 1.18.0 | 4.7.0 | 2.11.2 |
+| 6000.7.0b4 (pre-release) | 1.18.0-pre.2 | 6.0.0 | 4.1.0 |
+
+On 6000.3.0f1 they are the plugins' own minimums. Patch releases can name different minimums, as 6000.3.0f1 and 6000.3.23f1 do. For another editor, read each package's `minimumVersion` in `Editor/Data/Resources/PackageManager/Editor/manifest.json` in the editor's installation folder (on Windows). On 6000.7.0b4, Unity always uses its built-in XR Plug-in Management 6.0.0, whatever version the project's manifest names.
 
 ## What changes when the package is installed
 
