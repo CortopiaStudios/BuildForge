@@ -1196,5 +1196,160 @@ namespace BuildForge.Tests.Editor
             Assert.AreEqual(destination, BuildOutputDirectory.PhysicalPath(destination));
             Assert.AreEqual(destination, BuildOutputDirectory.ValidateDestination(destination, roots));
         }
+
+        // The other way round: a protected folder that is itself a junction protects where it
+        // leads, also from a destination written there without a link, and the message names
+        // the junction and where it leads. The control is a junction into Assets as the
+        // destination. Through PrepareIn, so a refusal that comes too late deletes the file.
+        [TestCase("Assets")]
+        [TestCase("Package")]
+        [TestCase("Editor")]
+        [TestCase("OriginalControl")]
+        public void Prepare_WhereAJunctionedProtectedFolderLeads_ThrowsBeforeDeletingAnything(string kind)
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            Write(Path.Combine(project, "ProjectSettings", "ProjectVersion.txt"));
+            var target = kind == "OriginalControl" ? Path.Combine(project, "Assets") : Path.Combine(root, "PhysicalProtectedFolder");
+            var alias = kind == "Assets" ? Path.Combine(project, "Assets") : Path.Combine(root, "Alias");
+            Directory.CreateDirectory(target);
+            CreateLink(alias, target);
+            var output = kind == "OriginalControl" ? alias : target;
+            var artifact = Write(Path.Combine(output, "Dummy.exe"));
+            var protectedRoots = new BuildOutputDirectory.Roots
+            {
+                Project = project,
+                Repository = roots.Repository,
+                Package = kind == "Package" ? alias : null,
+                Editor = kind == "Editor" ? alias : roots.Editor,
+            };
+
+            Exception rejection = null;
+            try
+            {
+                BuildOutputDirectory.PrepareIn(BuildOutputLedger.instance, Guid(), null, output, artifact, false, protectedRoots, (g, v) => true);
+            }
+            catch (Exception e) { rejection = e; }
+
+            Assert.IsTrue(File.Exists(Path.Combine(target, "Dummy.exe")), "the destination is refused before anything is deleted");
+            Assert.IsInstanceOf<InvalidOperationException>(rejection);
+            var message = rejection.Message;
+            var leads = $"('{alias}' leads through a link to '{BuildOutputDirectory.PhysicalPath(target)}')";
+            switch (kind)
+            {
+                case "Assets": StringAssert.Contains($"it is inside the project's Assets directory {leads}", message); break;
+                case "Package": StringAssert.Contains($"it overlaps the Build Forge package source {leads}", message); break;
+                case "Editor": StringAssert.Contains($"it overlaps the Unity editor installation {leads}", message); break;
+                default: StringAssert.Contains("it is inside the project's Assets directory, where it leads through a link", message); break;
+            }
+        }
+
+        // A folder that holds where a junctioned project folder leads, such as a Library kept on
+        // a fast drive, is refused: what Unity writes there during a build would be recorded as
+        // build output and removed by the next build. A folder beside it is fine.
+        [TestCase("Library")]
+        [TestCase("Assets")]
+        public void AFolderHoldingWhereAJunctionedProjectFolderLeads_IsRejected(string folder)
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var fast = Path.Combine(root, "Fast");
+            var real = Path.Combine(fast, "Proj" + folder);
+            Directory.CreateDirectory(real);
+            CreateLink(Path.Combine(project, folder), real);
+            var artifact = Write(Path.Combine(fast, "Game.exe"));
+
+            var message = Assert.Throws<InvalidOperationException>(() => Prepare(Guid(), fast, artifact)).Message;
+
+            StringAssert.Contains($"it contains the project's {folder} directory " +
+                                  $"('{Path.Combine(project, folder)}' leads through a link to '{BuildOutputDirectory.PhysicalPath(real)}')", message);
+            Assert.IsTrue(File.Exists(artifact), "the destination is refused before anything is deleted");
+            Assert.DoesNotThrow(() => BuildOutputDirectory.ValidateDestination(Path.Combine(fast, "Builds"), roots));
+        }
+
+        // The same for a project or repository root reached through a link: a folder that holds
+        // where it really is contains it.
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AFolderHoldingWhereALinkedProjectOrRepositoryRootLeads_IsRejected(bool repository)
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var real = Path.Combine(root, "Elsewhere", "Real");
+            Directory.CreateDirectory(real);
+            var link = Path.Combine(root, "Linked");
+            CreateLink(link, real);
+            var linked = repository
+                ? new BuildOutputDirectory.Roots { Project = project, Repository = link, Editor = roots.Editor }
+                : new BuildOutputDirectory.Roots { Project = link, Editor = roots.Editor };
+
+            var message = Assert.Throws<InvalidOperationException>(() =>
+                BuildOutputDirectory.ValidateDestination(Path.Combine(root, "Elsewhere"), linked)).Message;
+
+            StringAssert.Contains("it contains the project or repository root " +
+                                  $"('{link}' leads through a link to '{BuildOutputDirectory.PhysicalPath(real)}')", message);
+        }
+
+        // A junction made for the output, such as Builds leading to another drive, stays a valid
+        // destination whether it is written as the junction or as where it leads, and the
+        // previous build is still removed there.
+        [TestCase(false)]
+        [TestCase(true)]
+        public void DedicatedOutputJunction_IsAcceptedWrittenEitherWay_AndCleaned(bool asWhereItLeads)
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var real = Path.Combine(root, "External", "Builds");
+            Directory.CreateDirectory(real);
+            var link = Path.Combine(project, "Builds");
+            CreateLink(link, real);
+            var output = asWhereItLeads ? real : link;
+            var guid = Guid();
+            var player = Path.Combine(output, "Game.exe");
+
+            var first = Prepare(guid, output, player);
+            var built = new[] { Write(player), Write(Path.Combine(output, "Game_Data", "level0")) };
+            BuildOutputDirectory.RecordIn(BuildOutputLedger.instance, first, new[] { player });
+            Prepare(guid, output, player);
+
+            Assert.IsTrue(built.All(f => !File.Exists(f)));
+            Assert.IsFalse(Directory.Exists(Path.Combine(real, "Game_Data")));
+        }
+
+        // A folder whose name only starts like where a junctioned Assets leads is beside it, not
+        // inside it, also when written through a link above it.
+        [TestCase(false)]
+        [TestCase(true)]
+        public void AFolderBesideWhereAJunctionedProjectFolderLeads_IsAccepted_AndCleaned(bool throughALinkAbove)
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var external = Path.Combine(root, "External");
+            var real = Path.Combine(external, "AssetsReal");
+            Directory.CreateDirectory(real);
+            CreateLink(Path.Combine(project, "Assets"), real);
+            var above = external;
+            if (throughALinkAbove)
+            {
+                above = Path.Combine(root, "Checkout", "Linked");
+                CreateLink(above, external);
+            }
+            var beside = Path.Combine(above, "AssetsRealOut");
+
+            Assert.AreEqual(beside, BuildOutputDirectory.ValidateDestination(beside, roots));
+            var artifact = Write(Path.Combine(beside, "Game.apk"));
+            Prepare(Guid(), beside, artifact);
+            Assert.IsFalse(File.Exists(artifact));
+        }
+
+        // A protected folder whose link leads nowhere can't be resolved, so no destination is
+        // accepted, rather than one checked against the folder as written.
+        [Test]
+        public void AProtectedFolderWhoseLinkLeadsNowhere_IsRejected()
+        {
+            Assume.That(Windows, "macOS and Linux check the path as written.");
+            var gone = Path.Combine(root, "Gone");
+            Directory.CreateDirectory(gone);
+            CreateLink(Path.Combine(project, "Library"), gone);
+            Directory.Delete(gone);
+
+            StringAssert.Contains("can't tell where a protected folder leads",
+                Assert.Throws<InvalidOperationException>(() => BuildOutputDirectory.ValidateDestination(destination, roots)).Message);
+        }
     }
 }

@@ -52,6 +52,7 @@ namespace BuildForge.Editor.Core
             public string Editor;
 
             bool normalized;
+            Dictionary<string, string> projectFolders;
 
             /// <summary>
             /// A copy with every root in normalized form (full, long names), made
@@ -72,26 +73,31 @@ namespace BuildForge.Editor.Core
             }
 
             /// <summary>
-            /// A copy with each root where it really leads on Windows (see <see cref="PhysicalPath"/>),
-            /// or as written where that can't be told.
+            /// A copy with each root, and each of the project's own folders on its own, where it
+            /// really leads on Windows (see <see cref="PhysicalPath"/>): any of them can be a link,
+            /// such as a Library junction to another drive. Throws <see cref="IOException"/> when
+            /// Windows can't tell for one of them.
             /// </summary>
-            public Roots Physical() => new Roots
+            public Roots Physical()
             {
-                Project = Leads(Project),
-                Repository = Leads(Repository),
-                Package = Leads(Package),
-                Editor = Leads(Editor),
-                normalized = true,
-            };
+                var written = Normalized();
+                return new Roots
+                {
+                    Project = Leads(written.Project),
+                    Repository = Leads(written.Repository),
+                    Package = Leads(written.Package),
+                    Editor = Leads(written.Editor),
+                    projectFolders = ProjectFolders.ToDictionary(name => name, name => Leads(Path.Combine(written.Project, name))),
+                    normalized = true,
+                };
+            }
+
+            /// <summary>The project's folder of that name; in a copy made by <see cref="Physical"/>, where it really leads.</summary>
+            public string ProjectFolder(string name)
+                => projectFolders != null ? projectFolders[name] : Path.Combine(Project, name);
 
             static string Leads(string root)
-            {
-                if (string.IsNullOrWhiteSpace(root))
-                    return null;
-                var written = Normalize(root);
-                try { return PhysicalPath(written) ?? written; }
-                catch (Exception) { return written; }
-            }
+                => string.IsNullOrWhiteSpace(root) ? null : PhysicalPath(root) ?? root;
 
             public static Roots Current() => new Roots
             {
@@ -358,14 +364,19 @@ namespace BuildForge.Editor.Core
         /// project or Git checkout itself, and a filesystem root. Short (8.3)
         /// names are expanded first. Links at or above the destination are fine:
         /// the build writes through them, so deleting through them hits the same files.
-        /// On Windows the same checks also apply where the destination really leads,
-        /// so a junction pointing into Assets is refused; macOS and Linux check the
-        /// path as written. Returns the path as written, normalized.
+        /// On Windows the same checks also compare where the destination really leads
+        /// with where each protected root and each of the project's own folders really
+        /// leads, resolved on its own, whether or not the destination is written through
+        /// a link: a junction pointing into Assets is refused, and so are the folder a
+        /// junctioned Assets or Library leads to and a folder holding it. A path Windows
+        /// can't resolve is refused. macOS and Linux check the path as written. Returns
+        /// the path as written, normalized.
         /// </summary>
         internal static string ValidateDestination(string directory, Roots roots)
         {
             directory = Normalize(directory);
-            CheckDestination(directory, roots, null);
+            roots = roots.Normalized();
+            CheckDestination(directory, roots, null, null);
             string physical;
             try
             {
@@ -376,38 +387,62 @@ namespace BuildForge.Editor.Core
                 Reject(directory, $"Build Forge can't tell where it leads. {e.Message}");
                 throw;
             }
-            if (physical != null && !string.Equals(physical, directory, PathComparison))
-                CheckDestination(physical, roots.Physical(), directory);
+            if (physical == null)
+                return directory;
+            Roots physicalRoots;
+            try
+            {
+                physicalRoots = roots.Physical();
+            }
+            catch (IOException e)
+            {
+                Reject(directory, $"Build Forge can't tell where a protected folder leads. {e.Message}");
+                throw;
+            }
+            CheckDestination(physical, physicalRoots, string.Equals(physical, directory, PathComparison) ? null : directory, roots);
             return directory;
         }
 
         /// <summary>
         /// <see cref="ValidateDestination"/>'s checks of <paramref name="directory"/>. With
         /// <paramref name="written"/>, the directory is where that path leads through a link,
-        /// and the message names both.
+        /// and the message names both. With <paramref name="writtenRoots"/>, <paramref name="roots"/>
+        /// are where those lead, and the message names a protected folder that leads elsewhere
+        /// with both too.
         /// </summary>
-        static void CheckDestination(string directory, Roots roots, string written)
+        static void CheckDestination(string directory, Roots roots, string written, Roots writtenRoots)
         {
             void Refuse(string reason)
                 => Reject(written ?? directory, written == null ? reason : $"{reason}, where it leads through a link ('{directory}')");
 
+            string Linked(string folder, string writtenFolder)
+                => writtenFolder == null || string.Equals(folder, writtenFolder, PathComparison)
+                    ? "" : $" ('{writtenFolder}' leads through a link to '{folder}')";
+
             var projectRoot = Normalize(roots.Project);
-            if (IsWithin(projectRoot, directory) ||
-                (!string.IsNullOrEmpty(roots.Repository) && IsWithin(Normalize(roots.Repository), directory)))
-                Refuse("it contains the project or repository root");
+            if (IsWithin(projectRoot, directory))
+                Refuse("it contains the project or repository root" + Linked(projectRoot, writtenRoots?.Project));
+            if (!string.IsNullOrEmpty(roots.Repository) && IsWithin(Normalize(roots.Repository), directory))
+                Refuse("it contains the project or repository root" + Linked(Normalize(roots.Repository), writtenRoots?.Repository));
 
             if (!string.IsNullOrEmpty(roots.Package) &&
                 (IsWithin(directory, Normalize(roots.Package)) || IsWithin(Normalize(roots.Package), directory)))
-                Refuse("it overlaps the Build Forge package source");
+                Refuse("it overlaps the Build Forge package source" + Linked(Normalize(roots.Package), writtenRoots?.Package));
 
             if (!string.IsNullOrEmpty(roots.Editor) &&
                 (IsWithin(directory, Normalize(roots.Editor)) || IsWithin(Normalize(roots.Editor), directory)))
-                Refuse("it overlaps the Unity editor installation");
+                Refuse("it overlaps the Unity editor installation" + Linked(Normalize(roots.Editor), writtenRoots?.Editor));
 
             foreach (var name in ProjectFolders)
             {
-                if (IsWithin(directory, Path.Combine(projectRoot, name)))
-                    Refuse($"it is inside the project's {name} directory");
+                var folder = roots.ProjectFolder(name);
+                var linked = Linked(folder, writtenRoots?.ProjectFolder(name));
+                if (IsWithin(directory, folder))
+                    Refuse($"it is inside the project's {name} directory{linked}");
+                // A folder that leads out of the project, such as Library on another drive,
+                // can lie inside a destination that doesn't hold the project.
+                if (IsWithin(folder, directory))
+                    Refuse($"it contains the project's {name} directory{linked}");
             }
 
             if (Directory.Exists(directory) && IsUnityProjectOrCheckout(directory))

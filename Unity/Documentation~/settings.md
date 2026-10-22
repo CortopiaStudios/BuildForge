@@ -115,7 +115,7 @@ Without a record, as on a first build or in a fresh CI workspace, only the artif
 
 The build stops before it starts when the destination:
 
-- contains the project or repository root, lies inside a Unity project's own folders or Git metadata, is itself a Unity project or checkout, overlaps the package source or the Unity editor installation, or is a drive root, on Windows also where it leads through a junction or symbolic link (macOS and Linux check the path as written);
+- contains the project or repository root, lies inside a Unity project's own folders or Git metadata, is itself a Unity project or checkout, overlaps the package source or the Unity editor installation, or is a drive root, on Windows also where it or one of those folders leads through a junction or symbolic link: with `Library` a junction to `R:\Cache\ProjLibrary`, neither that folder nor `R:\Cache` can be the destination, while a junction made for the output, such as `Builds` leading to `D:\Builds`, is fine (macOS and Linux check the path as written);
 - cannot be read;
 - holds a file that cannot be deleted, usually because the player is still running;
 - holds a folder where the artifact file goes, typically an old Android export folder.
