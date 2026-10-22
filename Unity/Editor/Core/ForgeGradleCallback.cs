@@ -29,7 +29,7 @@ namespace BuildForge.Editor.Core
             {
                 if (!(plugin is IForgeGradleProcessor processor))
                     continue;
-                Debug.Log($"[Build Forge] Running Gradle step: {plugin.DisplayName}");
+                Debug.Log($"[Build Forge] Running Gradle step: {ForgeEditorState.NameOrType(plugin)}");
                 try
                 {
                     processor.OnPostGenerateGradleAndroidProject(context, path);
@@ -40,7 +40,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    throw new BuildFailedException($"[Build Forge] The Gradle step of {plugin.DisplayName} failed: {e.Message}");
+                    throw new BuildFailedException($"[Build Forge] The Gradle step of {ForgeEditorState.NameOrType(plugin)} failed: {e.Message}");
                 }
             }
         }

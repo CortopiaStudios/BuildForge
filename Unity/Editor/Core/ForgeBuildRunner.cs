@@ -176,7 +176,7 @@ namespace BuildForge.Editor.Core
 
                 foreach (var plugin in plugins)
                 {
-                    Debug.Log($"[Build Forge] Running pre-build: {plugin.DisplayName}");
+                    Debug.Log($"[Build Forge] Running pre-build: {ForgeEditorState.NameOrType(plugin)}");
                     appliedPlugins.Add(plugin);
                     plugin.OnPreBuild(context);
                 }
@@ -941,7 +941,7 @@ namespace BuildForge.Editor.Core
                 if (!plugin.IsApplicable(buildProfile))
                 {
                     if (enabled == true)
-                        Debug.LogWarning($"[Build Forge] {plugin.DisplayName} is on for '{forgeProfile.DisplayName}' but " +
+                        Debug.LogWarning($"[Build Forge] {ForgeEditorState.NameOrType(plugin)} is on for '{forgeProfile.DisplayName}' but " +
                                          "doesn't apply to its Build Profile, so it doesn't run: " +
                                          (plugin.NotApplicableReason(buildProfile) ?? "it doesn't support this platform."));
                     continue;
@@ -994,11 +994,11 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    lines.Add($"[Build Forge/{plugin.DisplayName}] Checking the profile's settings failed: {e.Message}");
+                    lines.Add($"[Build Forge/{ForgeEditorState.NameOrType(plugin)}] Checking the profile's settings failed: {e.Message}");
                     continue;
                 }
                 if (warnings != null)
-                    lines.AddRange(warnings.Select(warning => $"[Build Forge/{plugin.DisplayName}] {warning}"));
+                    lines.AddRange(warnings.Select(warning => $"[Build Forge/{ForgeEditorState.NameOrType(plugin)}] {warning}"));
             }
             return lines;
         }
@@ -1036,14 +1036,14 @@ namespace BuildForge.Editor.Core
             {
                 try
                 {
-                    Debug.Log($"[Build Forge] Running post-build: {plugins[i].DisplayName}");
+                    Debug.Log($"[Build Forge] Running post-build: {ForgeEditorState.NameOrType(plugins[i])}");
                     plugins[i].OnPostBuild(context);
                 }
                 catch (Exception e)
                 {
                     if (plugins[i] is IForgeEditorApplicable)
                         notRestored.Add(EditorStateLedger.MakeKey(plugins[i].GetType().FullName, context.BuildTargetGroup));
-                    var msg = $"Post-build restore failed in {plugins[i].DisplayName}: {e.Message}";
+                    var msg = $"Post-build restore failed in {ForgeEditorState.NameOrType(plugins[i])}: {e.Message}";
                     context.PostBuildFailures.Add(msg);
                     Debug.LogError($"[Build Forge] {msg}\n{e.StackTrace}");
                 }

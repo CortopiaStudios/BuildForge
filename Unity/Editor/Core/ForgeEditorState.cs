@@ -105,8 +105,9 @@ namespace BuildForge.Editor.Core
             return $"{(plugin != null ? NameOrType(plugin) : typeName)} ({group})";
         }
 
-        // A label in messages that also offer the way out, such as an unfinished Apply's:
-        // a plugin whose name throws gets its type name instead of taking the message along.
+        // A label in messages that also offer the way out, such as an unfinished Apply's, and in
+        // a build's log lines and failures: a plugin whose name throws gets its type name instead
+        // of taking the message, or the rest of the build and its cleanup, along.
         internal static string NameOrType(IForgePlugin plugin)
         {
             try

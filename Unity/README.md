@@ -558,6 +558,7 @@ Tests/
     PluginConfigStorageTests.cs            # Config storage contract + YAML round trips
     PluginDisplayTests.cs                  # A plugin that throws for a window gets a fallback and one logged error
     PluginLoadFailureTests.cs              # Builds and Apply stop for plugins or plugin settings that can't load, or plugins that can't say whether they run
+    PluginNameFailureTests.cs              # A build names a plugin whose name throws by its type, runs its cleanup and keeps its errors
     PluginRegistryTests.cs                 # Plugin discovery tests
     PublicApiSurfaceTests.cs               # Locks the public types and their members
     Addressables/GroupExclusionTests.cs    # Addressables Stripper group exclusion and names it can't find
