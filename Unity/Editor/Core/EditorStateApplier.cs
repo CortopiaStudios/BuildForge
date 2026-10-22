@@ -287,9 +287,12 @@ namespace BuildForge.Editor.Core
         /// When an entry can't be restored, the build doesn't run, so the entries
         /// already restored get <paramref name="appliedProfile"/>'s settings again
         /// before this throws: a stopped build leaves the editor as it was.
+        /// <paramref name="notReady"/> says why the profile can't be applied again (see
+        /// <see cref="ForgePluginRegistry.BlockingError(ForgeProfile)"/>); those entries then
+        /// stay restored, as without the profile.
         /// </summary>
         public static void SuspendForBuild(List<EditorStateEntry> entries, Func<string, IForgeEditorApplicable> resolve,
-            ForgeProfile appliedProfile, string variant)
+            ForgeProfile appliedProfile, string variant, string notReady = null)
         {
             var failures = new List<Exception>();
             var restoredEntries = new List<EditorStateEntry>();
@@ -314,7 +317,7 @@ namespace BuildForge.Editor.Core
             var reapplied = "";
             if (restoredEntries.Count > 0)
             {
-                if (appliedProfile != null)
+                if (appliedProfile != null && notReady == null)
                 {
                     // Restored newest first; applied again in the Apply's order, so a
                     // Play Mode mirror copies its platform as the plugins leave it.
@@ -325,6 +328,9 @@ namespace BuildForge.Editor.Core
                         ? " The settings it had restored were applied again."
                         : " Some of the settings it had restored could not be applied again.";
                 }
+                else if (appliedProfile != null)
+                    reapplied = " The settings restored so far stay as they were before the Apply, because " +
+                                $"'{appliedProfile.DisplayName}' can't be applied: {notReady}";
                 else
                     reapplied = " The applied profile is gone, so the settings it had restored stay as they were before the Apply.";
             }
@@ -346,10 +352,10 @@ namespace BuildForge.Editor.Core
         /// since it copies its platform as the plugins leave it.
         /// <paramref name="notRestored"/> holds the ledger keys (plugin type and
         /// built group) whose settings could not be put back after the build.
-        /// A null profile (asset deleted during the build) can't be applied again:
-        /// the entries the build left in an unknown state stay, reported, for Revert
-        /// to Baseline, and the rest are cleared, their baselines already restored
-        /// by <see cref="SuspendForBuild"/>.
+        /// A null profile (asset deleted during the build, or one whose Apply would
+        /// stop) can't be applied again: the entries the build left in an unknown
+        /// state stay, reported, for Revert to Baseline, and the rest are cleared,
+        /// their baselines already restored by <see cref="SuspendForBuild"/>.
         /// </summary>
         public static ResumeResult ResumeAfterBuild(
             List<EditorStateEntry> entries, ForgeProfile appliedProfile, Func<string, IForgeEditorApplicable> resolve,

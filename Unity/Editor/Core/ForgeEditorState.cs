@@ -808,6 +808,9 @@ namespace BuildForge.Editor.Core
                 return null;
 
             var applied = AppliedProfile;
+            // A suspension that stops applies the profile again to what it restored; what
+            // stops its Apply stops that too (see ResumeAfterBuild).
+            var notReady = applied != null ? ForgePluginRegistry.BlockingError(applied) : null;
 
             Debug.Log($"[Build Forge] Suspending applied profile '{(applied != null ? applied.ProfileName : "(missing)")}' " +
                 $"for the build of '{(building != null ? building.DisplayName : "?")}'.");
@@ -817,7 +820,7 @@ namespace BuildForge.Editor.Core
             var before = settings.EditorState.Select(e => (e.baselineJson, e.expectedJson, e.phase)).ToList();
             try
             {
-                EditorStateApplier.SuspendForBuild(settings.EditorState, ResolvePlugin, applied, AppliedVariant);
+                EditorStateApplier.SuspendForBuild(settings.EditorState, ResolvePlugin, applied, AppliedVariant, notReady);
             }
             finally
             {
@@ -835,6 +838,10 @@ namespace BuildForge.Editor.Core
         /// put back after the build: their entries are not re-applied and stay unfinished,
         /// holding what that restore left, for Revert to Baseline or Re-apply (see
         /// <see cref="EditorStateApplier.ResumeAfterBuild"/>).
+        /// A profile whose Apply would stop (<see cref="ForgePluginRegistry.BlockingError(ForgeProfile)"/>),
+        /// such as one whose plugin settings Unity can no longer load, is not applied again:
+        /// its settings would read as the plugins' defaults and be recorded as applied. It is
+        /// treated like a deleted profile, with a warning that names it and the reason.
         /// </summary>
         public static void ResumeAfterBuild(BuildSuspension suspension, ICollection<string> notRestored = null)
         {
@@ -843,22 +850,31 @@ namespace BuildForge.Editor.Core
 
             var settings = ForgeEditorStateStore.instance;
             var applied = AppliedProfile; // fresh lookup through the ledger's GUID
-            var result = EditorStateApplier.ResumeAfterBuild(settings.EditorState, applied, ResolvePlugin, AppliedVariant, notRestored);
+            var notReady = applied != null ? ForgePluginRegistry.BlockingError(applied) : null;
+            var result = EditorStateApplier.ResumeAfterBuild(settings.EditorState, notReady == null ? applied : null,
+                ResolvePlugin, AppliedVariant, notRestored);
             if (result.Cleared)
             {
-                // The profile really is gone: leave the baseline in place and drop
-                // every trace of the applied state, the variant define included.
+                // The profile is gone, or can't be applied again: leave the baseline in place
+                // and drop every trace of the applied state, the variant define included.
                 BuildVariants.StripFromProfile(AppliedBuildProfile);
                 settings.AppliedBuildProfileGuid = "";
                 settings.AppliedVariant = "";
                 settings.SaveState();
-                Debug.LogWarning("[Build Forge] The applied profile no longer exists; editor settings were left at baseline.");
+                if (notReady == null)
+                    Debug.LogWarning("[Build Forge] The applied profile no longer exists; editor settings were left at baseline.");
             }
             else if (result.Changed)
             {
                 settings.SaveState();
             }
             InvalidateDriftCache();
+            if (notReady != null)
+                Debug.LogWarning($"[Build Forge] '{applied.DisplayName}' was not applied again after the build: {notReady} " +
+                                 (result.Cleared
+                                     ? "Its editor settings were left at baseline, and nothing is applied now; " +
+                                       "apply it again once that is fixed."
+                                     : "The editor settings the build put back were left at baseline."));
 
             if (result.Failures.Count > 0)
                 throw new AggregateException(

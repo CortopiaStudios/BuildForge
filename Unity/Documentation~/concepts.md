@@ -124,6 +124,8 @@ The build window and the main toolbar warn about that, the toolbar with the warn
 
 A build always starts from the baseline: it undoes the applied profile's settings first, keeping settings changed after the Apply, applies the built profile's own settings, and applies the previously applied profile again afterwards. That holds also when the built profile is the applied one, since its configuration may have changed since it was applied. An applied profile therefore never leaks into a build.
 
+The build doesn't apply the previously applied profile again when its Apply would stop (see [Apply and Re-apply](#apply-and-re-apply)), for example because a pull renamed the class of its plugin settings and Unity can no longer load them: its plugins would read their defaults and apply nothing, while the profile showed as applied. Its settings then stay at their state from before the Apply, nothing is applied afterwards, and the console warns with the profile and the reason. Apply it again once that is fixed.
+
 ## Commit settings while nothing is applied
 
 Applying writes version-controlled assets: OpenXR and XR Management settings under `Assets/XR/`, and the variant defines on the Build Profile. Other machines and CI have no record of that Apply, so for them the applied values are simply the project's settings, and every profile that leaves such a setting at **No Override** builds with it. Revert to Baseline before committing those files, unless the applied state is meant to become the project's.

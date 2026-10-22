@@ -545,6 +545,7 @@ Tests/
     NormalizeValueTests.cs                 # Diff value normalization
     PlayerSettingsDiffComputerTests.cs     # Diff computation tests
     PlayerSettingsMatrixTests.cs           # Matrix rows, columns and stale hints
+    ResumeReadinessTests.cs                # A build doesn't apply again an applied profile whose plugin settings can't load
     RunBuildRestoreFailureTests.cs         # RunBuild throws when a step after a built player failed
     StopTrackingTests.cs                   # Stop Tracking a setting group whose plugin is gone
     VariantBuildConfigurationTests.cs      # A variant rule's Build Configuration: labels, checks, restore
