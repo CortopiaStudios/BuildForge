@@ -39,6 +39,10 @@ A project that builds for several headsets has every installed XR vendor SDK in 
 
 `keeps com.meta.xr.sdk.core and com.meta.xr.sdk.platform out; removes com.oculus.*, com.meta.*, Horizon OS manifest entries`. The build manifest gets an `XRVendorFilter` section with `excludedPackages` and `removedManifestPrefixes`.
 
+## Known limitation
+
+Unity has no public way to hand back an include-in-build delegate that was replaced, so Build Forge's stays on the excluded libraries after the build. Outside a build that excludes them, it doesn't exclude them, and the libraries' import settings decide, as in a fresh editor. A package that sets its own delegate on such a library in each build's pre-build step sets it again and isn't affected. A package that sets it only once per editor session loses it until the next script reload: until then, builds follow the library's import settings instead of the package's rule. This holds for later builds in the same editor wherever they start: the build window, the main toolbar, a script, or Unity's own Build buttons with **Intercept Builds** off. Build Forge's command-line builds run one build per editor and aren't affected. If your project needs a rule of its own for such a library in every build, set the delegate in a pre-build step of your own (`IPreprocessBuildWithReport`), with a `callbackOrder` below 1000000, so that a build that excludes the library still keeps it out.
+
 ## Tips
 
 - Exclude a vendor on every profile that isn't for that vendor's headsets: Meta on the Pico and Steam Frame profiles, Pico on the Quest and Steam Frame profiles, Steam on the Quest and Pico profiles.
