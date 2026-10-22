@@ -267,23 +267,7 @@ namespace BuildForge.Editor.Core
                 }
                 catch (Exception e)
                 {
-                    // Which hooks ran is unknown, so no editor plugin's settings are
-                    // re-applied on top of what they hold; the steps below still run.
-                    notRestored = new HashSet<string>();
-                    foreach (var plugin in appliedPlugins)
-                        if (plugin is IForgeEditorApplicable)
-                            notRestored.Add(EditorStateLedger.MakeKey(plugin.GetType().FullName, context.BuildTargetGroup));
-                    // What escapes is a plugin's exception, whose Message and StackTrace are
-                    // plugin code too and mustn't leave this block: one whose Message throws
-                    // is named by its type.
-                    string detail, trace;
-                    try { detail = e.Message; }
-                    catch (Exception) { detail = e.GetType().FullName; }
-                    try { trace = e.StackTrace; }
-                    catch (Exception) { trace = null; }
-                    var msg = $"Post-build hooks failed: {detail}";
-                    context.PostBuildFailures.Add(msg);
-                    Debug.LogError($"[Build Forge] {msg}\n{trace}");
+                    notRestored = RecordPostBuildEscape(appliedPlugins, context, e);
                 }
 
                 // Undo in reverse order of apply: the plugins above ran with the
@@ -1077,6 +1061,25 @@ namespace BuildForge.Editor.Core
                     Debug.LogError($"[Build Forge] {msg}\n{ForgeEditorState.StackTraceOrNull(e)}");
                 }
             }
+            return notRestored;
+        }
+
+        /// <summary>
+        /// What a build records when something escapes <see cref="RunPostBuild"/>, which guards
+        /// every plugin call itself, so only a fault of Build Forge's own gets here. Which hooks
+        /// ran is then unknown, so every editor-applicable plugin that ran counts as not restored
+        /// (returned as ledger keys) and isn't re-applied on top of what it holds, and the failure
+        /// is recorded, which keeps the record of an unfinished build; the steps after still run.
+        /// </summary>
+        internal static HashSet<string> RecordPostBuildEscape(IReadOnlyList<IForgePlugin> plugins, ForgeBuildContext context, Exception e)
+        {
+            var notRestored = new HashSet<string>();
+            foreach (var plugin in plugins)
+                if (plugin is IForgeEditorApplicable)
+                    notRestored.Add(EditorStateLedger.MakeKey(plugin.GetType().FullName, context.BuildTargetGroup));
+            var msg = $"Post-build hooks failed: {ForgeEditorState.MessageOrType(e)}";
+            context.PostBuildFailures.Add(msg);
+            Debug.LogError($"[Build Forge] {msg}\n{ForgeEditorState.StackTraceOrNull(e)}");
             return notRestored;
         }
 

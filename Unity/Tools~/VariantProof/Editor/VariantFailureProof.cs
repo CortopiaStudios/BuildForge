@@ -17,6 +17,14 @@ public static class VariantFailureProof
     public static bool CleanedUp;
     public static bool InjectPlayerFailure;
     public static bool InjectRestoreFailure;
+    public static bool UnreadablePreBuild;
+    public static UnreadableProofException UnreadableThrown;
+    public static bool NamelessHooks;
+    public static bool NamelessPreBuildRan;
+    public static bool NamelessPostBuildRan;
+    public static bool UnreadableCleanup;
+    public static bool UnreadableEditorCleanup;
+    public static string EditorCleanupSetting = "base";
     public static UnityEngine.Object TemporaryPreloadedAsset;
     static readonly Type EditorState = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.ForgeEditorState");
     static readonly Type Persistence = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.PlayerSettingsPersistence");
@@ -32,7 +40,160 @@ public static class VariantFailureProof
         finally { EditorState.GetMethod("RevertCore", Flags).Invoke(null, null); }
         CheckPlayerFailure(forge);
         CheckRestoreFailure(forge);
-        File.WriteAllText("failure-proof.json", "{\"developmentFailureRestored\":true,\"releaseFailureRestoredAppliedDevelopment\":true,\"cleanupRan\":true,\"playerFailurePreloadedAssetsRestored\":true,\"builtPlayerRestoreFailureThrown\":true}");
+        CheckUnreadablePreBuildFailure(forge);
+        CheckNamelessPlugin(forge);
+        CheckUnreadableRestoreFailure(forge);
+        CheckUnreadableRestoreFailureWhileApplied(forge);
+        File.WriteAllText("failure-proof.json", "{\"developmentFailureRestored\":true,\"releaseFailureRestoredAppliedDevelopment\":true,\"cleanupRan\":true,\"playerFailurePreloadedAssetsRestored\":true,\"builtPlayerRestoreFailureThrown\":true," +
+            "\"unreadablePreBuildExceptionKept\":true,\"namelessPluginBuilt\":true,\"unreadableRestoreFailureContained\":true,\"unreadableRestoreFailureKeptAppliedEntry\":true}");
+    }
+
+    static void CheckUnfinishedBuildStopsTheNext(ForgeProfile forge, string after, string stopMessage = "did not finish")
+    {
+        if (ForgeBuildRunner.IsForgeBuildInProgress)
+            throw new Exception($"The build still counts as running after {after}");
+        if (!File.Exists("UserSettings/ForgeBuildInProgress.json"))
+            throw new Exception($"{after} did not keep the unfinished-build record");
+        try
+        {
+            ForgeBuildRunner.RunBuild(forge, "Development");
+            throw new Exception($"A build ran although the one with {after} did not finish");
+        }
+        catch (InvalidOperationException e) when (e.Message.Contains(stopMessage)) { }
+    }
+
+    // A pre-build hook's exception whose message can't be read: the build's own catch reads it
+    // guarded, so the caller gets that same exception, and the project is put back.
+    static void CheckUnreadablePreBuildFailure(ForgeProfile forge)
+    {
+        AssetDatabase.SaveAssets();
+        var path = AssetDatabase.GetAssetPath(forge.BuildProfile);
+        var before = File.ReadAllBytes(path);
+        var product = PlayerSettings.productName;
+        var project = File.ReadAllBytes("ProjectSettings/ProjectSettings.asset");
+        UnreadablePreBuild = true;
+        try
+        {
+            UnreadableProofException thrown = null;
+            try { ForgeBuildRunner.RunBuild(forge, "Development"); }
+            catch (UnreadableProofException e) { thrown = e; }
+            if (thrown == null || !ReferenceEquals(thrown, UnreadableThrown))
+                throw new Exception("The pre-build hook's exception did not reach the caller");
+            if (!before.SequenceEqual(File.ReadAllBytes(path)) || product != PlayerSettings.productName
+                || !project.SequenceEqual(File.ReadAllBytes("ProjectSettings/ProjectSettings.asset")))
+                throw new Exception("The pre-build failure did not put the project back");
+            if (File.Exists("UserSettings/ForgeBuildInProgress.json"))
+                throw new Exception("A build that put everything back kept the unfinished-build record");
+        }
+        finally { UnreadablePreBuild = false; }
+    }
+
+    // A plugin whose name can't be read builds like any other: both hooks run, and the build's
+    // log lines name it by its type.
+    static void CheckNamelessPlugin(ForgeProfile forge)
+    {
+        var logs = new System.Collections.Generic.List<string>();
+        Application.LogCallback collect = (message, stack, type) => logs.Add(message);
+        NamelessHooks = true;
+        NamelessPreBuildRan = NamelessPostBuildRan = false;
+        Application.logMessageReceived += collect;
+        try
+        {
+            var report = ForgeBuildRunner.RunBuild(forge, "Development");
+            if (report == null || report.summary.result != BuildResult.Succeeded)
+                throw new Exception("The build with a plugin whose name throws did not succeed");
+            if (!NamelessPreBuildRan || !NamelessPostBuildRan)
+                throw new Exception("The hooks of a plugin whose name throws did not run");
+            var type = typeof(InjectNamelessHooks).FullName;
+            if (!logs.Contains($"[Build Forge] Running pre-build: {type}") || !logs.Contains($"[Build Forge] Running post-build: {type}"))
+                throw new Exception("The build's log lines do not name a plugin whose name throws by its type");
+            if (File.Exists("UserSettings/ForgeBuildInProgress.json"))
+                throw new Exception("A finished build kept the unfinished-build record");
+        }
+        finally
+        {
+            Application.logMessageReceived -= collect;
+            NamelessHooks = false;
+        }
+    }
+
+    // A built player whose cleanup plugin, named by a name that throws, throws an exception whose
+    // message throws too: the failure is named by their types, the other restores still run, and
+    // the public RunBuild throws once the project is back.
+    static void CheckUnreadableRestoreFailure(ForgeProfile forge)
+    {
+        AssetDatabase.SaveAssets();
+        var path = AssetDatabase.GetAssetPath(forge.BuildProfile);
+        var before = File.ReadAllBytes(path);
+        var product = PlayerSettings.productName;
+        var project = File.ReadAllBytes("ProjectSettings/ProjectSettings.asset");
+        UnreadableCleanup = true;
+        try
+        {
+            try
+            {
+                ForgeBuildRunner.RunBuild(forge, "Development");
+                throw new Exception("Expected unreadable restore failure was not reported");
+            }
+            catch (ForgeBuildRestoreException e)
+            {
+                if (e.Report == null || e.Report.summary.result != BuildResult.Succeeded)
+                    throw new Exception("The unreadable restore failure does not carry the built player's report");
+                var expected = $"Post-build restore failed in {typeof(InjectUnreadableCleanup).FullName}: {typeof(UnreadableProofException).FullName}";
+                if (e.Failures.Count != 1 || e.Failures[0] != expected)
+                    throw new Exception($"The unreadable restore failure is not named by its types: {string.Join(" | ", e.Failures)}");
+            }
+            if (!before.SequenceEqual(File.ReadAllBytes(path)) || product != PlayerSettings.productName
+                || !project.SequenceEqual(File.ReadAllBytes("ProjectSettings/ProjectSettings.asset")))
+                throw new Exception("The other steps did not put the project back after the unreadable restore failure");
+            CheckUnfinishedBuildStopsTheNext(forge, "the unreadable restore failure");
+        }
+        finally
+        {
+            UnreadableCleanup = false;
+            Marker.GetMethod("Clear", Flags).Invoke(null, null);
+        }
+    }
+
+    // A restore failure whose message can't be read, from an editor-applicable plugin while a
+    // profile is applied: its settings aren't applied again on top of what the failed restore
+    // left, and its entry stays unfinished for Revert to Baseline, which stops the next build
+    // before the record of the unfinished build does.
+    static void CheckUnreadableRestoreFailureWhileApplied(ForgeProfile forge)
+    {
+        UnreadableEditorCleanup = true;
+        EditorCleanupSetting = "base";
+        try
+        {
+            EditorState.GetMethod("Apply", Flags).Invoke(null, new object[] { forge, "Development" });
+            if (EditorCleanupSetting != "applied")
+                throw new Exception("The editor-applicable proof plugin was not applied");
+            try
+            {
+                ForgeBuildRunner.RunBuild(forge, "Development");
+                throw new Exception("Expected unreadable restore failure was not reported");
+            }
+            catch (ForgeBuildRestoreException e)
+            {
+                var expected = $"Post-build restore failed in Unreadable editor cleanup proof: {typeof(UnreadableProofException).FullName}";
+                if (!e.Failures.Contains(expected) || !e.Failures.Any(f => f.StartsWith("Re-applying the editor profile after the build failed")))
+                    throw new Exception($"The unreadable restore failure while applied is not reported as expected: {string.Join(" | ", e.Failures)}");
+            }
+            if (EditorCleanupSetting != "base")
+                throw new Exception("The settings were applied again on top of what the failed restore left");
+            var interrupted = (string)EditorState.GetMethod("InterruptedError", Flags).Invoke(null, null);
+            if (interrupted == null)
+                throw new Exception("The entry of the plugin whose restore failed did not stay unfinished");
+            CheckUnfinishedBuildStopsTheNext(forge, "the unreadable restore failure while applied", interrupted);
+        }
+        finally
+        {
+            UnreadableEditorCleanup = false;
+            Marker.GetMethod("Clear", Flags).Invoke(null, null);
+            EditorState.GetMethod("RevertCore", Flags).Invoke(null, null);
+        }
+        if (EditorState.GetMethod("InterruptedError", Flags).Invoke(null, null) != null || EditorCleanupSetting != "base")
+            throw new Exception("Revert to Baseline did not clear the unfinished entry");
     }
 
     // A player that was built while a step after the build failed: the public RunBuild throws,
@@ -181,4 +342,64 @@ public sealed class InjectRestoreFailure : IForgePlugin
     public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.InjectRestoreFailure;
     public void OnPreBuild(ForgeBuildContext context) { }
     public void OnPostBuild(ForgeBuildContext context) => throw new InvalidOperationException("Injected restore failure");
+}
+
+// An exception whose message and stack trace can't be read, as one that formats a field the
+// failure left null.
+public sealed class UnreadableProofException : Exception
+{
+    public override string Message => throw new InvalidOperationException("message unavailable");
+    public override string StackTrace => throw new InvalidOperationException("stack trace unavailable");
+}
+
+[ForgePlugin]
+public sealed class InjectUnreadablePreBuild : IForgePlugin
+{
+    public string DisplayName => "Unreadable pre-build proof";
+    public int Order => 770;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
+    public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.UnreadablePreBuild;
+    public void OnPreBuild(ForgeBuildContext context)
+    {
+        VariantFailureProof.UnreadableThrown = new UnreadableProofException();
+        throw VariantFailureProof.UnreadableThrown;
+    }
+    public void OnPostBuild(ForgeBuildContext context) { }
+}
+
+[ForgePlugin]
+public sealed class InjectNamelessHooks : IForgePlugin
+{
+    public string DisplayName => VariantFailureProof.NamelessHooks ? throw new InvalidOperationException("name unavailable") : "Nameless proof";
+    public int Order => 780;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
+    public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.NamelessHooks;
+    public void OnPreBuild(ForgeBuildContext context) => VariantFailureProof.NamelessPreBuildRan = true;
+    public void OnPostBuild(ForgeBuildContext context) => VariantFailureProof.NamelessPostBuildRan = true;
+}
+
+[ForgePlugin]
+public sealed class InjectUnreadableCleanup : IForgePlugin
+{
+    public string DisplayName => VariantFailureProof.UnreadableCleanup ? throw new InvalidOperationException("name unavailable") : "Unreadable cleanup proof";
+    // The lowest: its pre-build hook runs first, so its post-build hook runs last.
+    public int Order => 1;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
+    public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.UnreadableCleanup;
+    public void OnPreBuild(ForgeBuildContext context) { }
+    public void OnPostBuild(ForgeBuildContext context) => throw new UnreadableProofException();
+}
+
+[ForgePlugin]
+public sealed class InjectUnreadableEditorCleanup : IForgePlugin, IForgeEditorApplicable
+{
+    public string DisplayName => "Unreadable editor cleanup proof";
+    public int Order => 790;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
+    public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.UnreadableEditorCleanup;
+    public void OnPreBuild(ForgeBuildContext context) { }
+    public void OnPostBuild(ForgeBuildContext context) => throw new UnreadableProofException();
+    public string CaptureEditorState(BuildTargetGroup group) => VariantFailureProof.EditorCleanupSetting;
+    public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant) => VariantFailureProof.EditorCleanupSetting = "applied";
+    public void RestoreEditorState(BuildTargetGroup group, string json) => VariantFailureProof.EditorCleanupSetting = json;
 }

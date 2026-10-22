@@ -90,6 +90,21 @@ namespace BuildForge.Tests.Editor
             CollectionAssert.AreEqual(new[] { $"Post-build restore failed in Editor cleanup: {UnreadableType}" }, context.PostBuildFailures);
         }
 
+        // What the guard around the whole post-build loop records. Only a fault of Build Forge's own
+        // gets there now that the loop reads every plugin exception guarded, so it is tested directly.
+        [Test]
+        public void RecordPostBuildEscape_NamesTheFailureByType_AndCountsEveryEditorPluginThatRanAsNotRestored()
+        {
+            var context = new ForgeBuildContext(null, null, BuildTarget.StandaloneWindows64, "unused", true);
+            LogAssert.Expect(LogType.Error, new Regex($"Post-build hooks failed: {Regex.Escape(UnreadableType)}"));
+
+            var notRestored = ForgeBuildRunner.RecordPostBuildEscape(
+                new IForgePlugin[] { new Cleanup(), new EditorCleanup() }, context, new Unreadable());
+
+            CollectionAssert.AreEquivalent(new[] { EditorCleanupKey }, notRestored);
+            CollectionAssert.AreEqual(new[] { $"Post-build hooks failed: {UnreadableType}" }, context.PostBuildFailures);
+        }
+
         sealed class UnreadableWarnings : IForgePlugin
         {
             public string DisplayName => "Warnings";
