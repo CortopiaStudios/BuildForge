@@ -435,14 +435,6 @@ namespace BuildForge.Editor.OpenXR
             => property != null && property.isArray && property.propertyType == SerializedPropertyType.Generic;
 
         /// <summary>
-        /// Why the profile can't be written for <paramref name="group"/>, or null: a Disable
-        /// override, or Only Listed Features, turns off a feature that a group ticked for
-        /// that platform (<paramref name="tickedGroups"/>) requires, which OpenXR doesn't
-        /// allow. Builds and Apply check this before they write anything, so the answer
-        /// doesn't depend on OpenXR's own refusal, which looks at whichever platform the
-        /// XR Plug-in Management page showed last and refuses nothing in batch mode.
-        /// </summary>
-        /// <summary>
         /// The check for a build or an Apply, which reads the ticked groups only when the profile
         /// turns a feature off: no other profile can conflict with them, so no other profile
         /// stops when OpenXR's groups can't be read.
@@ -456,6 +448,14 @@ namespace BuildForge.Editor.OpenXR
                 : null;
         }
 
+        /// <summary>
+        /// Why the profile can't be written for <paramref name="group"/>, or null: a Disable
+        /// override, or Only Listed Features, turns off a feature that a group ticked for
+        /// that platform (<paramref name="tickedGroups"/>) requires, which OpenXR doesn't
+        /// allow. Builds and Apply check this before they write anything, so the answer
+        /// doesn't depend on OpenXR's own refusal, which looks at whichever platform the
+        /// XR Plug-in Management page showed last and refuses nothing in batch mode.
+        /// </summary>
         internal static string RequiredFeatureConflictError(OpenXRProfileConfig config, IEnumerable<OpenXRFeature> features,
             IReadOnlyList<OpenXRFeatureSetManager.FeatureSet> tickedGroups, BuildTargetGroup group, bool includeInteractionProfiles)
         {
