@@ -13,8 +13,6 @@ repository root (working guidelines).
   under an unknown variant, the Stop Tracking dialog after a failed Revert
   to Baseline, the XR Vendor Filter's grouped package list and the Android
   Manifest inspector;
-- Activate of the applied profile while its Apply or a build did not finish:
-  the tests cover the message it logs, not Activate itself;
 - anything on macOS or Linux.
 
 ## Release sequence (owner: Patrik, at the very end, in this order)
