@@ -156,9 +156,10 @@ public static class VariantFailureProof
     }
 
     // A restore failure whose message can't be read, from an editor-applicable plugin while a
-    // profile is applied: its settings aren't applied again on top of what the failed restore
-    // left, and its entry stays unfinished for Revert to Baseline, which stops the next build
-    // before the record of the unfinished build does.
+    // profile is applied: its setting keeps the build's value that the failed restore left, rather
+    // than getting the profile's again on top of it, and its entry stays unfinished, which stops
+    // the next build before the record of the unfinished build does, until Revert to Baseline
+    // puts the setting back.
     static void CheckUnreadableRestoreFailureWhileApplied(ForgeProfile forge)
     {
         UnreadableEditorCleanup = true;
@@ -179,8 +180,10 @@ public static class VariantFailureProof
                 if (!e.Failures.Contains(expected) || !e.Failures.Any(f => f.StartsWith("Re-applying the editor profile after the build failed")))
                     throw new Exception($"The unreadable restore failure while applied is not reported as expected: {string.Join(" | ", e.Failures)}");
             }
-            if (EditorCleanupSetting != "base")
-                throw new Exception("The settings were applied again on top of what the failed restore left");
+            if (EditorCleanupSetting != "build")
+                throw new Exception(EditorCleanupSetting == "applied"
+                    ? "The settings were applied again on top of what the failed restore left"
+                    : $"The setting no longer holds what the failed restore left: '{EditorCleanupSetting}'");
             var interrupted = (string)EditorState.GetMethod("InterruptedError", Flags).Invoke(null, null);
             if (interrupted == null)
                 throw new Exception("The entry of the plugin whose restore failed did not stay unfinished");
@@ -192,8 +195,10 @@ public static class VariantFailureProof
             Marker.GetMethod("Clear", Flags).Invoke(null, null);
             EditorState.GetMethod("RevertCore", Flags).Invoke(null, null);
         }
-        if (EditorState.GetMethod("InterruptedError", Flags).Invoke(null, null) != null || EditorCleanupSetting != "base")
+        if (EditorState.GetMethod("InterruptedError", Flags).Invoke(null, null) != null)
             throw new Exception("Revert to Baseline did not clear the unfinished entry");
+        if (EditorCleanupSetting != "base")
+            throw new Exception($"Revert to Baseline did not put back the setting the failed restore left: '{EditorCleanupSetting}'");
     }
 
     // A player that was built while a step after the build failed: the public RunBuild throws,
@@ -397,7 +402,8 @@ public sealed class InjectUnreadableEditorCleanup : IForgePlugin, IForgeEditorAp
     public int Order => 790;
     public bool IsApplicable(BuildProfile buildProfile) => true;
     public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.UnreadableEditorCleanup;
-    public void OnPreBuild(ForgeBuildContext context) { }
+    // A build-time value, which the post-build hook then fails to put back.
+    public void OnPreBuild(ForgeBuildContext context) => VariantFailureProof.EditorCleanupSetting = "build";
     public void OnPostBuild(ForgeBuildContext context) => throw new UnreadableProofException();
     public string CaptureEditorState(BuildTargetGroup group) => VariantFailureProof.EditorCleanupSetting;
     public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant) => VariantFailureProof.EditorCleanupSetting = "applied";
