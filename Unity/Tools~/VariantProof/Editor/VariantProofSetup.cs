@@ -21,6 +21,14 @@ public static class VariantProofSetup
             native = (BuildProfile)method.Invoke(null, new object[] { BuildTarget.StandaloneWindows64, StandaloneBuildSubtarget.Player });
             AssetDatabase.CreateAsset(native, path);
         }
+        // A second profile, without Build Forge settings, for Unity to switch to on its own.
+        if (AssetDatabase.LoadAssetAtPath<BuildProfile>("Assets/Other.asset") == null)
+        {
+            var other = (BuildProfile)method.Invoke(null, new object[] { BuildTarget.StandaloneWindows64, StandaloneBuildSubtarget.Player });
+            other.scenes = new[] { new EditorBuildSettingsScene("Assets/Proof.unity", true) };
+            other.overrideGlobalScenes = true;
+            AssetDatabase.CreateAsset(other, "Assets/Other.asset");
+        }
         native.name = "Proof";
         native.scenes = new[] { new EditorBuildSettingsScene("Assets/Proof.unity", true) };
         native.overrideGlobalScenes = true;

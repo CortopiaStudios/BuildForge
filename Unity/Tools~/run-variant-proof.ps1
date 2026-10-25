@@ -60,4 +60,16 @@ foreach ($variant in @('Development', 'Default')) {
 }
 Invoke-ProofEditor '-activeBuildProfile Assets/Proof.asset -executeMethod VariantFailureProof.Run' 'failure-proof'
 Get-Content "$proofPath/failure-proof.json"
-Write-Host "Variant player and failure proof passed. Logs and results: $proofPath"
+# Activate of the applied profile while its Apply did not finish, after Unity switched to another
+# profile on its own, in runs of their own as in CI.
+Invoke-ProofEditor '-activeBuildProfile Assets/Proof.asset -proofUnfinishedApply -executeMethod VariantFailureProof.LeaveApplyUnfinished' 'unfinished-apply'
+Invoke-ProofEditor '-activeBuildProfile Assets/Other.asset -executeMethod VariantFailureProof.CheckSwitchedAway' 'switched-away'
+Invoke-ProofEditor '-executeMethod BuildForge.CommandLine.Activate -forgeBuildProfile Assets/Proof.asset' 'activate-unfinished'
+$activateLog = Get-Content "$proofPath/activate-unfinished.log" -Raw
+if (-not ($activateLog.Contains("which is still applied") -and $activateLog.Contains('nothing was reverted, but its Apply or a build did not finish'))) {
+    throw 'Activate of the applied profile did not say that nothing was reverted'
+}
+if (-not $activateLog.Contains("the Apply of 'Proof' did not finish for")) { throw 'Activate of the applied profile did not name its unfinished Apply' }
+Invoke-ProofEditor '-executeMethod VariantFailureProof.CheckAfterActivate' 'after-activate'
+Get-Content "$proofPath/activate-proof.json"
+Write-Host "Variant player, failure and Activate proof passed. Logs and results: $proofPath"

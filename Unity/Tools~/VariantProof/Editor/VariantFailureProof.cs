@@ -25,6 +25,17 @@ public static class VariantFailureProof
     public static bool UnreadableCleanup;
     public static bool UnreadableEditorCleanup;
     public static string EditorCleanupSetting = "base";
+    public static bool UnfinishedApply;
+    public static bool UnfinishedApplyRestoreFails;
+    // In a file, so that it outlasts the editor between the runs of the Activate check.
+    const string UnfinishedApplyFile = "proof-unfinished-apply.txt";
+    public static string UnfinishedApplySetting
+    {
+        get => File.Exists(UnfinishedApplyFile) ? File.ReadAllText(UnfinishedApplyFile) : "base";
+        set => File.WriteAllText(UnfinishedApplyFile, value);
+    }
+    // The run that leaves an Apply unfinished for the next runs passes this.
+    public static bool UnfinishedApplyArg => Environment.GetCommandLineArgs().Contains("-proofUnfinishedApply");
     public static UnityEngine.Object TemporaryPreloadedAsset;
     static readonly Type EditorState = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.ForgeEditorState");
     static readonly Type Persistence = typeof(ForgeBuildRunner).Assembly.GetType("BuildForge.Editor.Core.PlayerSettingsPersistence");
@@ -34,6 +45,10 @@ public static class VariantFailureProof
     public static void Run()
     {
         var forge = AssetDatabase.LoadAssetAtPath<BuildProfile>("Assets/Proof.asset").GetComponent<ForgeProfile>();
+        // First, because its Apply refuses while scripts compile: a revert that removes a variant
+        // define from the active profile, as the checks below do, requests a compilation that a
+        // single run like this one never gets to.
+        CheckActivateWhileApplyUnfinished(forge);
         CheckFailure(forge, "Development");
         EditorState.GetMethod("Apply", Flags).Invoke(null, new object[] { forge, "Development" });
         try { CheckFailure(forge, "Default"); }
@@ -45,7 +60,132 @@ public static class VariantFailureProof
         CheckUnreadableRestoreFailure(forge);
         CheckUnreadableRestoreFailureWhileApplied(forge);
         File.WriteAllText("failure-proof.json", "{\"developmentFailureRestored\":true,\"releaseFailureRestoredAppliedDevelopment\":true,\"cleanupRan\":true,\"playerFailurePreloadedAssetsRestored\":true,\"builtPlayerRestoreFailureThrown\":true," +
-            "\"unreadablePreBuildExceptionKept\":true,\"namelessPluginBuilt\":true,\"unreadableRestoreFailureContained\":true,\"unreadableRestoreFailureKeptAppliedEntry\":true}");
+            "\"unreadablePreBuildExceptionKept\":true,\"namelessPluginBuilt\":true,\"unreadableRestoreFailureContained\":true,\"unreadableRestoreFailureKeptAppliedEntry\":true," +
+            "\"activateKeptUnfinishedBuild\":true,\"activateKeptUnfinishedApply\":true}");
+    }
+
+    static ForgeProfile ProofProfile() => AssetDatabase.LoadAssetAtPath<BuildProfile>("Assets/Proof.asset").GetComponent<ForgeProfile>();
+    static string InterruptedError() => (string)EditorState.GetMethod("InterruptedError", Flags).Invoke(null, null);
+    static bool IsApplied(ForgeProfile forge) => (bool)EditorState.GetMethod("IsApplied", Flags).Invoke(null, new object[] { forge });
+
+    // Activate of the applied profile while its Apply or a build did not finish: nothing is
+    // reverted, so the unfinished settings and their record stay as they are, and the log says so
+    // and names them.
+    static void CheckActivateKeepsUnfinished(ForgeProfile forge, string interrupted, Func<bool> settingKept)
+    {
+        var ledger = File.ReadAllBytes("UserSettings/ForgeEditorState.asset");
+        var defines = forge.BuildProfile.scriptingDefines;
+        var logs = new System.Collections.Generic.List<string>();
+        Application.LogCallback collect = (message, stack, type) => logs.Add(message);
+        Application.logMessageReceived += collect;
+        try { EditorState.GetMethod("Activate", Flags).Invoke(null, new object[] { forge }); }
+        catch (TargetInvocationException e) { throw new Exception($"Activate of the applied profile stopped: {e.InnerException?.Message}"); }
+        finally { Application.logMessageReceived -= collect; }
+        if (!settingKept())
+            throw new Exception("Activate changed the settings whose Apply or build did not finish");
+        if (!ledger.SequenceEqual(File.ReadAllBytes("UserSettings/ForgeEditorState.asset")) || InterruptedError() != interrupted)
+            throw new Exception("Activate changed the record of the unfinished settings");
+        if (!defines.SequenceEqual(forge.BuildProfile.scriptingDefines))
+            throw new Exception("Activate changed the applied profile's defines");
+        if (!IsApplied(forge))
+            throw new Exception("Activate dropped the applied profile");
+        if (!logs.Any(l => l.Contains("which is still applied") && l.Contains("nothing was reverted, but its Apply or a build did not finish")))
+            throw new Exception($"Activate did not say that nothing was reverted: {string.Join(" | ", logs)}");
+        if (!logs.Any(l => l.Contains(interrupted)))
+            throw new Exception($"Activate did not name the unfinished settings: {string.Join(" | ", logs)}");
+    }
+
+    // An Apply that stops and can't undo its own write, as when the editor quits in the middle of
+    // it: the profile stays applied with that entry unfinished, Activate of it keeps both, and the
+    // next build stops, until Revert to Baseline puts the setting back.
+    static void CheckActivateWhileApplyUnfinished(ForgeProfile forge)
+    {
+        UnfinishedApply = true;
+        UnfinishedApplyRestoreFails = true;
+        UnfinishedApplySetting = "base";
+        try
+        {
+            try
+            {
+                EditorState.GetMethod("Apply", Flags).Invoke(null, new object[] { forge, "Development" });
+                throw new Exception("Expected the Apply to stop");
+            }
+            catch (TargetInvocationException e) when (e.InnerException is AggregateException) { }
+            var interrupted = InterruptedError();
+            if (UnfinishedApplySetting != "partial" || !IsApplied(forge) || interrupted == null || !interrupted.Contains("did not finish"))
+                throw new Exception("The stopped Apply did not leave its entry unfinished");
+            CheckActivateKeepsUnfinished(forge, interrupted, () => UnfinishedApplySetting == "partial");
+            try
+            {
+                ForgeBuildRunner.RunBuild(forge, "Development");
+                throw new Exception("A build ran although the Apply of the applied profile did not finish");
+            }
+            catch (InvalidOperationException e) when (e.Message.Contains(interrupted)) { }
+        }
+        finally
+        {
+            UnfinishedApplyRestoreFails = false;
+            EditorState.GetMethod("RevertCore", Flags).Invoke(null, null);
+            UnfinishedApply = false;
+        }
+        if (InterruptedError() != null || IsApplied(forge) || UnfinishedApplySetting != "base")
+            throw new Exception("Revert to Baseline did not put back the setting whose Apply did not finish");
+        File.Delete(UnfinishedApplyFile);
+    }
+
+    // With -proofUnfinishedApply: an Apply of the proof profile that stops and can't undo its own
+    // write, so its entry stays unfinished on disk for the next runs.
+    public static void LeaveApplyUnfinished()
+    {
+        var forge = ProofProfile();
+        UnfinishedApplySetting = "base";
+        try
+        {
+            EditorState.GetMethod("Apply", Flags).Invoke(null, new object[] { forge, "Development" });
+            throw new Exception("Expected the Apply to stop");
+        }
+        catch (TargetInvocationException e) when (e.InnerException is AggregateException) { }
+        if (UnfinishedApplySetting != "partial" || !IsApplied(forge) || InterruptedError() == null)
+            throw new Exception("The stopped Apply did not leave its entry unfinished");
+    }
+
+    // Started with -activeBuildProfile Assets/Other.asset, as when Unity switches profiles without
+    // Build Forge: the proof profile stays applied with its Apply unfinished, and the warning
+    // offers to activate it again.
+    public static void CheckSwitchedAway()
+    {
+        var forge = ProofProfile();
+        if (BuildProfile.GetActiveBuildProfile() != AssetDatabase.LoadAssetAtPath<BuildProfile>("Assets/Other.asset"))
+            throw new Exception("Unity did not switch to the other profile");
+        var interrupted = InterruptedError();
+        if (!IsApplied(forge) || interrupted == null)
+            throw new Exception("The switch changed the applied profile or its unfinished Apply");
+        var args = new object[] { null };
+        var mismatch = (string)EditorState.GetMethod("GetActiveMismatch", Flags).Invoke(null, args);
+        if (mismatch == null || mismatch.IndexOf("activate 'Proof' again", StringComparison.OrdinalIgnoreCase) < 0)
+            throw new Exception($"The warning does not offer to activate the applied profile again: {mismatch}");
+        File.WriteAllText("proof-interrupted.txt", interrupted);
+        File.Copy("UserSettings/ForgeEditorState.asset", "proof-ledger-switched.asset", true);
+    }
+
+    // After BuildForge.CommandLine.Activate of the applied profile: Unity is on it again and nothing
+    // of the unfinished Apply changed, until Revert to Baseline puts its setting back.
+    public static void CheckAfterActivate()
+    {
+        var forge = ProofProfile();
+        if (BuildProfile.GetActiveBuildProfile() != forge.BuildProfile)
+            throw new Exception("Activate did not make the applied profile active");
+        if (!File.ReadAllBytes("UserSettings/ForgeEditorState.asset").SequenceEqual(File.ReadAllBytes("proof-ledger-switched.asset"))
+            || InterruptedError() != File.ReadAllText("proof-interrupted.txt") || !IsApplied(forge))
+            throw new Exception("Activate changed the record of the unfinished Apply");
+        if (UnfinishedApplySetting != "partial")
+            throw new Exception($"Activate changed the setting whose Apply did not finish: '{UnfinishedApplySetting}'");
+        EditorState.GetMethod("RevertToBaseline", Flags).Invoke(null, null);
+        if (InterruptedError() != null || IsApplied(forge) || UnfinishedApplySetting != "base")
+            throw new Exception("Revert to Baseline did not put back the setting whose Apply did not finish");
+        foreach (var file in new[] { "proof-interrupted.txt", "proof-ledger-switched.asset", UnfinishedApplyFile })
+            File.Delete(file);
+        File.WriteAllText("activate-proof.json", "{\"activateKeptUnfinishedApplyAfterUnitySwitched\":true,\"revertedAfterActivate\":true}");
     }
 
     static void CheckUnfinishedBuildStopsTheNext(ForgeProfile forge, string after, string stopMessage = "did not finish")
@@ -187,6 +327,7 @@ public static class VariantFailureProof
             var interrupted = (string)EditorState.GetMethod("InterruptedError", Flags).Invoke(null, null);
             if (interrupted == null)
                 throw new Exception("The entry of the plugin whose restore failed did not stay unfinished");
+            CheckActivateKeepsUnfinished(forge, interrupted, () => EditorCleanupSetting == "build");
             CheckUnfinishedBuildStopsTheNext(forge, "the unreadable restore failure while applied", interrupted);
         }
         finally
@@ -408,4 +549,29 @@ public sealed class InjectUnreadableEditorCleanup : IForgePlugin, IForgeEditorAp
     public string CaptureEditorState(BuildTargetGroup group) => VariantFailureProof.EditorCleanupSetting;
     public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant) => VariantFailureProof.EditorCleanupSetting = "applied";
     public void RestoreEditorState(BuildTargetGroup group, string json) => VariantFailureProof.EditorCleanupSetting = json;
+}
+
+// Its Apply writes, then fails, and while it is told to, undoing that fails too, so the Apply
+// leaves its entry unfinished.
+[ForgePlugin]
+public sealed class InjectUnfinishedApply : IForgePlugin, IForgeEditorApplicable
+{
+    public string DisplayName => "Unfinished Apply proof";
+    public int Order => 795;
+    public bool IsApplicable(BuildProfile buildProfile) => true;
+    public bool? IsEnabled(ForgeProfile forgeProfile) => VariantFailureProof.UnfinishedApply || VariantFailureProof.UnfinishedApplyArg;
+    public void OnPreBuild(ForgeBuildContext context) { }
+    public void OnPostBuild(ForgeBuildContext context) { }
+    public string CaptureEditorState(BuildTargetGroup group) => VariantFailureProof.UnfinishedApplySetting;
+    public void ApplyToEditor(ForgeProfile forgeProfile, BuildTargetGroup group, string variant)
+    {
+        VariantFailureProof.UnfinishedApplySetting = "partial";
+        throw new InvalidOperationException("Injected apply failure");
+    }
+    public void RestoreEditorState(BuildTargetGroup group, string json)
+    {
+        if (VariantFailureProof.UnfinishedApplyRestoreFails || VariantFailureProof.UnfinishedApplyArg)
+            throw new InvalidOperationException("Injected undo failure");
+        VariantFailureProof.UnfinishedApplySetting = json;
+    }
 }
