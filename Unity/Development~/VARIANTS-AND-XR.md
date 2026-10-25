@@ -102,9 +102,11 @@ project's; it uses a project of its own. The PowerShell proof launches `.exe`
 players and is Windows-only; it is not cross-platform validation.
 It checks actual player development mode, compiled aliases, manifest identity,
 product marking, saved settings restoration, a previously applied Development
-editor variant, the record of a build that did not finish, and the hand-back of an
-applied profile after a plugin could not put its setting back. The optional XR and
-Addressables test assemblies run in hosts with those dependencies installed.
+editor variant, the record of a build that did not finish, the hand-back of an
+applied profile after a plugin could not put its setting back, and Activate of the
+applied profile while its Apply or a build did not finish, also from the command
+line after Unity switched to another profile. The optional XR and Addressables test
+assemblies run in hosts with those dependencies installed.
 
 [The 2026-09-14 validation report](VALIDATION-2026-09-14.md) records that pass's test
 and real-player results, package versions, reproduction commands and remaining
