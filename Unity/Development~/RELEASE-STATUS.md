@@ -13,10 +13,6 @@ repository root (working guidelines).
   under an unknown variant, the Stop Tracking dialog after a failed Revert
   to Baseline, the XR Vendor Filter's grouped package list and the Android
   Manifest inspector;
-- the hand-back after a build with a profile applied, when a plugin could not
-  put a setting back: the tests cover `EditorStateApplier.ResumeAfterBuild`
-  with such settings, not the runner's call to
-  `ForgeEditorState.ResumeAfterBuild` that passes them;
 - Activate of the applied profile while its Apply or a build did not finish:
   the tests cover the message it logs, not Activate itself;
 - anything on macOS or Linux.
