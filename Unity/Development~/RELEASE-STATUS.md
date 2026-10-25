@@ -21,9 +21,11 @@ repository root (working guidelines).
 
 1. Final verification: full test run (the plain run and both optional-package
    sets, `BUILDFORGE_PACKAGES=oldest` and `newest`, on 6000.3.0f1 and the newest
-   stable editor, 6000.6.6f1 as of 2026-10-22; see AGENTS.md) + a real Android
-   build via the window and via CLI. Runs on a pre-release editor, such as
-   6000.7.0b4, are reported separately, as extra coverage.
+   stable editor, 6000.6.6f1 as of 2026-10-22; see AGENTS.md) + the variant proof
+   on the same two editors (`Tools~/run-variant-proof.ps1 -Editor <path>`, which
+   uses a project of its own per editor; see Development~/VARIANTS-AND-XR.md) + a
+   real Android build via the window and via CLI. Runs on a pre-release editor,
+   such as 6000.7.0b4, are reported separately, as extra coverage.
 2. **Asset metadata** is retained with existing GUIDs. Check for missing,
    duplicate or orphaned metadata before release; no wholesale GUID regeneration.
    `Development~` and `Tools~` are excluded from Unity import and need no metadata.
