@@ -9,10 +9,6 @@ repository root (working guidelines).
 ## Remaining before 1.0
 
 **Never checked yet** (as last noted, 2026-10-21):
-- the OpenXR feature-group build error with Unity OpenXR Meta's real groups:
-  the tests tick a group they declare themselves, and a build's pre-build
-  step, an Apply and the matching Play Mode copy stop on it
-  (`Tests/Editor/OpenXR/OpenXRFeatureGroupTests.cs`);
 - by eye: the Addressables Stripper's Move to…/Remove row for exclusions
   under an unknown variant, the Stop Tracking dialog after a failed Revert
   to Baseline, the XR Vendor Filter's grouped package list and the Android
